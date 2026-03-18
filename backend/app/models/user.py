@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import INET, UUID
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -31,7 +31,7 @@ class UserSession(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     refresh_token = Column(Text, unique=True, nullable=False)
     user_agent = Column(Text, nullable=True)
-    ip_address = Column(Text, nullable=True)  # stored as text, validated at app level
+    ip_address = Column(INET, nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
