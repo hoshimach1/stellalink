@@ -6,6 +6,7 @@ import bcrypt
 from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.models.user import User, UserSession
@@ -78,7 +79,9 @@ async def get_user_by_id(db: AsyncSession, user_id: str) -> Optional[User]:
 
 async def get_session_by_refresh_token(db: AsyncSession, token: str) -> Optional[UserSession]:
     result = await db.execute(
-        select(UserSession).where(
+        select(UserSession)
+        .options(selectinload(UserSession.user))
+        .where(
             UserSession.refresh_token == token,
             UserSession.expires_at > datetime.now(timezone.utc),
         )
