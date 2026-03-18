@@ -17,7 +17,6 @@ from app.services.auth import (
     get_user_by_email,
     hash_password,
     verify_password,
-    create_access_token,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
