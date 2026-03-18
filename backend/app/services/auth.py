@@ -1,7 +1,6 @@
-from __future__ import annotations
-
 import secrets
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -33,7 +32,7 @@ def create_access_token(user_id: str) -> str:
     )
 
 
-def decode_access_token(token: str) -> str | None:
+def decode_access_token(token: str) -> Optional[str]:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
         return payload.get("sub")
@@ -44,8 +43,8 @@ def decode_access_token(token: str) -> str | None:
 async def create_session(
     db: AsyncSession,
     user: User,
-    user_agent: str | None,
-    ip_address: str | None,
+    user_agent: Optional[str],
+    ip_address: Optional[str],
 ) -> tuple[str, str]:
     """Returns (access_token, refresh_token)."""
     refresh_token = secrets.token_urlsafe(64)
@@ -65,21 +64,21 @@ async def create_session(
     return access_token, refresh_token
 
 
-async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
+async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
     result = await db.execute(
         select(User).where(User.email == email, User.deleted_at.is_(None))
     )
     return result.scalar_one_or_none()
 
 
-async def get_user_by_id(db: AsyncSession, user_id: str) -> User | None:
+async def get_user_by_id(db: AsyncSession, user_id: str) -> Optional[User]:
     result = await db.execute(
         select(User).where(User.id == user_id, User.deleted_at.is_(None))
     )
     return result.scalar_one_or_none()
 
 
-async def get_session_by_refresh_token(db: AsyncSession, token: str) -> UserSession | None:
+async def get_session_by_refresh_token(db: AsyncSession, token: str) -> Optional[UserSession]:
     result = await db.execute(
         select(UserSession).where(
             UserSession.refresh_token == token,

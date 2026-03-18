@@ -1,13 +1,11 @@
-from __future__ import annotations
-
 import json
-from typing import Any
+from typing import Any, Optional
 
 from redis.asyncio import Redis, from_url
 
 from app.config import settings
 
-_redis: Redis | None = None
+_redis: Optional[Redis] = None
 
 
 async def get_redis() -> Redis:
@@ -30,7 +28,7 @@ def _widget_key(account_id: str, data_type: str) -> str:
     return f"widget:{account_id}:{data_type}"
 
 
-async def get_widget_cache(account_id: str, data_type: str) -> Any | None:
+async def get_widget_cache(account_id: str, data_type: str) -> Optional[Any]:
     r = await get_redis()
     raw = await r.get(_widget_key(account_id, data_type))
     return json.loads(raw) if raw else None

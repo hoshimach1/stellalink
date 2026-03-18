@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 from datetime import datetime
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
@@ -32,7 +31,7 @@ class UserResponse(BaseModel):
     id: UUID
     email: str
     email_verified: bool
-    avatar_url: str | None
+    avatar_url: Optional[str]
     created_at: datetime
 
     model_config = {"from_attributes": True}
