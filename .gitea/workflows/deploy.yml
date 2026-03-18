@@ -6,16 +6,19 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build & restart
+      - name: Install Docker CLI
         run: |
-          ssh -o StrictHostKeyChecking=no deploy@localhost "
-            cd ${{ secrets.DEPLOY_PATH }}/backend &&
-            docker compose build api &&
-            docker compose up -d --no-deps api &&
-            docker image prune -f
-          "
+          apt-get update -qq
+          apt-get install -y -qq docker.io docker-compose-v2
+
+      - name: Build & restart
+        working-directory: backend
+        run: |
+          docker compose build api
+          docker compose up -d --no-deps api
+          docker image prune -f
