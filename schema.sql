@@ -312,7 +312,7 @@ CREATE TABLE widget_data_cache (
     payload             JSONB NOT NULL,
     fetched_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     ttl_seconds         INT NOT NULL DEFAULT 300, -- 5 мин по умолчанию
-    expires_at          TIMESTAMPTZ GENERATED ALWAYS AS (fetched_at + make_interval(secs => ttl_seconds)) STORED
+    expires_at          TIMESTAMPTZ GENERATED ALWAYS AS (fetched_at + (ttl_seconds * interval '1 second')) STORED
 );
 
 CREATE INDEX idx_cache_account ON widget_data_cache (connected_account_id);
