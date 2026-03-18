@@ -24,6 +24,7 @@ jobs:
       - name: Build & restart
         working-directory: backend
         run: |
+          docker compose up -d db redis
           docker compose build api
           docker compose up -d --no-deps --force-recreate api
           docker image prune -f

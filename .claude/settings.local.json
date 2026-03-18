@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx nuxi@latest init frontend --package-manager npm --no-install)",
+      "Bash(nvm install:*)",
+      "Bash(nvm use:*)",
+      "Bash(npm install:*)"
+    ]
+  }
+}

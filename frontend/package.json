@@ -1,0 +1,24 @@
+{
+  "name": "stellalink-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview"
+  },
+  "dependencies": {
+    "nuxt": "^3.13.2",
+    "vue": "^3.5.13",
+    "vuetify": "^3.7.6",
+    "vue-draggable-plus": "^0.6.0",
+    "@mdi/font": "^7.4.47",
+    "pinia": "^2.3.0",
+    "@pinia/nuxt": "^0.7.0"
+  },
+  "devDependencies": {
+    "vite-plugin-vuetify": "^2.0.4",
+    "@nuxt/devtools": "latest"
+  }
+}
