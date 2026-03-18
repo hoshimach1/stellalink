@@ -17,8 +17,6 @@ jobs:
           POSTGRES_USER: stellalink
           POSTGRES_PASSWORD: password
           POSTGRES_DB: stellalink_test
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U stellalink"
           --health-interval 5s
@@ -27,8 +25,6 @@ jobs:
 
       redis:
         image: redis:7-alpine
-        ports:
-          - 6379:6379
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 5s
@@ -40,8 +36,8 @@ jobs:
         working-directory: backend
 
     env:
-      DATABASE_URL: postgresql+asyncpg://stellalink:password@localhost:5432/stellalink_test
-      REDIS_URL: redis://localhost:6379/0
+      DATABASE_URL: postgresql+asyncpg://stellalink:password@postgres:5432/stellalink_test
+      REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ci-test-secret-key-not-for-production
 
     steps:
@@ -65,7 +61,7 @@ jobs:
           python - <<'EOF'
           import psycopg2, pathlib
           conn = psycopg2.connect(
-              "postgresql://stellalink:password@localhost:5432/stellalink_test"
+              "postgresql://stellalink:password@postgres:5432/stellalink_test"
           )
           conn.autocommit = True
           cur = conn.cursor()
