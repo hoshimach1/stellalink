@@ -17,11 +17,13 @@ jobs:
 
       - name: Create .env
         working-directory: backend
-        run: echo "${{ secrets.BACKEND_ENV }}" > .env
+        run: |
+          echo "${{ secrets.BACKEND_ENV }}" > .env
+          echo "--- .env lines: $(wc -l < .env) ---"
 
       - name: Build & restart
         working-directory: backend
         run: |
           docker compose build api
-          docker compose up -d --no-deps api
+          docker compose up -d --no-deps --force-recreate api
           docker image prune -f
