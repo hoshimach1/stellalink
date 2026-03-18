@@ -13,7 +13,9 @@ jobs:
 
       - name: Install Docker CLI
         run: |
-          curl -fsSL https://get.docker.com | sh
+          if ! command -v docker &>/dev/null; then
+            curl -fsSL https://get.docker.com | sh
+          fi
 
       - name: Create .env
         working-directory: backend
@@ -23,10 +25,12 @@ jobs:
 
       - name: Build & restart
         working-directory: backend
+        env:
+          DOCKER_BUILDKIT: 1
         run: |
           docker compose up -d db redis
-          sleep 5
+          until docker exec backend-db-1 pg_isready -U stellalink 2>/dev/null; do sleep 1; done
           docker exec -i backend-db-1 psql -U stellalink -d stellalink < ../schema.sql
-          docker compose build api frontend
+          docker compose build --parallel api frontend
           docker compose up -d --no-deps --force-recreate api frontend
           docker image prune -f
