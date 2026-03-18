@@ -25,6 +25,8 @@ jobs:
         working-directory: backend
         run: |
           docker compose up -d db redis
-          docker compose build api
-          docker compose up -d --no-deps --force-recreate api
+          sleep 5
+          docker exec -i backend-db-1 psql -U stellalink -d stellalink < ../schema.sql
+          docker compose build api frontend
+          docker compose up -d --no-deps --force-recreate api frontend
           docker image prune -f
