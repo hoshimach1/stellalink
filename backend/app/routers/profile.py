@@ -151,7 +151,7 @@ async def reorder_blocks(
 
 # ── Public ────────────────────────────────────────────────────────────────────
 
-@router.get("/p/{slug}", response_model=ProfileResponse)
+@router.get("/u/{slug}", response_model=ProfileResponse)
 async def public_profile(slug: str, db: AsyncSession = Depends(get_db)):
     profile = await svc.get_profile_by_slug(db, slug)
     if not profile or profile.status == "draft":
