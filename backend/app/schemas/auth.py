@@ -27,6 +27,11 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+
 class UserResponse(BaseModel):
     id: UUID
     email: str

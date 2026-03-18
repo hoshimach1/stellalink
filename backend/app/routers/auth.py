@@ -5,6 +5,7 @@ from app.database import get_db
 from app.deps import get_current_user
 from app.models.user import User
 from app.schemas.auth import (
+    ChangePasswordRequest,
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
@@ -111,3 +112,18 @@ async def logout(
 @router.get("/me", response_model=UserResponse)
 async def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    body: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not current_user.password_hash or not verify_password(body.old_password, current_user.password_hash):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неверный текущий пароль")
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Минимум 8 символов")
+    current_user.password_hash = hash_password(body.new_password)
+    db.add(current_user)
+    await db.commit()
