@@ -13,8 +13,7 @@ jobs:
 
       - name: Install Docker CLI
         run: |
-          apt-get update -qq
-          apt-get install -y -qq docker.io docker-compose-v2
+          curl -fsSL https://get.docker.com | sh
 
       - name: Build & restart
         working-directory: backend
