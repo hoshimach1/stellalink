@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, SmallInteger, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -15,7 +15,7 @@ class Profile(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     organization_id = Column(UUID(as_uuid=True), nullable=True)
     slug = Column(String, unique=True, nullable=False)
-    status = Column(String(20), nullable=False, default="draft")
+    status = Column(ENUM("draft", "private", "published", name="profile_status", create_type=False), nullable=False, default="draft")
     theme_preset = Column(String(50), nullable=False, default="material3")
     custom_css = Column(Text, nullable=True)
     theme_tokens = Column(JSONB, nullable=True)
