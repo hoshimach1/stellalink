@@ -217,26 +217,26 @@ function widgetVal(block: Block) {
 
 // ── Local blocks ──────────────────────────────────────────────────────────────
 const localBlocks = ref<Block[]>([])
-watch(() => profile.profile?.blocks, b => { if (b) localBlocks.value = [...b] }, { immediate: true, deep: true })
+watch(() => profile.profile?.blocks, (b: Block[] | undefined) => { if (b) localBlocks.value = [...b] }, { immediate: true })
 
 async function saveOrder() {
   const ids = localBlocks.value.map(b => b.id)
   await profile.reorder(ids)
-  localBlocks.value.forEach((b, i) => { b.sort_order = i })
-  if (profile.profile) profile.profile.blocks = [...localBlocks.value]
 }
 
 async function onDropFromSidebar(evt: { item: HTMLElement }) {
   const type = evt.item.dataset.type
   if (!type) return
-  const spurious = localBlocks.value.findIndex(b => !b.id)
-  if (spurious !== -1) localBlocks.value.splice(spurious, 1)
+  // Remove spurious placeholder vue-draggable inserted
+  localBlocks.value = localBlocks.value.filter(b => b.id)
   const block = await profile.createBlock(type, defaultConfigs[type] ?? {})
+  localBlocks.value.push(block)
   selectedBlockId.value = block.id
 }
 
 async function addBlock(type: string) {
   const block = await profile.createBlock(type, defaultConfigs[type] ?? {})
+  localBlocks.value.push(block)
   selectedBlockId.value = block.id
 }
 
