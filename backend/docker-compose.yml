@@ -34,6 +34,16 @@ services:
     depends_on:
       - api
 
+  dozzle:
+    image: amir20/dozzle:latest
+    ports:
+      - "9999:8080"
+    environment:
+      DOZZLE_AUTH_PROVIDER: simple
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./dozzle/users.yml:/data/users.yml
+
 volumes:
   pgdata:
   redisdata:

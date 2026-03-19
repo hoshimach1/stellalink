@@ -1,0 +1,6 @@
+users:
+  admin:
+    name: admin
+    # Password: admin  — сменить командой: htpasswd -nbB admin YOUR_PASSWORD | cut -d: -f2
+    password: "$2y$05$1KkhEBS2Y0JQq6x5DQp0yO2o8nIBUlNCqKta3D4FEIpQBS6Eq14cC"
+    email: admin@stellalink.local
