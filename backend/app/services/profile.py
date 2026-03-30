@@ -113,7 +113,8 @@ async def create_block(
         .order_by(ProfileBlock.sort_order.desc())
         .limit(1)
     )
-    max_order = result.scalar_one_or_none() or -1
+    max_order_val = result.scalar_one_or_none()
+    max_order = max_order_val if max_order_val is not None else -1
 
     block = ProfileBlock(
         profile_id=profile_id,

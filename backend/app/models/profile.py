@@ -54,7 +54,7 @@ class ProfileBlock(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     profile_id = Column(UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
-    block_type = Column(String(50), nullable=False)
+    block_type = Column(ENUM("links", "widget_faceit", "widget_steam", "widget_github", "widget_telegram", "widget_lastfm", "widget_spotify", "widget_custom", "pc_config", "text", "image_gallery", name="block_type", create_type=False), nullable=False)
     sort_order = Column(SmallInteger, nullable=False, default=0)
     is_visible = Column(Boolean, nullable=False, default=True)
     locale = Column(String(10), nullable=True)

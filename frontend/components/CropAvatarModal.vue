@@ -68,6 +68,15 @@ function openModal(file: File) {
   reader.readAsDataURL(file)
 }
 
+function clampCrop() {
+  if (!cropImgEl) return
+  const cx = CANVAS_SIZE / 2, cy = CANVAS_SIZE / 2
+  const imgW = cropImgEl.width * cropScale
+  const imgH = cropImgEl.height * cropScale
+  cropX = Math.min(cx - CROP_R, Math.max(cx + CROP_R - imgW, cropX))
+  cropY = Math.min(cy - CROP_R, Math.max(cy + CROP_R - imgH, cropY))
+}
+
 function draw() {
   const canvas = cropCanvasRef.value
   if (!canvas || !cropImgEl) return
