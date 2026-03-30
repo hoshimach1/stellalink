@@ -82,20 +82,28 @@
         <!-- Design tab -->
         <template v-else-if="sidebarTab === 'design'">
           <div class="pt-section-label">Тема</div>
-          <div class="pt-theme-grid">
+          <div class="pt-theme-list">
             <button
               v-for="t in THEMES"
               :key="t.id"
-              class="pt-theme-card"
-              :class="{ active: (profile.profile!.theme_preset || 'material3') === t.id }"
+              class="pt-theme-row"
+              :class="{ active: currentTheme === t.id }"
               @click="setTheme(t.id)"
             >
-              <div class="pt-theme-preview" :style="t.preview" />
-              <span class="pt-theme-name">{{ t.label }}</span>
+              <div class="pt-theme-swatch" :style="t.preview">
+                <span class="pt-theme-dot" :style="`background:${t.previewDot}`" />
+              </div>
+              <div class="pt-theme-info">
+                <span class="pt-theme-name">{{ t.label }}</span>
+                <span class="pt-theme-sub">{{ t.sub }}</span>
+              </div>
+              <i v-if="currentTheme === t.id" class="ri-check-line pt-theme-check" />
             </button>
           </div>
 
-          <div class="pt-section-label" style="margin-top:16px">Акцентный цвет</div>
+          <div class="pt-section-label" style="margin-top:14px">
+            {{ currentTheme === 'material3' ? 'Seed color' : 'Accent' }}
+          </div>
           <div class="pt-accent-grid">
             <button
               v-for="c in ACCENT_COLORS"
@@ -148,8 +156,8 @@
       @cancel="avatarCropFile = null"
     />
 
-    <div class="pt-canvas" @click.self="deselectAll">
-      <div class="pt-profile-card">
+    <div class="pt-canvas" :style="canvasBgStyle" @click.self="deselectAll">
+      <div class="pt-profile-card" :style="canvasThemeStyle">
 
         <!-- Header -->
         <div class="pt-ph" :class="{ editing: editingHeader }">
@@ -453,25 +461,121 @@ async function onAvatarCropSave(blob: Blob) {
 const sidebarTab = ref<'blocks' | 'design'>('blocks')
 
 const THEMES = [
-  { id: 'material3', label: 'Dark',     preview: 'background: linear-gradient(135deg,#0d0d1c 50%,#1a2540); border: 1.5px solid rgba(61,142,255,0.3)' },
-  { id: 'midnight', label: 'Midnight',  preview: 'background: linear-gradient(135deg,#000000 50%,#0d0018); border: 1.5px solid rgba(139,92,246,0.3)' },
-  { id: 'aurora',   label: 'Aurora',    preview: 'background: linear-gradient(135deg,#06110d 50%,#0a1f18); border: 1.5px solid rgba(52,211,153,0.3)' },
-  { id: 'sunset',   label: 'Sunset',    preview: 'background: linear-gradient(135deg,#110808 50%,#1f1008); border: 1.5px solid rgba(249,115,22,0.3)' },
-  { id: 'light',    label: 'Light',     preview: 'background: linear-gradient(135deg,#f4f6fb 50%,#e8edf8); border: 1.5px solid rgba(37,99,235,0.25)' },
+  {
+    id: 'material3',
+    label: 'Material 3',
+    sub: 'Expressive',
+    preview: 'background: linear-gradient(135deg,#13102a 0%,#1a1535 60%,#211e40 100%)',
+    previewDot: '#D0BCFF',
+  },
+  {
+    id: 'glass',
+    label: 'Liquid Glass',
+    sub: 'Apple-like',
+    preview: 'background: linear-gradient(135deg,rgba(14,12,30,0.9) 0%,rgba(30,28,60,0.85) 100%); backdrop-filter: blur(8px)',
+    previewDot: '#a8d8ff',
+  },
+  {
+    id: 'fluent',
+    label: 'Fluent',
+    sub: 'Microsoft',
+    preview: 'background: linear-gradient(135deg,#1c1c1c 0%,#242424 100%)',
+    previewDot: '#60cdff',
+  },
 ]
 
 const ACCENT_COLORS = [
-  { label: 'Blue',   value: '#3D8EFF' },
-  { label: 'Purple', value: '#8B5CF6' },
-  { label: 'Pink',   value: '#EC4899' },
-  { label: 'Red',    value: '#EF4444' },
-  { label: 'Orange', value: '#F97316' },
-  { label: 'Yellow', value: '#EAB308' },
-  { label: 'Green',  value: '#22C55E' },
-  { label: 'Teal',   value: '#14B8A6' },
+  { label: 'Violet',  value: '#D0BCFF' },
+  { label: 'Blue',    value: '#3D8EFF' },
+  { label: 'Teal',    value: '#14B8A6' },
+  { label: 'Green',   value: '#22C55E' },
+  { label: 'Amber',   value: '#F59E0B' },
+  { label: 'Orange',  value: '#F97316' },
+  { label: 'Pink',    value: '#EC4899' },
+  { label: 'Rose',    value: '#F43F5E' },
 ]
 
-const currentAccent = computed(() => profile.profile?.accent_color || '#3D8EFF')
+const currentAccent = computed(() => profile.profile?.accent_color || '#D0BCFF')
+const currentTheme  = computed(() => profile.profile?.theme_preset || 'material3')
+
+// ── Canvas theme CSS variables ────────────────────────────────────────────────
+function hexToRgba(hex: string, op: number): string {
+  const c = hex.replace('#', '')
+  const r = parseInt(c.slice(0, 2), 16) || 61
+  const g = parseInt(c.slice(2, 4), 16) || 142
+  const b = parseInt(c.slice(4, 6), 16) || 255
+  return `rgba(${r},${g},${b},${op})`
+}
+
+const canvasThemeStyle = computed((): Record<string, string> => {
+  const preset  = currentTheme.value
+  const accent  = currentAccent.value
+  const a04 = hexToRgba(accent, 0.04)
+  const a08 = hexToRgba(accent, 0.08)
+  const a12 = hexToRgba(accent, 0.12)
+  const a20 = hexToRgba(accent, 0.20)
+  const a28 = hexToRgba(accent, 0.28)
+
+  if (preset === 'glass') {
+    return {
+      '--th-card':    'rgba(14,12,30,0.55)',
+      '--th-block':   'rgba(255,255,255,0.06)',
+      '--th-hborder': 'rgba(255,255,255,0.08)',
+      '--th-text':    '#f0eeff',
+      '--th-sub':     'rgba(240,238,255,0.60)',
+      '--th-dim':     'rgba(240,238,255,0.32)',
+      '--th-accent':  accent,
+      '--th-a04': a04, '--th-a08': a08, '--th-a12': a12, '--th-a20': a20, '--th-a28': a28,
+      '--th-radius':  '22px',
+      '--th-blur':    'blur(24px) saturate(180%)',
+      '--th-shadow':  '0 16px 56px rgba(0,0,0,0.55)',
+      '--th-glow':    hexToRgba(accent, 0.18),
+    }
+  }
+  if (preset === 'fluent') {
+    return {
+      '--th-card':    'rgba(28,28,28,0.88)',
+      '--th-block':   'rgba(255,255,255,0.04)',
+      '--th-hborder': 'rgba(255,255,255,0.07)',
+      '--th-text':    '#ffffff',
+      '--th-sub':     'rgba(255,255,255,0.65)',
+      '--th-dim':     'rgba(255,255,255,0.38)',
+      '--th-accent':  accent,
+      '--th-a04': a04, '--th-a08': a08, '--th-a12': a12, '--th-a20': a20, '--th-a28': a28,
+      '--th-radius':  '8px',
+      '--th-blur':    'blur(32px) saturate(140%)',
+      '--th-shadow':  '0 8px 32px rgba(0,0,0,0.45)',
+      '--th-glow':    hexToRgba(accent, 0.12),
+    }
+  }
+  // material3 (default)
+  return {
+    '--th-card':    '#13102a',
+    '--th-block':   a04,
+    '--th-hborder': a12,
+    '--th-text':    '#e9e0f8',
+    '--th-sub':     '#cac4d0',
+    '--th-dim':     '#938f99',
+    '--th-accent':  accent,
+    '--th-a04': a04, '--th-a08': a08, '--th-a12': a12, '--th-a20': a20, '--th-a28': a28,
+    '--th-radius':  '28px',
+    '--th-blur':    '',
+    '--th-shadow':  `0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px ${a08}`,
+    '--th-glow':    hexToRgba(accent, 0.22),
+  }
+})
+
+const canvasBgStyle = computed((): Record<string, string> => {
+  const preset = currentTheme.value
+  const accent = currentAccent.value
+  if (preset === 'glass') {
+    return { background: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(80,60,180,0.22), transparent), #0a0a1e' }
+  }
+  if (preset === 'fluent') {
+    return { background: '#141414' }
+  }
+  return { background: `radial-gradient(ellipse 60% 30% at 50% 0%, ${hexToRgba(accent, 0.07)}, transparent)` }
+})
 
 async function setTheme(id: string) {
   await profile.update({ theme_preset: id })
@@ -649,23 +753,30 @@ async function saveBlock() {
 }
 
 /* ── Design tab ── */
-.pt-theme-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
-  padding: 4px 10px;
+.pt-theme-list {
+  display: flex; flex-direction: column; gap: 4px; padding: 4px 8px;
 }
-.pt-theme-card {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  background: none; border: 1px solid rgba(61,142,255,0.08);
-  border-radius: 10px; padding: 8px 6px; cursor: pointer;
-  transition: all 0.15s; font-family: 'Onest', sans-serif;
+.pt-theme-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 10px;
+  border: 1px solid transparent; background: none;
+  cursor: pointer; font-family: 'Onest', sans-serif; transition: all 0.15s;
+  text-align: left;
 }
-.pt-theme-card:hover { border-color: rgba(61,142,255,0.24); background: rgba(255,255,255,0.02); }
-.pt-theme-card.active { border-color: #3D8EFF; box-shadow: 0 0 0 2px rgba(61,142,255,0.14); }
-.pt-theme-preview {
-  width: 100%; height: 38px; border-radius: 6px;
+.pt-theme-row:hover { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.06); }
+.pt-theme-row.active { background: rgba(208,188,255,0.07); border-color: rgba(208,188,255,0.20); }
+.pt-theme-swatch {
+  width: 40px; height: 32px; border-radius: 7px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(255,255,255,0.08);
 }
-.pt-theme-name { font-size: 11px; font-weight: 600; color: #8888aa; }
-.pt-theme-card.active .pt-theme-name { color: #90beff; }
+.pt-theme-dot { width: 10px; height: 10px; border-radius: 50%; }
+.pt-theme-info { flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.pt-theme-name { font-size: 12px; font-weight: 700; color: #ccccdd; }
+.pt-theme-sub { font-size: 10px; color: #5a5a78; }
+.pt-theme-row.active .pt-theme-name { color: #D0BCFF; }
+.pt-theme-row.active .pt-theme-sub { color: #7c6fa0; }
+.pt-theme-check { font-size: 14px; color: #D0BCFF; flex-shrink: 0; }
 
 .pt-accent-grid {
   display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 10px;
@@ -780,20 +891,23 @@ async function saveBlock() {
 }
 .pt-profile-card {
   width: 100%; max-width: 420px; height: fit-content;
-  background: #0d0d1c; border: 1px solid rgba(61,142,255,0.12);
-  border-radius: 20px; overflow: hidden;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(61,142,255,0.04);
+  background: var(--th-card, #0d0d1c);
+  border: 1px solid var(--th-a12, rgba(61,142,255,0.12));
+  border-radius: var(--th-radius, 20px); overflow: hidden;
+  box-shadow: var(--th-shadow, 0 24px 64px rgba(0,0,0,0.5));
+  backdrop-filter: var(--th-blur, none);
+  transition: border-radius 0.3s ease, background 0.3s ease;
 }
 
 /* Header */
 .pt-ph {
   position: relative; overflow: hidden;
-  border-bottom: 1px solid rgba(61,142,255,0.08);
+  border-bottom: 1px solid var(--th-hborder, rgba(61,142,255,0.08));
 }
 .pt-ph-glow {
   position: absolute; top: -40px; left: 50%; transform: translateX(-50%);
   width: 200px; height: 120px; pointer-events: none;
-  background: radial-gradient(ellipse, rgba(61,142,255,0.18), transparent 70%);
+  background: radial-gradient(ellipse, var(--th-glow, rgba(61,142,255,0.18)), transparent 70%);
 }
 .pt-ph-center {
   display: flex; flex-direction: column; align-items: center;
@@ -804,22 +918,22 @@ async function saveBlock() {
 
 .pt-ph-avatar {
   width: 68px; height: 68px; border-radius: 50%;
-  background: linear-gradient(135deg, #2b7ef0, #3D8EFF);
+  background: var(--th-accent, #3D8EFF);
   display: flex; align-items: center; justify-content: center;
   font-size: 26px; font-weight: 800; color: #fff;
   overflow: hidden; flex-shrink: 0;
-  box-shadow: 0 0 0 3px rgba(61,142,255,0.22), 0 6px 20px rgba(61,142,255,0.20);
+  box-shadow: 0 0 0 3px var(--th-a20, rgba(61,142,255,0.22)), 0 6px 20px var(--th-a20, rgba(61,142,255,0.20));
 }
 .pt-ph-avatar-center { margin-bottom: 14px; }
 .pt-ph-avatar-img { width: 100%; height: 100%; object-fit: cover; }
 
-.pt-ph-name { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 2px; }
-.pt-ph-slug { font-size: 12px; color: #3a3a58; margin-bottom: 6px; }
-.pt-ph-bio  { font-size: 13px; color: #8888aa; margin-bottom: 8px; max-width: 280px; line-height: 1.4; }
+.pt-ph-name { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 2px; color: var(--th-text, #eeeef8); }
+.pt-ph-slug { font-size: 12px; color: var(--th-dim, #3a3a58); margin-bottom: 6px; }
+.pt-ph-bio  { font-size: 13px; color: var(--th-sub, #8888aa); margin-bottom: 8px; max-width: 280px; line-height: 1.4; }
 .pt-ph-tags { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
 .pt-tag {
-  background: rgba(61,142,255,0.10); color: #90beff;
-  border: 1px solid rgba(61,142,255,0.16); border-radius: 100px;
+  background: var(--th-a08, rgba(61,142,255,0.10)); color: var(--th-accent, #90beff);
+  border: 1px solid var(--th-a12, rgba(61,142,255,0.16)); border-radius: 100px;
   padding: 2px 10px; font-size: 11px; font-weight: 500;
 }
 .pt-edit-chip {
@@ -885,12 +999,13 @@ async function saveBlock() {
 .pt-dz-hint { font-size: 12px; color: #3a3a58; max-width: 220px; line-height: 1.5; }
 
 .pt-block-preview {
-  position: relative; border-radius: 10px; overflow: hidden;
-  border: 1px solid rgba(61,142,255,0.08);
+  position: relative; border-radius: calc(var(--th-radius, 20px) * 0.4); overflow: hidden;
+  border: 1px solid var(--th-a08, rgba(61,142,255,0.08));
+  background: var(--th-block, rgba(255,255,255,0.025));
   display: flex; align-items: stretch; transition: border-color 0.2s;
 }
-.pt-block-preview:hover { border-color: rgba(61,142,255,0.28); }
-.pt-block-preview.selected { border-color: #3D8EFF; box-shadow: 0 0 0 2px rgba(61,142,255,0.14); }
+.pt-block-preview:hover { border-color: var(--th-a28, rgba(61,142,255,0.28)); }
+.pt-block-preview.selected { border-color: var(--th-accent, #3D8EFF); box-shadow: 0 0 0 2px var(--th-a12, rgba(61,142,255,0.14)); }
 .pt-block-preview.hidden { opacity: 0.4; }
 
 .pt-block-drag {
@@ -906,9 +1021,9 @@ async function saveBlock() {
 .pt-block-inner { flex: 1; padding: 11px 13px; cursor: pointer; }
 .pt-block-overlay {
   position: absolute; inset: 0; left: 22px;
-  background: rgba(61,142,255,0.07);
+  background: var(--th-a08, rgba(61,142,255,0.07));
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; color: #90beff; gap: 6px;
+  font-size: 13px; color: var(--th-accent, #90beff); gap: 6px;
   opacity: 0; transition: opacity 0.18s; cursor: pointer;
 }
 .pt-block-preview:hover .pt-block-overlay { opacity: 1; }
