@@ -25,6 +25,10 @@ backend/__pycache__/
 *.log
 logs/
 
+# Uploads (user files – never commit)
+backend/uploads/avatars/*
+!backend/uploads/avatars/.gitkeep
+
 # OS
 .DS_Store
 Thumbs.db

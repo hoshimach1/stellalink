@@ -24,7 +24,7 @@ from app.services.auth import (
     verify_password,
 )
 
-UPLOADS_DIR = Path("uploads/avatars")
+UPLOADS_DIR = Path(__file__).parent.parent.parent / "uploads" / "avatars"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_SIZE = 5 * 1024 * 1024  # 5 MB

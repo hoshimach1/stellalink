@@ -29,7 +29,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(profile.router)
 
-_uploads = Path("uploads")
+_uploads = Path(__file__).parent.parent / "uploads"
 _uploads.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(_uploads)), name="uploads")
 

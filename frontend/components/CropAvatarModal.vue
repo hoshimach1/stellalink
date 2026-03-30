@@ -134,6 +134,7 @@ function onDragStart(e: MouseEvent) {
 function onDragMove(e: MouseEvent) {
   cropX = dragImgX + (e.clientX - dragStartX)
   cropY = dragImgY + (e.clientY - dragStartY)
+  clampCrop()
   draw()
 }
 function onDragEnd() {
@@ -150,6 +151,7 @@ function onWheel(e: WheelEvent) {
   cropX = cx - (cx - cropX) * (ns / cropScale)
   cropY = cy - (cy - cropY) * (ns / cropScale)
   cropScale = ns
+  clampCrop()
   draw()
 }
 
@@ -171,6 +173,7 @@ function onTouchMove(e: TouchEvent) {
   if (e.touches.length === 1 && isDragging.value) {
     cropX = dragImgX + (e.touches[0].clientX - dragStartX)
     cropY = dragImgY + (e.touches[0].clientY - dragStartY)
+    clampCrop()
     draw()
   } else if (e.touches.length === 2) {
     const dist = Math.hypot(
@@ -184,6 +187,7 @@ function onTouchMove(e: TouchEvent) {
       cropX = cx - (cx - cropX) * (ns / cropScale)
       cropY = cy - (cy - cropY) * (ns / cropScale)
       cropScale = ns
+      clampCrop()
       draw()
     }
     lastTouchDist = dist
