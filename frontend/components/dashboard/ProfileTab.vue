@@ -48,7 +48,7 @@
         <div class="pt-section-label" style="margin-top:14px">Добавить</div>
         <VueDraggable
           v-model="blockTypes"
-          class="pt-add-grid"
+          class="pt-add-list"
           :group="{ name: 'blocks', pull: 'clone', put: false }"
           :sort="false"
           ghost-class="pt-ghost-add"
@@ -56,12 +56,13 @@
           <div
             v-for="bt in blockTypes"
             :key="bt.type"
-            class="pt-add-btn"
+            class="pt-add-item"
             :data-type="bt.type"
             @click="addBlock(bt.type)"
           >
-            <span class="pt-add-icon">{{ bt.icon }}</span>
-            <span>{{ bt.label }}</span>
+            <span class="pt-add-ico">{{ bt.icon }}</span>
+            <span class="pt-add-label">{{ bt.label }}</span>
+            <i class="ri-add-line pt-add-plus" />
           </div>
         </VueDraggable>
 
@@ -93,32 +94,44 @@
       <div class="pt-profile-card">
 
         <!-- Header -->
-        <div class="pt-ph" :class="{ editing: editingHeader }" @click="!editingHeader && (editingHeader = true)">
-          <div class="pt-ph-avatar">
-            <img v-if="profile.profile?.avatar_url" :src="`${profile.profile.avatar_url}?t=${avatarTs}`" class="pt-ph-avatar-img" alt="avatar">
-            <span v-else>{{ initial }}</span>
-          </div>
-          <div class="pt-ph-info">
-            <template v-if="editingHeader">
+        <div class="pt-ph" :class="{ editing: editingHeader }">
+          <div class="pt-ph-glow" />
+
+          <template v-if="editingHeader">
+            <div class="pt-ph-avatar pt-ph-avatar-center">
+              <img v-if="profile.profile?.avatar_url" :src="`${profile.profile.avatar_url}?t=${avatarTs}`" class="pt-ph-avatar-img" alt="avatar">
+              <span v-else>{{ initial }}</span>
+            </div>
+            <div class="pt-inline-fields">
               <input ref="nameInput" v-model="editName" class="pt-inline-input pt-inline-name" placeholder="Имя / Никнейм" @keydown.enter="saveHeader" @keydown.esc="cancelHeader">
-              <input v-model="editSlug" class="pt-inline-input pt-inline-slug" placeholder="username" @keydown.enter="saveHeader" @keydown.esc="cancelHeader">
-              <textarea v-model="editBio" class="pt-inline-input" placeholder="Bio..." rows="2" />
-              <input v-model="editTagsRaw" class="pt-inline-input pt-inline-tags" placeholder="теги через запятую">
-              <div class="pt-inline-actions">
-                <button class="pt-save-btn" @click.stop="saveHeader">Сохранить</button>
-                <button class="pt-cancel-btn" @click.stop="cancelHeader">Отмена</button>
+              <div class="pt-slug-row">
+                <span class="pt-slug-prefix">stellalink.app/</span>
+                <input v-model="editSlug" class="pt-inline-input pt-inline-slug-bare" placeholder="username" @keydown.enter="saveHeader" @keydown.esc="cancelHeader">
               </div>
-            </template>
-            <template v-else>
-              <div class="pt-ph-name">{{ profile.profile!.display_name || 'Нажми чтобы редактировать' }}</div>
+              <textarea v-model="editBio" class="pt-inline-input" placeholder="Bio..." rows="2" />
+              <input v-model="editTagsRaw" class="pt-inline-input" placeholder="теги через запятую">
+              <div class="pt-inline-actions">
+                <button class="pt-cancel-btn" @click.stop="cancelHeader">Отмена</button>
+                <button class="pt-save-btn" @click.stop="saveHeader">Сохранить</button>
+              </div>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="pt-ph-center" @click="editingHeader = true">
+              <div class="pt-ph-avatar pt-ph-avatar-center">
+                <img v-if="profile.profile?.avatar_url" :src="`${profile.profile.avatar_url}?t=${avatarTs}`" class="pt-ph-avatar-img" alt="avatar">
+                <span v-else>{{ initial }}</span>
+              </div>
+              <div class="pt-ph-name">{{ profile.profile!.display_name || '—' }}</div>
               <div class="pt-ph-slug">stellalink.app/{{ profile.profile!.slug }}</div>
               <div v-if="profile.profile!.bio" class="pt-ph-bio">{{ profile.profile!.bio }}</div>
               <div v-if="profile.profile!.tags.length" class="pt-ph-tags">
                 <span v-for="tag in profile.profile!.tags" :key="tag" class="pt-tag">{{ tag }}</span>
               </div>
-              <div class="pt-edit-hint"><i class="ri-edit-line" /> Редактировать</div>
-            </template>
-          </div>
+              <div class="pt-edit-chip"><i class="ri-edit-line" /> Редактировать профиль</div>
+            </div>
+          </template>
         </div>
 
         <!-- Blocks -->
@@ -292,8 +305,11 @@
 
           <template #footer>
             <div v-if="!localBlocks.length" class="pt-drop-zone">
-              <i class="ri-drag-drop-line" />
-              <span>Перетащи блок сюда или нажми «+» в сайдбаре</span>
+              <div class="pt-dz-icons">
+                <span v-for="bt in blockTypes.slice(0,5)" :key="bt.type" class="pt-dz-ico">{{ bt.icon }}</span>
+              </div>
+              <div class="pt-dz-title">Добавь первый блок</div>
+              <div class="pt-dz-hint">Нажми «+» в боковой панели или перетащи блок сюда</div>
             </div>
           </template>
         </VueDraggable>
@@ -436,10 +452,11 @@ async function saveBlock() {
 
 /* ── Sidebar ── */
 .pt-sidebar {
-  width: 230px; flex-shrink: 0;
+  width: 220px; flex-shrink: 0;
   border-right: 1px solid rgba(61,142,255,0.08);
   display: flex; flex-direction: column;
   overflow: hidden;
+  background: rgba(13,13,28,0.6);
 }
 
 .pt-status-row { display: flex; align-items: center; gap: 8px; padding: 14px 12px 8px; }
@@ -462,10 +479,10 @@ async function saveBlock() {
 
 .pt-section-label {
   font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 1px; color: #3a3a58; padding: 6px 12px 4px;
+  letter-spacing: 1.2px; color: #4a4a68; padding: 8px 12px 4px;
 }
 
-.pt-block-list { display: flex; flex-direction: column; gap: 3px; padding: 0 8px; overflow-y: auto; flex: 1; }
+.pt-block-list { display: flex; flex-direction: column; gap: 2px; padding: 0 8px; overflow-y: auto; max-height: 220px; }
 .pt-block-item {
   display: flex; align-items: center; gap: 6px;
   padding: 8px 6px; border-radius: 8px; cursor: pointer;
@@ -498,16 +515,23 @@ async function saveBlock() {
 .pt-del-btn:hover { color: #ff7070; }
 .pt-empty { font-size: 11px; color: #3a3a58; padding: 8px 12px; }
 
-.pt-add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 6px 8px 12px; }
-.pt-add-btn {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  background: rgba(255,255,255,0.02); border: 1px solid rgba(61,142,255,0.08);
-  border-radius: 8px; padding: 8px 4px; font-size: 10px; color: #6a6a90;
-  cursor: grab; font-family: 'Onest', sans-serif; transition: all 0.2s; user-select: none;
+.pt-add-list { display: flex; flex-direction: column; gap: 2px; padding: 4px 8px 12px; overflow-y: auto; flex: 1; }
+.pt-add-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px; border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 13px; color: #8888aa;
+  cursor: grab; font-family: 'Onest', sans-serif; transition: all 0.15s; user-select: none;
 }
-.pt-add-icon { font-size: 18px; }
-.pt-add-btn:hover { background: rgba(61,142,255,0.08); border-color: rgba(61,142,255,0.22); color: #eeeef8; }
-.pt-add-btn:active { cursor: grabbing; }
+.pt-add-ico { font-size: 17px; flex-shrink: 0; }
+.pt-add-label { flex: 1; font-weight: 500; }
+.pt-add-plus { font-size: 16px; color: #3a3a58; opacity: 0; transition: opacity 0.15s; }
+.pt-add-item:hover {
+  background: rgba(61,142,255,0.07); border-color: rgba(61,142,255,0.16);
+  color: #eeeef8;
+}
+.pt-add-item:hover .pt-add-plus { opacity: 1; color: #90beff; }
+.pt-add-item:active { cursor: grabbing; }
 
 /* Block editor mode */
 .pt-editor-header {
@@ -541,76 +565,110 @@ async function saveBlock() {
 }
 
 /* ── Canvas ── */
-.pt-canvas { flex: 1; overflow-y: auto; padding: 24px; display: flex; justify-content: center; }
+.pt-canvas {
+  flex: 1; overflow-y: auto; padding: 24px;
+  display: flex; justify-content: center; align-items: flex-start;
+  background: radial-gradient(ellipse 60% 30% at 50% 0%, rgba(61,142,255,0.04), transparent);
+}
 .pt-profile-card {
-  width: 100%; max-width: 440px; height: fit-content;
-  background: #0d0d1c; border: 1px solid rgba(61,142,255,0.10);
-  border-radius: 18px; overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  width: 100%; max-width: 420px; height: fit-content;
+  background: #0d0d1c; border: 1px solid rgba(61,142,255,0.12);
+  border-radius: 20px; overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(61,142,255,0.04);
 }
 
 /* Header */
 .pt-ph {
-  padding: 20px; border-bottom: 1px solid rgba(61,142,255,0.07);
-  background: linear-gradient(160deg, rgba(61,142,255,0.06) 0%, transparent 60%);
-  cursor: pointer; position: relative;
+  position: relative; overflow: hidden;
+  border-bottom: 1px solid rgba(61,142,255,0.08);
 }
-.pt-ph.editing { cursor: default; }
-.pt-ph:not(.editing):hover .pt-edit-hint { opacity: 1; }
+.pt-ph-glow {
+  position: absolute; top: -40px; left: 50%; transform: translateX(-50%);
+  width: 200px; height: 120px; pointer-events: none;
+  background: radial-gradient(ellipse, rgba(61,142,255,0.18), transparent 70%);
+}
+.pt-ph-center {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 28px 20px 20px; text-align: center; cursor: pointer;
+  position: relative;
+}
+.pt-ph-center:hover .pt-edit-chip { opacity: 1; }
+
 .pt-ph-avatar {
-  width: 52px; height: 52px; border-radius: 50%;
+  width: 68px; height: 68px; border-radius: 50%;
   background: linear-gradient(135deg, #2b7ef0, #3D8EFF);
   display: flex; align-items: center; justify-content: center;
-  font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 12px;
+  font-size: 26px; font-weight: 800; color: #fff;
   overflow: hidden; flex-shrink: 0;
-  box-shadow: 0 0 0 2px rgba(61,142,255,0.20);
+  box-shadow: 0 0 0 3px rgba(61,142,255,0.22), 0 6px 20px rgba(61,142,255,0.20);
 }
+.pt-ph-avatar-center { margin-bottom: 14px; }
 .pt-ph-avatar-img { width: 100%; height: 100%; object-fit: cover; }
-.pt-ph-info { display: flex; flex-direction: column; gap: 7px; }
-.pt-ph-name { font-size: 17px; font-weight: 800; }
-.pt-ph-slug { font-size: 12px; color: #3a3a58; }
-.pt-ph-bio  { font-size: 13px; color: #6a6a90; }
-.pt-ph-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.pt-ph-name { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 2px; }
+.pt-ph-slug { font-size: 12px; color: #3a3a58; margin-bottom: 6px; }
+.pt-ph-bio  { font-size: 13px; color: #8888aa; margin-bottom: 8px; max-width: 280px; line-height: 1.4; }
+.pt-ph-tags { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
 .pt-tag {
   background: rgba(61,142,255,0.10); color: #90beff;
   border: 1px solid rgba(61,142,255,0.16); border-radius: 100px;
-  padding: 2px 9px; font-size: 11px; font-weight: 500;
+  padding: 2px 10px; font-size: 11px; font-weight: 500;
 }
-.pt-edit-hint {
-  position: absolute; top: 12px; right: 12px; opacity: 0; transition: opacity 0.2s;
-  font-size: 11px; color: #6a6a90; display: flex; align-items: center; gap: 4px;
-  background: rgba(13,13,28,0.9); border: 1px solid rgba(61,142,255,0.14);
-  border-radius: 6px; padding: 3px 8px; pointer-events: none;
+.pt-edit-chip {
+  margin-top: 12px; display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: #6a6a90;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(61,142,255,0.12);
+  border-radius: 100px; padding: 4px 12px;
+  opacity: 0; transition: opacity 0.2s;
 }
 
+/* Inline edit form */
+.pt-inline-fields {
+  display: flex; flex-direction: column; gap: 8px; padding: 16px 16px 14px;
+}
+.pt-slug-row {
+  display: flex; align-items: center;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(61,142,255,0.25);
+  border-radius: 7px; overflow: hidden;
+}
+.pt-slug-prefix { padding: 7px 0 7px 10px; font-size: 12px; color: #3a3a58; white-space: nowrap; }
+.pt-slug-prefix + .pt-inline-slug-bare { border: none; background: none; padding-left: 2px; }
+.pt-inline-slug-bare {
+  flex: 1; background: none; border: none; outline: none;
+  padding: 7px 10px; color: #90beff; font-size: 12px; font-family: 'Onest', sans-serif;
+}
 .pt-inline-input {
-  background: rgba(255,255,255,0.06); border: 1px solid rgba(61,142,255,0.25);
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(61,142,255,0.22);
   border-radius: 7px; padding: 7px 10px; color: #eeeef8;
   font-size: 13px; font-family: 'Onest', sans-serif; outline: none; width: 100%; resize: none;
+  transition: border-color 0.2s;
 }
+.pt-inline-input:focus { border-color: rgba(61,142,255,0.45); }
 .pt-inline-name { font-size: 15px; font-weight: 700; }
-.pt-inline-slug { font-size: 12px; color: #90beff; }
-.pt-inline-actions { display: flex; gap: 8px; }
+.pt-inline-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .pt-save-btn {
   background: linear-gradient(135deg, #2b7ef0, #3D8EFF); border: none;
-  border-radius: 7px; padding: 6px 16px; color: #fff;
+  border-radius: 7px; padding: 7px 18px; color: #fff;
   font-size: 12px; font-weight: 700; font-family: 'Onest', sans-serif; cursor: pointer;
 }
 .pt-cancel-btn {
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(61,142,255,0.14);
-  border-radius: 7px; padding: 6px 12px; color: #6a6a90;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(61,142,255,0.14);
+  border-radius: 7px; padding: 7px 14px; color: #6a6a90;
   font-size: 12px; font-family: 'Onest', sans-serif; cursor: pointer;
 }
 
 /* Canvas blocks */
 .pt-blocks { padding: 10px; display: flex; flex-direction: column; gap: 7px; min-height: 60px; }
 .pt-drop-zone {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 32px 16px; color: #3a3a58;
-  border: 1.5px dashed rgba(61,142,255,0.14); border-radius: 12px;
-  font-size: 13px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 36px 20px;
+  border: 1.5px dashed rgba(61,142,255,0.12); border-radius: 14px;
+  text-align: center;
 }
-.pt-drop-zone i { font-size: 28px; }
+.pt-dz-icons { display: flex; gap: 8px; font-size: 22px; opacity: 0.5; }
+.pt-dz-ico { filter: grayscale(0.3); }
+.pt-dz-title { font-size: 14px; font-weight: 700; color: #4a4a68; }
+.pt-dz-hint { font-size: 12px; color: #3a3a58; max-width: 220px; line-height: 1.5; }
 
 .pt-block-preview {
   position: relative; border-radius: 10px; overflow: hidden;
