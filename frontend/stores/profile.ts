@@ -80,7 +80,9 @@ export const useProfileStore = defineStore('profile', {
         headers: this._headers(),
         body: { block_type, config: blockConfig },
       })
-      this.profile?.blocks.push(block)
+      if (this.profile) {
+        this.profile.blocks = [...this.profile.blocks, block]
+      }
       return block
     },
 
@@ -93,7 +95,10 @@ export const useProfileStore = defineStore('profile', {
       })
       if (this.profile) {
         const idx = this.profile.blocks.findIndex(b => b.id === id)
-        if (idx !== -1) this.profile.blocks[idx] = block
+        if (idx !== -1) {
+          this.profile.blocks[idx] = block
+          this.profile.blocks = [...this.profile.blocks]
+        }
       }
       return block
     },
@@ -116,6 +121,11 @@ export const useProfileStore = defineStore('profile', {
         headers: this._headers(),
         body: { ids },
       })
+      if (this.profile) {
+        this.profile.blocks = [...this.profile.blocks].sort((a, b) => {
+          return ids.indexOf(a.id) - ids.indexOf(b.id)
+        })
+      }
     },
   },
 })
