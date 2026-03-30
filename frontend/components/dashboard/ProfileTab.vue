@@ -17,54 +17,105 @@
           </a>
         </div>
 
-        <div class="pt-section-label">Блоки</div>
-        <VueDraggable
-          v-model="localBlocks"
-          class="pt-block-list"
-          :animation="180"
-          handle=".pt-drag-handle"
-          ghost-class="pt-ghost"
-          @end="saveOrder"
-        >
-          <div
-            v-for="block in localBlocks"
-            :key="block.id"
-            class="pt-block-item"
-            @click="selectBlock(block.id)"
-          >
-            <i class="ri-drag-move-line pt-drag-handle" />
-            <span class="pt-block-icon">{{ blockIcon(block.block_type) }}</span>
-            <span class="pt-block-label">{{ blockLabel(block.block_type) }}</span>
-            <div class="pt-block-actions">
-              <button class="pt-vis-btn" :class="{ active: block.is_visible }" @click.stop="toggleVisible(block)" />
-              <button class="pt-del-btn" @click.stop="deleteBlock(block.id)">
-                <i class="ri-delete-bin-line" />
-              </button>
-            </div>
-          </div>
-        </VueDraggable>
-        <p v-if="!localBlocks.length" class="pt-empty">Перетащи блок из панели ниже или нажми «+»</p>
+        <!-- Sidebar tabs -->
+        <div class="pt-sidebar-tabs">
+          <button class="pt-stab" :class="{ active: sidebarTab === 'blocks' }" @click="sidebarTab = 'blocks'">
+            <i class="ri-layout-grid-line" /> Блоки
+          </button>
+          <button class="pt-stab" :class="{ active: sidebarTab === 'design' }" @click="sidebarTab = 'design'">
+            <i class="ri-palette-line" /> Оформление
+          </button>
+        </div>
 
-        <div class="pt-section-label" style="margin-top:14px">Добавить</div>
-        <VueDraggable
-          v-model="blockTypes"
-          class="pt-add-list"
-          :group="{ name: 'blocks', pull: 'clone', put: false }"
-          :sort="false"
-          ghost-class="pt-ghost-add"
-        >
-          <div
-            v-for="bt in blockTypes"
-            :key="bt.type"
-            class="pt-add-item"
-            :data-type="bt.type"
-            @click="addBlock(bt.type)"
+        <!-- Blocks tab -->
+        <template v-if="sidebarTab === 'blocks'">
+          <div class="pt-section-label">Блоки</div>
+          <VueDraggable
+            v-model="localBlocks"
+            class="pt-block-list"
+            :animation="180"
+            handle=".pt-drag-handle"
+            ghost-class="pt-ghost"
+            @end="saveOrder"
           >
-            <span class="pt-add-ico">{{ bt.icon }}</span>
-            <span class="pt-add-label">{{ bt.label }}</span>
-            <i class="ri-add-line pt-add-plus" />
+            <div
+              v-for="block in localBlocks"
+              :key="block.id"
+              class="pt-block-item"
+              @click="selectBlock(block.id)"
+            >
+              <i class="ri-drag-move-line pt-drag-handle" />
+              <span class="pt-block-icon">{{ blockIcon(block.block_type) }}</span>
+              <span class="pt-block-label">{{ blockLabel(block.block_type) }}</span>
+              <div class="pt-block-actions">
+                <button class="pt-vis-btn" :class="{ active: block.is_visible }" @click.stop="toggleVisible(block)" />
+                <button class="pt-del-btn" @click.stop="deleteBlock(block.id)">
+                  <i class="ri-delete-bin-line" />
+                </button>
+              </div>
+            </div>
+          </VueDraggable>
+          <p v-if="!localBlocks.length" class="pt-empty">Перетащи блок из панели ниже или нажми «+»</p>
+
+          <div class="pt-section-label" style="margin-top:14px">Добавить</div>
+          <VueDraggable
+            v-model="blockTypes"
+            class="pt-add-list"
+            :group="{ name: 'blocks', pull: 'clone', put: false }"
+            :sort="false"
+            ghost-class="pt-ghost-add"
+          >
+            <div
+              v-for="bt in blockTypes"
+              :key="bt.type"
+              class="pt-add-item"
+              :data-type="bt.type"
+              @click="addBlock(bt.type)"
+            >
+              <span class="pt-add-ico">{{ bt.icon }}</span>
+              <span class="pt-add-label">{{ bt.label }}</span>
+              <i class="ri-add-line pt-add-plus" />
+            </div>
+          </VueDraggable>
+        </template>
+
+        <!-- Design tab -->
+        <template v-else-if="sidebarTab === 'design'">
+          <div class="pt-section-label">Тема</div>
+          <div class="pt-theme-grid">
+            <button
+              v-for="t in THEMES"
+              :key="t.id"
+              class="pt-theme-card"
+              :class="{ active: (profile.profile!.theme_preset || 'material3') === t.id }"
+              @click="setTheme(t.id)"
+            >
+              <div class="pt-theme-preview" :style="t.preview" />
+              <span class="pt-theme-name">{{ t.label }}</span>
+            </button>
           </div>
-        </VueDraggable>
+
+          <div class="pt-section-label" style="margin-top:16px">Акцентный цвет</div>
+          <div class="pt-accent-grid">
+            <button
+              v-for="c in ACCENT_COLORS"
+              :key="c.value"
+              class="pt-accent-dot"
+              :class="{ active: currentAccent === c.value }"
+              :style="`background: ${c.value}`"
+              :title="c.label"
+              @click="setAccent(c.value)"
+            />
+            <label class="pt-accent-dot pt-accent-custom" title="Свой цвет">
+              <i class="ri-add-line" />
+              <input type="color" :value="currentAccent" style="display:none" @input="setAccent(($event.target as HTMLInputElement).value)">
+            </label>
+          </div>
+          <div class="pt-accent-preview">
+            <span class="pt-accent-swatch" :style="`background:${currentAccent}`" />
+            <span class="pt-accent-hex">{{ currentAccent }}</span>
+          </div>
+        </template>
 
       </template>
 
@@ -193,7 +244,7 @@
 
               <!-- Links -->
               <template v-if="block.block_type === 'links'">
-                <div v-for="group in (block.config.groups as Group[])" :key="group.title" class="pt-links-group">
+                <div v-for="group in (blockCfg(block).groups as Group[])" :key="group.title" class="pt-links-group">
                   <div v-if="group.title" class="pt-group-label">{{ group.title }}</div>
                   <div v-for="link in group.links" :key="link.url" class="pt-link-row">
                     <i v-if="link.icon" :class="`ri-${link.icon}-fill`" class="pt-link-icon" />
@@ -206,7 +257,7 @@
 
               <!-- Text -->
               <template v-else-if="block.block_type === 'text'">
-                <div class="pt-text-content">{{ (block.config.content as string) || '(пусто)' }}</div>
+                <div class="pt-text-content">{{ (blockCfg(block).content as string) || '(пусто)' }}</div>
               </template>
 
               <!-- Steam -->
@@ -216,14 +267,14 @@
                     <span class="pt-w-ico">🎮</span>
                     <div>
                       <div class="pt-w-name">Steam</div>
-                      <div class="pt-w-id">{{ (block.config.steam_id as string) || 'не настроен' }}</div>
+                      <div class="pt-w-id">{{ (blockCfg(block).steam_id as string) || 'не настроен' }}</div>
                     </div>
                   </div>
                   <span class="pt-badge-green">● Online</span>
                 </div>
-                <template v-if="block.config.show_recent_games && block.config.steam_id">
+                <template v-if="blockCfg(block).show_recent_games && blockCfg(block).steam_id">
                   <div class="pt-w-divider" />
-                  <div v-for="g in mock.steamGames(block.config.steam_id as string)" :key="g.name" class="pt-steam-row">
+                  <div v-for="g in mock.steamGames(blockCfg(block).steam_id as string)" :key="g.name" class="pt-steam-row">
                     <span>{{ g.name }}</span><span class="pt-steam-h">{{ g.hours.toLocaleString('ru') }} ч</span>
                   </div>
                 </template>
@@ -236,19 +287,19 @@
                     <span class="pt-w-ico">🎵</span>
                     <div>
                       <div class="pt-w-name">Last.fm</div>
-                      <div class="pt-w-id">@{{ (block.config.username as string) || 'не настроен' }}</div>
+                      <div class="pt-w-id">@{{ (blockCfg(block).username as string) || 'не настроен' }}</div>
                     </div>
                   </div>
-                  <div v-if="block.config.show_now_playing && block.config.username" class="pt-np-bars">
+                  <div v-if="blockCfg(block).show_now_playing && blockCfg(block).username" class="pt-np-bars">
                     <span v-for="i in 4" :key="i" class="pt-np-bar" :style="`animation-delay:${(i-1)*0.18}s`" />
                   </div>
                 </div>
-                <template v-if="block.config.show_now_playing && block.config.username">
+                <template v-if="blockCfg(block).show_now_playing && blockCfg(block).username">
                   <div class="pt-w-divider" />
                   <div class="pt-np-row">
                     <span class="pt-np-label">Сейчас:</span>
-                    <span class="pt-np-track">{{ mock.lastfmTrack(block.config.username as string).track }}</span>
-                    <span class="pt-np-artist">— {{ mock.lastfmTrack(block.config.username as string).artist }}</span>
+                    <span class="pt-np-track">{{ mock.lastfmTrack(blockCfg(block).username as string).track }}</span>
+                    <span class="pt-np-artist">— {{ mock.lastfmTrack(blockCfg(block).username as string).artist }}</span>
                   </div>
                 </template>
               </template>
@@ -260,24 +311,24 @@
                     <span class="pt-w-ico">🐙</span>
                     <div>
                       <div class="pt-w-name">GitHub</div>
-                      <div class="pt-w-id">@{{ (block.config.username as string) || 'не настроен' }}</div>
+                      <div class="pt-w-id">@{{ (blockCfg(block).username as string) || 'не настроен' }}</div>
                     </div>
                   </div>
-                  <span v-if="block.config.username" class="pt-gh-badge">
-                    {{ mock.ghStats(block.config.username as string).repos }} репо
+                  <span v-if="blockCfg(block).username" class="pt-gh-badge">
+                    {{ mock.ghStats(blockCfg(block).username as string).repos }} репо
                   </span>
                 </div>
-                <template v-if="block.config.username">
+                <template v-if="blockCfg(block).username">
                   <div class="pt-w-divider" />
                   <div class="pt-gh-mini">
                     <div
-                      v-for="(level, i) in mock.ghHeatmap(block.config.username as string).slice(0, 182)"
+                      v-for="(level, i) in mock.ghHeatmap(blockCfg(block).username as string).slice(0, 182)"
                       :key="i"
                       class="pt-gh-cell"
                       :class="`pt-gh-l${level}`"
                     />
                   </div>
-                  <div class="pt-gh-count">{{ mock.ghStats(block.config.username as string).contributions.toLocaleString('ru') }} contributions</div>
+                  <div class="pt-gh-count">{{ mock.ghStats(blockCfg(block).username as string).contributions.toLocaleString('ru') }} contributions</div>
                 </template>
               </template>
 
@@ -286,12 +337,12 @@
                 <div class="pt-w-header" style="margin-bottom:0">
                   <div class="pt-w-hl">
                     <span class="pt-w-ico">💻</span>
-                    <div class="pt-w-name">{{ (block.config.title as string) || 'PC Config' }}</div>
+                    <div class="pt-w-name">{{ (blockCfg(block).title as string) || 'PC Config' }}</div>
                   </div>
                 </div>
-                <template v-if="(block.config.components as Component[]).length">
+                <template v-if="(blockCfg(block).components as Component[]).length">
                   <div class="pt-w-divider" />
-                  <div v-for="c in (block.config.components as Component[]).slice(0, 4)" :key="c.category" class="pt-pc-row">
+                  <div v-for="c in (blockCfg(block).components as Component[]).slice(0, 4)" :key="c.category" class="pt-pc-row">
                     <span class="pt-pc-cat">{{ c.category }}</span>
                     <span class="pt-pc-val">{{ c.name }}</span>
                   </div>
@@ -305,28 +356,28 @@
                     <span class="pt-w-ico">⚡</span>
                     <div>
                       <div class="pt-w-name">FACEIT · CS2</div>
-                      <div class="pt-w-id">{{ (block.config.nickname as string) || 'не настроен' }}</div>
+                      <div class="pt-w-id">{{ (blockCfg(block).nickname as string) || 'не настроен' }}</div>
                     </div>
                   </div>
                   <div
-                    v-if="block.config.nickname"
+                    v-if="blockCfg(block).nickname"
                     class="pt-faceit-lvl"
-                    :style="`background:${mock.faceitLevelColor(mock.faceitData(block.config.nickname as string).level)}`"
-                  >{{ mock.faceitData(block.config.nickname as string).level }}</div>
+                    :style="`background:${mock.faceitLevelColor(mock.faceitData(blockCfg(block).nickname as string).level)}`"
+                  >{{ mock.faceitData(blockCfg(block).nickname as string).level }}</div>
                 </div>
-                <template v-if="block.config.nickname">
+                <template v-if="blockCfg(block).nickname">
                   <div class="pt-w-divider" />
                   <div class="pt-faceit-stats">
                     <div class="pt-fstat">
-                      <span class="pt-fstat-v">{{ mock.faceitData(block.config.nickname as string).elo }}</span>
+                      <span class="pt-fstat-v">{{ mock.faceitData(blockCfg(block).nickname as string).elo }}</span>
                       <span class="pt-fstat-l">ELO</span>
                     </div>
                     <div class="pt-fstat">
-                      <span class="pt-fstat-v">{{ mock.faceitData(block.config.nickname as string).kd }}</span>
+                      <span class="pt-fstat-v">{{ mock.faceitData(blockCfg(block).nickname as string).kd }}</span>
                       <span class="pt-fstat-l">K/D</span>
                     </div>
                     <div class="pt-fstat">
-                      <span class="pt-fstat-v">{{ mock.faceitData(block.config.nickname as string).winRate }}%</span>
+                      <span class="pt-fstat-v">{{ mock.faceitData(blockCfg(block).nickname as string).winRate }}%</span>
                       <span class="pt-fstat-l">Win</span>
                     </div>
                   </div>
@@ -396,6 +447,38 @@ async function onAvatarCropSave(blob: Blob) {
   } finally {
     avatarUploading.value = false
   }
+}
+
+// ── Design / Themes ──────────────────────────────────────────────────────────
+const sidebarTab = ref<'blocks' | 'design'>('blocks')
+
+const THEMES = [
+  { id: 'material3', label: 'Dark',     preview: 'background: linear-gradient(135deg,#0d0d1c 50%,#1a2540); border: 1.5px solid rgba(61,142,255,0.3)' },
+  { id: 'midnight', label: 'Midnight',  preview: 'background: linear-gradient(135deg,#000000 50%,#0d0018); border: 1.5px solid rgba(139,92,246,0.3)' },
+  { id: 'aurora',   label: 'Aurora',    preview: 'background: linear-gradient(135deg,#06110d 50%,#0a1f18); border: 1.5px solid rgba(52,211,153,0.3)' },
+  { id: 'sunset',   label: 'Sunset',    preview: 'background: linear-gradient(135deg,#110808 50%,#1f1008); border: 1.5px solid rgba(249,115,22,0.3)' },
+  { id: 'light',    label: 'Light',     preview: 'background: linear-gradient(135deg,#f4f6fb 50%,#e8edf8); border: 1.5px solid rgba(37,99,235,0.25)' },
+]
+
+const ACCENT_COLORS = [
+  { label: 'Blue',   value: '#3D8EFF' },
+  { label: 'Purple', value: '#8B5CF6' },
+  { label: 'Pink',   value: '#EC4899' },
+  { label: 'Red',    value: '#EF4444' },
+  { label: 'Orange', value: '#F97316' },
+  { label: 'Yellow', value: '#EAB308' },
+  { label: 'Green',  value: '#22C55E' },
+  { label: 'Teal',   value: '#14B8A6' },
+]
+
+const currentAccent = computed(() => profile.profile?.accent_color || '#3D8EFF')
+
+async function setTheme(id: string) {
+  await profile.update({ theme_preset: id })
+}
+
+async function setAccent(color: string) {
+  await profile.update({ accent_color: color })
 }
 
 const blockTypes = ref([
@@ -485,6 +568,10 @@ watch(activeBlock, block => {
   if (block) Object.assign(activeBlockConfig, JSON.parse(JSON.stringify(block.config)))
 })
 
+function blockCfg(block: Block): Record<string, unknown> {
+  return selectedBlockId.value === block.id ? activeBlockConfig : block.config
+}
+
 function selectBlock(id: string) {
   selectedBlockId.value = id
   editingHeader.value = false
@@ -539,10 +626,69 @@ async function saveBlock() {
   border-radius: 8px; color: #90beff; text-decoration: none; font-size: 16px;
 }
 
+/* ── Sidebar tabs ── */
+.pt-sidebar-tabs {
+  display: flex; gap: 4px; padding: 6px 8px 0;
+}
+.pt-stab {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 7px 4px; border-radius: 8px; border: 1px solid transparent;
+  font-size: 11px; font-weight: 600; color: #4a4a68;
+  background: none; cursor: pointer; font-family: 'Onest', sans-serif;
+  transition: all 0.15s;
+}
+.pt-stab:hover { color: #8888aa; background: rgba(255,255,255,0.03); }
+.pt-stab.active {
+  color: #90beff; background: rgba(61,142,255,0.08);
+  border-color: rgba(61,142,255,0.18);
+}
+
 .pt-section-label {
   font-size: 10px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 1.2px; color: #4a4a68; padding: 8px 12px 4px;
 }
+
+/* ── Design tab ── */
+.pt-theme-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  padding: 4px 10px;
+}
+.pt-theme-card {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: none; border: 1px solid rgba(61,142,255,0.08);
+  border-radius: 10px; padding: 8px 6px; cursor: pointer;
+  transition: all 0.15s; font-family: 'Onest', sans-serif;
+}
+.pt-theme-card:hover { border-color: rgba(61,142,255,0.24); background: rgba(255,255,255,0.02); }
+.pt-theme-card.active { border-color: #3D8EFF; box-shadow: 0 0 0 2px rgba(61,142,255,0.14); }
+.pt-theme-preview {
+  width: 100%; height: 38px; border-radius: 6px;
+}
+.pt-theme-name { font-size: 11px; font-weight: 600; color: #8888aa; }
+.pt-theme-card.active .pt-theme-name { color: #90beff; }
+
+.pt-accent-grid {
+  display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 10px;
+}
+.pt-accent-dot {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: rgba(255,255,255,0.7);
+}
+.pt-accent-dot:hover { transform: scale(1.15); }
+.pt-accent-dot.active { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,0.2); transform: scale(1.1); }
+.pt-accent-custom {
+  background: rgba(255,255,255,0.06); border: 1.5px dashed rgba(255,255,255,0.2) !important;
+  cursor: pointer;
+}
+.pt-accent-preview {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 10px 12px;
+}
+.pt-accent-swatch { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+.pt-accent-hex { font-size: 11px; color: #6a6a90; font-family: monospace; }
 
 .pt-block-list { display: flex; flex-direction: column; gap: 2px; padding: 0 8px; overflow-y: auto; max-height: 220px; }
 .pt-block-item {

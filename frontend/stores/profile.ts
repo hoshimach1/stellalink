@@ -64,7 +64,7 @@ export const useProfileStore = defineStore('profile', {
       })
     },
 
-    async update(data: Partial<{ slug: string; status: string; display_name: string; bio: string | null; tags: string[] }>) {
+    async update(data: Partial<{ slug: string; status: string; display_name: string; bio: string | null; tags: string[]; theme_preset: string; accent_color: string | null }>) {
       const config = useRuntimeConfig()
       this.profile = await $fetch<Profile>(`${config.public.apiBase}/profiles/me`, {
         method: 'PATCH',

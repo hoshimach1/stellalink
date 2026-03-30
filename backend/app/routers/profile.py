@@ -91,6 +91,8 @@ async def update_profile(
         display_name=body.display_name,
         bio=body.bio,
         tags=body.tags,
+        theme_preset=body.theme_preset,
+        accent_color=body.accent_color,
     )
     return _to_response(profile)
 

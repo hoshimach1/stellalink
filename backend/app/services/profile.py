@@ -71,12 +71,18 @@ async def update_profile(
     display_name: Optional[str] = None,
     bio: Optional[str] = None,
     tags: Optional[List[str]] = None,
+    theme_preset: Optional[str] = None,
+    accent_color: Optional[str] = None,
 ) -> Profile:
     now = datetime.now(timezone.utc)
     if slug is not None:
         profile.slug = slug
     if status is not None:
         profile.status = status
+    if theme_preset is not None:
+        profile.theme_preset = theme_preset
+    if accent_color is not None:
+        profile.accent_color = accent_color
     profile.updated_at = now
 
     trans = next((t for t in profile.translations if t.locale == "ru"), None)

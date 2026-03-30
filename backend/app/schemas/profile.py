@@ -17,6 +17,8 @@ class ProfileUpdate(BaseModel):
     display_name: Optional[str] = Field(None, min_length=1, max_length=100)
     bio: Optional[str] = None
     tags: Optional[List[str]] = None
+    theme_preset: Optional[str] = Field(None, max_length=50)
+    accent_color: Optional[str] = Field(None, max_length=9)
 
 
 class BlockCreate(BaseModel):
