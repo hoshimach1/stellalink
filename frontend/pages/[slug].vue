@@ -14,7 +14,7 @@
     <!-- Header -->
     <div class="pub-header">
       <div class="pub-avatar">
-        <img v-if="profile.avatar_url" :src="profile.avatar_url" class="pub-avatar-img" alt="avatar">
+        <img v-if="profile.avatar_url" :src="resolveAvatarUrl(profile.avatar_url, config.public.apiBase as string) ?? undefined" class="pub-avatar-img" alt="avatar">
         <span v-else>{{ initial }}</span>
       </div>
       <h1 class="pub-name">{{ profile.display_name }}</h1>

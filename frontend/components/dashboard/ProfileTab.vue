@@ -105,6 +105,7 @@
           <div class="pt-ph-glow" />
 
           <template v-if="editingHeader">
+            <div class="pt-ph-edit-wrap">
             <!-- Avatar with upload in edit mode -->
             <div class="pt-ph-avatar-wrap-center">
               <div class="pt-ph-avatar pt-ph-avatar-center">
@@ -141,6 +142,7 @@
                 <button class="pt-cancel-btn" @click.stop="cancelHeader">Отмена</button>
                 <button class="pt-save-btn" @click.stop="saveHeader">Сохранить</button>
               </div>
+            </div>
             </div>
           </template>
 
@@ -430,15 +432,16 @@ async function saveOrder() {
 async function onDropFromSidebar(evt: { item: HTMLElement }) {
   const type = evt.item.dataset.type
   if (!type) return
-  localBlocks.value = localBlocks.value.filter(b => b.id)
+  // Restore from store first (VueDraggable inserted a raw blockType object into localBlocks)
+  if (profile.profile) localBlocks.value = [...profile.profile.blocks]
   const block = await profile.createBlock(type, defaultConfigs[type] ?? {})
-  localBlocks.value.push(block)
+  if (profile.profile) localBlocks.value = [...profile.profile.blocks]
   selectedBlockId.value = block.id
 }
 
 async function addBlock(type: string) {
   const block = await profile.createBlock(type, defaultConfigs[type] ?? {})
-  localBlocks.value.push(block)
+  if (profile.profile) localBlocks.value = [...profile.profile.blocks]
   selectedBlockId.value = block.id
 }
 
@@ -679,6 +682,12 @@ async function saveBlock() {
   background: rgba(255,255,255,0.04); border: 1px solid rgba(61,142,255,0.12);
   border-radius: 100px; padding: 4px 12px;
   opacity: 0; transition: opacity 0.2s;
+}
+
+/* Edit mode wrapper */
+.pt-ph-edit-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 20px 0 0;
 }
 
 /* Inline edit form */

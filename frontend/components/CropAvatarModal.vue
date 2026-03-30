@@ -41,7 +41,7 @@ const cropCanvasRef = ref<HTMLCanvasElement | null>(null)
 const isDragging = ref(false)
 
 let cropImgEl: HTMLImageElement | null = null
-let cropX = 0, cropY = 0, cropScale = 1
+let cropX = 0, cropY = 0, cropScale = 1, minCropScale = 1
 let dragStartX = 0, dragStartY = 0, dragImgX = 0, dragImgY = 0
 let lastTouchDist = 0
 
@@ -57,6 +57,7 @@ function openModal(file: File) {
       cropImgEl = img
       const scale = Math.max((CROP_R * 2) / img.width, (CROP_R * 2) / img.height)
       cropScale = scale
+      minCropScale = scale
       cropX = CANVAS_SIZE / 2 - (img.width * scale) / 2
       cropY = CANVAS_SIZE / 2 - (img.height * scale) / 2
       visible.value = true
@@ -99,9 +100,6 @@ function confirm() {
   const off = document.createElement('canvas')
   off.width = size; off.height = size
   const ctx = off.getContext('2d')!
-  ctx.beginPath()
-  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
-  ctx.clip()
   const cx = CANVAS_SIZE / 2, cy = CANVAS_SIZE / 2
   const srcX = (cx - CROP_R - cropX) / cropScale
   const srcY = (cy - CROP_R - cropY) / cropScale
@@ -138,7 +136,7 @@ function onDragEnd() {
 // ── Wheel ──
 function onWheel(e: WheelEvent) {
   const f = e.deltaY > 0 ? 0.92 : 1.08
-  const ns = Math.max(0.05, Math.min(20, cropScale * f))
+  const ns = Math.max(minCropScale, Math.min(20, cropScale * f))
   const cx = CANVAS_SIZE / 2, cy = CANVAS_SIZE / 2
   cropX = cx - (cx - cropX) * (ns / cropScale)
   cropY = cy - (cy - cropY) * (ns / cropScale)
@@ -172,7 +170,7 @@ function onTouchMove(e: TouchEvent) {
     )
     if (lastTouchDist > 0) {
       const r = dist / lastTouchDist
-      const ns = Math.max(0.05, Math.min(20, cropScale * r))
+      const ns = Math.max(minCropScale, Math.min(20, cropScale * r))
       const cx = CANVAS_SIZE / 2, cy = CANVAS_SIZE / 2
       cropX = cx - (cx - cropX) * (ns / cropScale)
       cropY = cy - (cy - cropY) * (ns / cropScale)
