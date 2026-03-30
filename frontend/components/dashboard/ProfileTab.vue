@@ -95,7 +95,7 @@
         <!-- Header -->
         <div class="pt-ph" :class="{ editing: editingHeader }" @click="!editingHeader && (editingHeader = true)">
           <div class="pt-ph-avatar">
-            <img v-if="profile.profile?.avatar_url" :src="profile.profile.avatar_url" class="pt-ph-avatar-img" alt="avatar">
+            <img v-if="profile.profile?.avatar_url" :src="`${profile.profile.avatar_url}?t=${avatarTs}`" class="pt-ph-avatar-img" alt="avatar">
             <span v-else>{{ initial }}</span>
           </div>
           <div class="pt-ph-info">
@@ -140,26 +140,149 @@
           >
             <i class="ri-drag-move-2-line pt-block-drag" />
             <div class="pt-block-inner" @click="selectBlock(block.id)">
+
+              <!-- Links -->
               <template v-if="block.block_type === 'links'">
                 <div v-for="group in (block.config.groups as Group[])" :key="group.title" class="pt-links-group">
                   <div v-if="group.title" class="pt-group-label">{{ group.title }}</div>
                   <div v-for="link in group.links" :key="link.url" class="pt-link-row">
-                    <i v-if="link.icon" :class="`ri-${link.icon}-fill`" />
+                    <i v-if="link.icon" :class="`ri-${link.icon}-fill`" class="pt-link-icon" />
+                    <i v-else class="ri-link pt-link-icon" />
                     {{ link.label || link.url || '(пусто)' }}
                   </div>
                   <div v-if="!group.links.length" class="pt-block-empty">Нет ссылок</div>
                 </div>
               </template>
+
+              <!-- Text -->
               <template v-else-if="block.block_type === 'text'">
                 <div class="pt-text-content">{{ (block.config.content as string) || '(пусто)' }}</div>
               </template>
-              <template v-else>
-                <div class="pt-widget-row">
-                  <span>{{ blockIcon(block.block_type) }}</span>
-                  <span class="pt-widget-name">{{ blockLabel(block.block_type) }}</span>
-                  <span class="pt-widget-val">{{ widgetVal(block) }}</span>
+
+              <!-- Steam -->
+              <template v-else-if="block.block_type === 'widget_steam'">
+                <div class="pt-w-header">
+                  <div class="pt-w-hl">
+                    <span class="pt-w-ico">🎮</span>
+                    <div>
+                      <div class="pt-w-name">Steam</div>
+                      <div class="pt-w-id">{{ (block.config.steam_id as string) || 'не настроен' }}</div>
+                    </div>
+                  </div>
+                  <span class="pt-badge-green">● Online</span>
                 </div>
+                <template v-if="block.config.show_recent_games && block.config.steam_id">
+                  <div class="pt-w-divider" />
+                  <div v-for="g in mock.steamGames(block.config.steam_id as string)" :key="g.name" class="pt-steam-row">
+                    <span>{{ g.name }}</span><span class="pt-steam-h">{{ g.hours.toLocaleString('ru') }} ч</span>
+                  </div>
+                </template>
               </template>
+
+              <!-- Last.fm -->
+              <template v-else-if="block.block_type === 'widget_lastfm'">
+                <div class="pt-w-header">
+                  <div class="pt-w-hl">
+                    <span class="pt-w-ico">🎵</span>
+                    <div>
+                      <div class="pt-w-name">Last.fm</div>
+                      <div class="pt-w-id">@{{ (block.config.username as string) || 'не настроен' }}</div>
+                    </div>
+                  </div>
+                  <div v-if="block.config.show_now_playing && block.config.username" class="pt-np-bars">
+                    <span v-for="i in 4" :key="i" class="pt-np-bar" :style="`animation-delay:${(i-1)*0.18}s`" />
+                  </div>
+                </div>
+                <template v-if="block.config.show_now_playing && block.config.username">
+                  <div class="pt-w-divider" />
+                  <div class="pt-np-row">
+                    <span class="pt-np-label">Сейчас:</span>
+                    <span class="pt-np-track">{{ mock.lastfmTrack(block.config.username as string).track }}</span>
+                    <span class="pt-np-artist">— {{ mock.lastfmTrack(block.config.username as string).artist }}</span>
+                  </div>
+                </template>
+              </template>
+
+              <!-- GitHub -->
+              <template v-else-if="block.block_type === 'widget_github'">
+                <div class="pt-w-header">
+                  <div class="pt-w-hl">
+                    <span class="pt-w-ico">🐙</span>
+                    <div>
+                      <div class="pt-w-name">GitHub</div>
+                      <div class="pt-w-id">@{{ (block.config.username as string) || 'не настроен' }}</div>
+                    </div>
+                  </div>
+                  <span v-if="block.config.username" class="pt-gh-badge">
+                    {{ mock.ghStats(block.config.username as string).repos }} репо
+                  </span>
+                </div>
+                <template v-if="block.config.username">
+                  <div class="pt-w-divider" />
+                  <div class="pt-gh-mini">
+                    <div
+                      v-for="(level, i) in mock.ghHeatmap(block.config.username as string).slice(0, 182)"
+                      :key="i"
+                      class="pt-gh-cell"
+                      :class="`pt-gh-l${level}`"
+                    />
+                  </div>
+                  <div class="pt-gh-count">{{ mock.ghStats(block.config.username as string).contributions.toLocaleString('ru') }} contributions</div>
+                </template>
+              </template>
+
+              <!-- PC Config -->
+              <template v-else-if="block.block_type === 'pc_config'">
+                <div class="pt-w-header" style="margin-bottom:0">
+                  <div class="pt-w-hl">
+                    <span class="pt-w-ico">💻</span>
+                    <div class="pt-w-name">{{ (block.config.title as string) || 'PC Config' }}</div>
+                  </div>
+                </div>
+                <template v-if="(block.config.components as Component[]).length">
+                  <div class="pt-w-divider" />
+                  <div v-for="c in (block.config.components as Component[]).slice(0, 4)" :key="c.category" class="pt-pc-row">
+                    <span class="pt-pc-cat">{{ c.category }}</span>
+                    <span class="pt-pc-val">{{ c.name }}</span>
+                  </div>
+                </template>
+              </template>
+
+              <!-- Faceit -->
+              <template v-else-if="block.block_type === 'widget_faceit'">
+                <div class="pt-w-header">
+                  <div class="pt-w-hl">
+                    <span class="pt-w-ico">⚡</span>
+                    <div>
+                      <div class="pt-w-name">FACEIT · CS2</div>
+                      <div class="pt-w-id">{{ (block.config.nickname as string) || 'не настроен' }}</div>
+                    </div>
+                  </div>
+                  <div
+                    v-if="block.config.nickname"
+                    class="pt-faceit-lvl"
+                    :style="`background:${mock.faceitLevelColor(mock.faceitData(block.config.nickname as string).level)}`"
+                  >{{ mock.faceitData(block.config.nickname as string).level }}</div>
+                </div>
+                <template v-if="block.config.nickname">
+                  <div class="pt-w-divider" />
+                  <div class="pt-faceit-stats">
+                    <div class="pt-fstat">
+                      <span class="pt-fstat-v">{{ mock.faceitData(block.config.nickname as string).elo }}</span>
+                      <span class="pt-fstat-l">ELO</span>
+                    </div>
+                    <div class="pt-fstat">
+                      <span class="pt-fstat-v">{{ mock.faceitData(block.config.nickname as string).kd }}</span>
+                      <span class="pt-fstat-l">K/D</span>
+                    </div>
+                    <div class="pt-fstat">
+                      <span class="pt-fstat-v">{{ mock.faceitData(block.config.nickname as string).winRate }}%</span>
+                      <span class="pt-fstat-l">Win</span>
+                    </div>
+                  </div>
+                </template>
+              </template>
+
             </div>
             <div class="pt-block-overlay" @click="selectBlock(block.id)">
               <i class="ri-edit-line" /> Редактировать
@@ -182,41 +305,43 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, reactive, watch, nextTick } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import { useProfileStore, type Block } from '~/stores/profile'
+import { useAuthStore } from '~/stores/auth'
 
 interface Link { label: string; url: string; icon?: string }
 interface Group { title: string; links: Link[] }
+interface Component { category: string; name: string }
 
 const profile = useProfileStore()
+const auth = useAuthStore()
+const mock = useProfileMockData()
+
+// Cache-bust avatar when it changes
+const avatarTs = computed(() => auth.user?.avatar_url ? Date.now() : 0)
 
 const blockTypes = ref([
-  { type: 'links',         icon: '🔗', label: 'Ссылки' },
-  { type: 'text',          icon: '📝', label: 'Текст' },
-  { type: 'widget_steam',  icon: '🎮', label: 'Steam' },
-  { type: 'widget_lastfm', icon: '🎵', label: 'Last.fm' },
-  { type: 'widget_github', icon: '🐙', label: 'GitHub' },
-  { type: 'pc_config',     icon: '💻', label: 'ПК конфиг' },
+  { type: 'links',          icon: '🔗', label: 'Ссылки' },
+  { type: 'text',           icon: '📝', label: 'Текст' },
+  { type: 'widget_steam',   icon: '🎮', label: 'Steam' },
+  { type: 'widget_lastfm',  icon: '🎵', label: 'Last.fm' },
+  { type: 'widget_github',  icon: '🐙', label: 'GitHub' },
+  { type: 'widget_faceit',  icon: '⚡', label: 'FACEIT' },
+  { type: 'pc_config',      icon: '💻', label: 'ПК конфиг' },
 ])
 const defaultConfigs: Record<string, Record<string, unknown>> = {
-  links:          { groups: [{ title: '', links: [] }] },
-  text:           { content: '', format: 'markdown' },
-  widget_steam:   { steam_id: '', show_recent_games: true },
-  widget_lastfm:  { username: '', show_now_playing: true },
-  widget_github:  { username: '', show_contributions: true, show_pinned_repos: true },
-  pc_config:      { title: 'My Rig', components: [] },
+  links:           { groups: [{ title: '', links: [] }] },
+  text:            { content: '', format: 'markdown' },
+  widget_steam:    { steam_id: '', show_recent_games: true },
+  widget_lastfm:   { username: '', show_now_playing: true },
+  widget_github:   { username: '', show_contributions: true, show_pinned_repos: true },
+  widget_faceit:   { nickname: '', game: 'cs2' },
+  pc_config:       { title: 'My Rig', components: [] },
 }
 
 function blockLabel(type: string) { return blockTypes.value.find(b => b.type === type)?.label ?? type }
 function blockIcon(type: string)  { return blockTypes.value.find(b => b.type === type)?.icon  ?? '📦' }
-function widgetVal(block: Block) {
-  const c = block.config
-  if (block.block_type === 'widget_steam')  return (c.steam_id  as string) || '—'
-  if (block.block_type === 'widget_lastfm') return (c.username  as string) || '—'
-  if (block.block_type === 'widget_github') return (c.username  as string) || '—'
-  if (block.block_type === 'pc_config')     return (c.title     as string) || '—'
-  return ''
-}
 
 // ── Local blocks ──────────────────────────────────────────────────────────────
 const localBlocks = ref<Block[]>([])
@@ -230,7 +355,6 @@ async function saveOrder() {
 async function onDropFromSidebar(evt: { item: HTMLElement }) {
   const type = evt.item.dataset.type
   if (!type) return
-  // Remove spurious placeholder vue-draggable inserted
   localBlocks.value = localBlocks.value.filter(b => b.id)
   const block = await profile.createBlock(type, defaultConfigs[type] ?? {})
   localBlocks.value.push(block)
@@ -316,16 +440,6 @@ async function saveBlock() {
   border-right: 1px solid rgba(61,142,255,0.08);
   display: flex; flex-direction: column;
   overflow: hidden;
-}
-
-/* Block list mode */
-.pt-sidebar > template:first-child,
-.pt-sidebar > .pt-status-row,
-.pt-sidebar > .pt-section-label,
-.pt-sidebar > .pt-block-list,
-.pt-sidebar > .pt-empty,
-.pt-sidebar > .pt-add-grid {
-  padding: 0 12px;
 }
 
 .pt-status-row { display: flex; align-items: center; gap: 8px; padding: 14px 12px 8px; }
@@ -444,11 +558,12 @@ async function saveBlock() {
 .pt-ph.editing { cursor: default; }
 .pt-ph:not(.editing):hover .pt-edit-hint { opacity: 1; }
 .pt-ph-avatar {
-  width: 48px; height: 48px; border-radius: 50%;
+  width: 52px; height: 52px; border-radius: 50%;
   background: linear-gradient(135deg, #2b7ef0, #3D8EFF);
   display: flex; align-items: center; justify-content: center;
-  font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 12px;
+  font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 12px;
   overflow: hidden; flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(61,142,255,0.20);
 }
 .pt-ph-avatar-img { width: 100%; height: 100%; object-fit: cover; }
 .pt-ph-info { display: flex; flex-direction: column; gap: 7px; }
@@ -532,15 +647,89 @@ async function saveBlock() {
   padding: 1px 6px; font-size: 10px; color: #6a6a90; pointer-events: none;
 }
 
+/* ── Block inner: links ── */
 .pt-links-group { margin-bottom: 6px; }
 .pt-links-group:last-child { margin-bottom: 0; }
 .pt-group-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #6a6a90; margin-bottom: 4px; }
 .pt-link-row { font-size: 13px; color: #aaaacc; padding: 3px 0; display: flex; align-items: center; gap: 6px; }
+.pt-link-icon { font-size: 14px; color: #90beff; flex-shrink: 0; }
 .pt-block-empty { font-size: 12px; color: #3a3a58; font-style: italic; }
 .pt-text-content { font-size: 13px; color: #aaaacc; white-space: pre-wrap; }
-.pt-widget-row { display: flex; align-items: center; gap: 9px; font-size: 13px; }
-.pt-widget-name { font-weight: 600; }
-.pt-widget-val { color: #6a6a90; margin-left: auto; }
+
+/* ── Block inner: widget shared ── */
+.pt-w-header { display: flex; align-items: center; justify-content: space-between; }
+.pt-w-hl { display: flex; align-items: center; gap: 8px; }
+.pt-w-ico { font-size: 20px; }
+.pt-w-name { font-size: 13px; font-weight: 700; line-height: 1.2; }
+.pt-w-id { font-size: 11px; color: #6a6a90; }
+.pt-w-divider { height: 1px; background: rgba(61,142,255,0.07); margin: 8px 0; }
+.pt-badge-green {
+  font-size: 10px; font-weight: 600; color: #4ade80;
+  background: rgba(74,222,128,0.10); border: 1px solid rgba(74,222,128,0.18);
+  border-radius: 100px; padding: 2px 7px;
+}
+
+/* ── Block inner: Steam ── */
+.pt-steam-row {
+  display: flex; justify-content: space-between; font-size: 12px;
+  padding: 3px 0; border-bottom: 1px solid rgba(61,142,255,0.05); color: #aaaacc;
+}
+.pt-steam-row:last-child { border-bottom: none; }
+.pt-steam-h { color: #6a6a90; }
+
+/* ── Block inner: Last.fm ── */
+.pt-np-bars { display: flex; align-items: flex-end; gap: 2px; height: 14px; }
+.pt-np-bar {
+  width: 3px; height: 14px; background: #e5343a; border-radius: 1px;
+  animation: npBounce 1.1s ease-in-out infinite; transform-origin: bottom;
+}
+@keyframes npBounce { 0%, 100% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } }
+.pt-np-row { display: flex; align-items: center; gap: 5px; font-size: 12px; flex-wrap: wrap; }
+.pt-np-label { color: #e5343a; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; }
+.pt-np-track { font-weight: 600; color: #eeeef8; }
+.pt-np-artist { color: #6a6a90; }
+
+/* ── Block inner: GitHub ── */
+.pt-gh-badge {
+  font-size: 10px; font-weight: 600; color: #90beff;
+  background: rgba(61,142,255,0.10); border: 1px solid rgba(61,142,255,0.18);
+  border-radius: 100px; padding: 2px 7px;
+}
+.pt-gh-mini {
+  display: grid;
+  grid-template-rows: repeat(7, 5px);
+  grid-auto-flow: column;
+  grid-auto-columns: 5px;
+  gap: 2px;
+  overflow: hidden;
+}
+.pt-gh-cell { border-radius: 1px; }
+.pt-gh-l0 { background: rgba(255,255,255,0.05); }
+.pt-gh-l1 { background: rgba(61,142,255,0.22); }
+.pt-gh-l2 { background: rgba(61,142,255,0.45); }
+.pt-gh-l3 { background: rgba(61,142,255,0.68); }
+.pt-gh-l4 { background: #3D8EFF; }
+.pt-gh-count { font-size: 11px; color: #6a6a90; margin-top: 5px; }
+
+/* ── Block inner: PC Config ── */
+.pt-pc-row {
+  display: flex; justify-content: space-between; font-size: 12px;
+  padding: 3px 0; border-bottom: 1px solid rgba(61,142,255,0.05);
+}
+.pt-pc-row:last-child { border-bottom: none; }
+.pt-pc-cat { color: #6a6a90; }
+.pt-pc-val { color: #ccccdd; text-align: right; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Block inner: Faceit ── */
+.pt-faceit-lvl {
+  width: 26px; height: 26px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 900; color: #fff;
+}
+.pt-faceit-stats { display: flex; gap: 12px; }
+.pt-fstat { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.pt-fstat-v { font-size: 14px; font-weight: 800; }
+.pt-fstat-l { font-size: 9px; color: #6a6a90; text-transform: uppercase; letter-spacing: 0.8px; }
 
 .pt-ghost { opacity: 0.4; background: rgba(61,142,255,0.08) !important; border-radius: 8px; }
 .pt-ghost-block { opacity: 0.35; }
