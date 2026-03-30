@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -13,7 +13,7 @@ class ProfileCreate(BaseModel):
 
 class ProfileUpdate(BaseModel):
     slug: Optional[str] = Field(None, min_length=2, max_length=50, pattern=r'^[a-z0-9_-]+$')
-    status: Optional[str] = None
+    status: Optional[Literal['draft', 'private', 'published']] = None
     display_name: Optional[str] = Field(None, min_length=1, max_length=100)
     bio: Optional[str] = None
     tags: Optional[List[str]] = None
@@ -51,5 +51,8 @@ class ProfileResponse(BaseModel):
     bio: Optional[str]
     tags: List[str]
     blocks: List[BlockResponse]
+    theme_preset: str
+    accent_color: Optional[str]
+    avatar_url: Optional[str]
 
     model_config = {"from_attributes": True}

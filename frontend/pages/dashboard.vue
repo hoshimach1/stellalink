@@ -28,8 +28,18 @@
       <div class="setup-card">
         <img src="/images/logos/logo.png" class="setup-logo" alt="">
         <h2>Создай свой профиль</h2>
-        <p>Выбери имя — это будет твой адрес</p>
+        <p>Выбери имя и адрес страницы</p>
         <form class="setup-form" @submit.prevent="createProfile">
+          <input
+            v-model="setupName"
+            type="text"
+            class="setup-input"
+            placeholder="Твоё имя или никнейм"
+            minlength="1"
+            maxlength="100"
+            required
+            autocomplete="off"
+          >
           <div class="setup-url">
             <span class="setup-prefix">stellalink.app/</span>
             <input
@@ -80,6 +90,7 @@ await profile.fetch()
 const tab = ref<'profile' | 'account'>('profile')
 
 // Setup
+const setupName = ref('')
 const setupSlug = ref('')
 const setupError = ref('')
 const setupLoading = ref(false)
@@ -88,7 +99,7 @@ async function createProfile() {
   setupError.value = ''
   setupLoading.value = true
   try {
-    await profile.create({ slug: setupSlug.value, display_name: setupSlug.value })
+    await profile.create({ slug: setupSlug.value, display_name: setupName.value || setupSlug.value })
   } catch (e: unknown) {
     const err = e as { data?: { detail?: string } }
     setupError.value = err.data?.detail ?? 'Ошибка создания профиля'
@@ -153,6 +164,13 @@ async function logout() {
 .setup-card h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
 .setup-card p { color: #6a6a90; font-size: 14px; margin-bottom: 28px; }
 .setup-form { text-align: left; display: flex; flex-direction: column; gap: 14px; }
+.setup-input {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(61,142,255,0.14);
+  border-radius: 10px; padding: 11px 14px; color: #eeeef8;
+  font-size: 14px; font-family: 'Onest', sans-serif; outline: none; width: 100%;
+  transition: border-color 0.2s;
+}
+.setup-input:focus { border-color: rgba(61,142,255,0.40); }
 .setup-url {
   display: flex; align-items: center;
   background: rgba(255,255,255,0.04); border: 1px solid rgba(61,142,255,0.14);

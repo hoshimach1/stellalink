@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.profile import Profile, ProfileBlock, ProfileTranslation
+from app.models.user import User
 
 
 async def _load_profile(db: AsyncSession, where) -> Optional[Profile]:
@@ -14,6 +16,7 @@ async def _load_profile(db: AsyncSession, where) -> Optional[Profile]:
         .options(
             selectinload(Profile.translations),
             selectinload(Profile.blocks),
+            selectinload(Profile.user),
         )
         .where(where)
     )
@@ -70,13 +73,24 @@ async def update_profile(
     bio: Optional[str] = None,
     tags: Optional[List[str]] = None,
 ) -> Profile:
+    now = datetime.now(timezone.utc)
     if slug is not None:
         profile.slug = slug
     if status is not None:
         profile.status = status
+    profile.updated_at = now
 
     trans = next((t for t in profile.translations if t.locale == "ru"), None)
-    if trans:
+    if trans is None and any(v is not None for v in (display_name, bio, tags)):
+        trans = ProfileTranslation(
+            profile_id=profile.id,
+            locale="ru",
+            display_name=display_name or "",
+            bio=bio,
+            tags=tags or [],
+        )
+        db.add(trans)
+    elif trans is not None:
         if display_name is not None:
             trans.display_name = display_name
         if bio is not None:
@@ -124,6 +138,7 @@ async def update_block(
         block.config = config
     if is_visible is not None:
         block.is_visible = is_visible
+    block.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(block)
     return block

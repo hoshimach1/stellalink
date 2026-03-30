@@ -30,6 +30,9 @@ def _to_response(profile) -> ProfileResponse:
         bio=trans.bio if trans else None,
         tags=trans.tags if trans else [],
         blocks=[BlockResponse.model_validate(b) for b in profile.blocks],
+        theme_preset=profile.theme_preset,
+        accent_color=profile.accent_color,
+        avatar_url=profile.user.avatar_url if profile.user else None,
     )
 
 

@@ -13,7 +13,10 @@
   <div v-else class="pub-page">
     <!-- Header -->
     <div class="pub-header">
-      <div class="pub-avatar">{{ initial }}</div>
+      <div class="pub-avatar">
+        <img v-if="profile.avatar_url" :src="profile.avatar_url" class="pub-avatar-img" alt="avatar">
+        <span v-else>{{ initial }}</span>
+      </div>
       <div class="pub-info">
         <div class="pub-name">{{ profile.display_name }}</div>
         <div v-if="profile.bio" class="pub-bio">{{ profile.bio }}</div>
@@ -116,7 +119,11 @@ const route = useRoute()
 const config = useRuntimeConfig()
 const slug = route.params.slug as string
 
-useHead({ title: `${slug} — Stellalink` })
+const pageTitle = computed(() => {
+  const name = profile.value?.display_name
+  return name ? `${name} — Stellalink` : `${slug} — Stellalink`
+})
+useHead({ title: pageTitle })
 
 const { data: profile, pending } = await useFetch<{
   id: string
@@ -126,6 +133,7 @@ const { data: profile, pending } = await useFetch<{
   bio: string | null
   tags: string[]
   blocks: Block[]
+  avatar_url: string | null
 } | null>(`${config.public.apiBase}/u/${slug}`, {
   default: () => null,
   onResponseError() { return null },
@@ -181,8 +189,9 @@ const visibleBlocks = computed(() => profile.value?.blocks.filter(b => b.is_visi
   width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0;
   background: linear-gradient(135deg, #2b7ef0, #3D8EFF);
   display: flex; align-items: center; justify-content: center;
-  font-size: 26px; font-weight: 800; color: #fff;
+  font-size: 26px; font-weight: 800; color: #fff; overflow: hidden;
 }
+.pub-avatar-img { width: 100%; height: 100%; object-fit: cover; }
 .pub-name { font-size: 20px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 4px; }
 .pub-bio { font-size: 14px; color: #6a6a90; margin-bottom: 8px; }
 .pub-tags { display: flex; flex-wrap: wrap; gap: 5px; }

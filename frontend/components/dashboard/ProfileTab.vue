@@ -94,7 +94,10 @@
 
         <!-- Header -->
         <div class="pt-ph" :class="{ editing: editingHeader }" @click="!editingHeader && (editingHeader = true)">
-          <div class="pt-ph-avatar">{{ initial }}</div>
+          <div class="pt-ph-avatar">
+            <img v-if="profile.profile?.avatar_url" :src="profile.profile.avatar_url" class="pt-ph-avatar-img" alt="avatar">
+            <span v-else>{{ initial }}</span>
+          </div>
           <div class="pt-ph-info">
             <template v-if="editingHeader">
               <input ref="nameInput" v-model="editName" class="pt-inline-input pt-inline-name" placeholder="Имя / Никнейм" @keydown.enter="saveHeader" @keydown.esc="cancelHeader">
@@ -260,7 +263,7 @@ async function saveHeader() {
   await profile.update({
     slug: editSlug.value || undefined,
     display_name: editName.value || undefined,
-    bio: editBio.value || undefined,
+    bio: editBio.value,
     tags: editTagsRaw.value.split(',').map(t => t.trim()).filter(Boolean),
   })
   editingHeader.value = false
@@ -445,7 +448,9 @@ async function saveBlock() {
   background: linear-gradient(135deg, #2b7ef0, #3D8EFF);
   display: flex; align-items: center; justify-content: center;
   font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 12px;
+  overflow: hidden; flex-shrink: 0;
 }
+.pt-ph-avatar-img { width: 100%; height: 100%; object-fit: cover; }
 .pt-ph-info { display: flex; flex-direction: column; gap: 7px; }
 .pt-ph-name { font-size: 17px; font-weight: 800; }
 .pt-ph-slug { font-size: 12px; color: #3a3a58; }

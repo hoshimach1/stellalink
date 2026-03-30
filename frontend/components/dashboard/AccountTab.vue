@@ -1,6 +1,29 @@
 <template>
   <div class="acc-wrap">
 
+    <!-- Avatar -->
+    <div class="acc-card">
+      <div class="acc-card-title">Аватар</div>
+      <div class="acc-avatar-row">
+        <div class="acc-avatar-wrap">
+          <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="acc-avatar-img" alt="avatar">
+          <div v-else class="acc-avatar-placeholder">{{ auth.user?.email?.[0]?.toUpperCase() ?? '?' }}</div>
+          <label class="acc-avatar-overlay" title="Загрузить фото">
+            <i class="ri-camera-line" />
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="acc-file-input" @change="onAvatarFile">
+          </label>
+        </div>
+        <div class="acc-avatar-meta">
+          <div class="acc-avatar-hint">JPEG, PNG, WebP или GIF · до 5 МБ</div>
+          <div v-if="avatarError" class="acc-error">{{ avatarError }}</div>
+          <div v-if="avatarOk" class="acc-ok">Аватар обновлён ✓</div>
+          <button v-if="auth.user?.avatar_url" class="acc-del-btn" :disabled="avatarLoading" @click="removeAvatar">
+            <i class="ri-delete-bin-line" /> Удалить
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Email -->
     <div class="acc-card">
       <div class="acc-card-title">Email</div>
@@ -43,6 +66,41 @@ import { useAuthStore } from '~/stores/auth'
 const auth = useAuthStore()
 const config = useRuntimeConfig()
 
+const avatarLoading = ref(false)
+const avatarError = ref('')
+const avatarOk = ref(false)
+
+async function onAvatarFile(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  avatarError.value = ''
+  avatarOk.value = false
+  avatarLoading.value = true
+  try {
+    await auth.uploadAvatar(file)
+    avatarOk.value = true
+  } catch (err: unknown) {
+    const e = err as { data?: { detail?: string } }
+    avatarError.value = e.data?.detail ?? 'Ошибка загрузки'
+  } finally {
+    avatarLoading.value = false
+    ;(e.target as HTMLInputElement).value = ''
+  }
+}
+
+async function removeAvatar() {
+  avatarError.value = ''
+  avatarOk.value = false
+  avatarLoading.value = true
+  try {
+    await auth.deleteAvatar()
+  } catch {
+    avatarError.value = 'Ошибка удаления'
+  } finally {
+    avatarLoading.value = false
+  }
+}
+
 const oldPass = ref('')
 const newPass = ref('')
 const confirmPass = ref('')
@@ -83,6 +141,37 @@ async function changePassword() {
 
 <style scoped>
 .acc-wrap { max-width: 480px; display: flex; flex-direction: column; gap: 16px; }
+
+.acc-avatar-row { display: flex; align-items: center; gap: 20px; }
+.acc-avatar-wrap { position: relative; flex-shrink: 0; width: 72px; height: 72px; }
+.acc-avatar-img {
+  width: 72px; height: 72px; border-radius: 50%; object-fit: cover;
+  border: 2px solid rgba(61,142,255,0.20);
+}
+.acc-avatar-placeholder {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: linear-gradient(135deg, #2b7ef0, #3D8EFF);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 800; color: #fff;
+}
+.acc-avatar-overlay {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: rgba(0,0,0,0.50); display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s; cursor: pointer; font-size: 22px; color: #fff;
+}
+.acc-avatar-wrap:hover .acc-avatar-overlay { opacity: 1; }
+.acc-file-input { display: none; }
+
+.acc-avatar-meta { display: flex; flex-direction: column; gap: 8px; }
+.acc-avatar-hint { font-size: 12px; color: #6a6a90; }
+.acc-del-btn {
+  align-self: flex-start; background: none; border: 1px solid rgba(255,80,80,0.22);
+  border-radius: 7px; padding: 5px 12px; color: #ff7070;
+  font-size: 12px; font-family: 'Onest', sans-serif; cursor: pointer;
+  display: flex; align-items: center; gap: 5px; transition: background 0.2s;
+}
+.acc-del-btn:hover { background: rgba(255,80,80,0.10); }
+.acc-del-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .acc-card {
   background: #0d0d1c; border: 1px solid rgba(61,142,255,0.10);

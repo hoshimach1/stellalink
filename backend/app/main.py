@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.redis import close_redis, get_redis
 from app.routers import auth, profile
@@ -26,6 +28,10 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(profile.router)
+
+_uploads = Path("uploads")
+_uploads.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(_uploads)), name="uploads")
 
 
 @app.get("/health")

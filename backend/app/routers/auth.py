@@ -1,4 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+import os
+import uuid
+from pathlib import Path
+
+import aiofiles
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -19,6 +24,11 @@ from app.services.auth import (
     hash_password,
     verify_password,
 )
+
+UPLOADS_DIR = Path("uploads/avatars")
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_SIZE = 5 * 1024 * 1024  # 5 MB
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -112,6 +122,50 @@ async def logout(
 @router.get("/me", response_model=UserResponse)
 async def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/avatar", response_model=UserResponse)
+async def upload_avatar(
+    request: Request,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if file.content_type not in ALLOWED_MIME:
+        raise HTTPException(status_code=400, detail="Недопустимый формат. Разрешены: JPEG, PNG, WebP, GIF")
+
+    content = await file.read()
+    if len(content) > MAX_SIZE:
+        raise HTTPException(status_code=413, detail="Файл слишком большой. Максимум 5 МБ")
+
+    ext = os.path.splitext(file.filename or "")[1].lower() or ".jpg"
+    filename = f"{current_user.id}{ext}"
+    dest = UPLOADS_DIR / filename
+
+    async with aiofiles.open(dest, "wb") as f:
+        await f.write(content)
+
+    base = str(request.base_url).rstrip("/")
+    current_user.avatar_url = f"{base}/uploads/avatars/{filename}"
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
+
+
+@router.delete("/avatar", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_avatar(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.avatar_url:
+        filename = current_user.avatar_url.rsplit("/", 1)[-1]
+        dest = UPLOADS_DIR / filename
+        if dest.exists():
+            dest.unlink()
+    current_user.avatar_url = None
+    db.add(current_user)
+    await db.commit()
 
 
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)

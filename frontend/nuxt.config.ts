@@ -3,6 +3,15 @@ import vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 export default defineNuxtConfig({
   devtools: { enabled: true },
 
+  app: {
+    head: {
+      link: [
+        { rel: 'icon', type: 'image/png', href: '/images/logos/logo.png' },
+        { rel: 'apple-touch-icon', href: '/images/logos/logo_big.png' },
+      ],
+    },
+  },
+
   build: {
     transpile: ['vuetify'],
   },

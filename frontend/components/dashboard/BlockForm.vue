@@ -9,13 +9,19 @@
           <button class="bf-icon-btn bf-del" @click="config.groups.splice(gi, 1)"><i class="ri-delete-bin-line" /></button>
         </div>
         <div class="bf-links">
-          <div v-for="(link, li) in group.links" :key="li" class="bf-link-row">
-            <input v-model="link.label" class="bf-input" placeholder="Telegram">
-            <input v-model="link.url" class="bf-input bf-url" placeholder="https://...">
-            <button class="bf-icon-btn bf-del" @click="group.links.splice(li, 1)"><i class="ri-close-line" /></button>
+          <div v-for="(link, li) in group.links" :key="li" class="bf-link-block">
+            <div class="bf-link-row">
+              <input v-model="link.label" class="bf-input" placeholder="Telegram">
+              <input v-model="link.url" class="bf-input bf-url" placeholder="https://...">
+              <button class="bf-icon-btn bf-del" @click="group.links.splice(li, 1)"><i class="ri-close-line" /></button>
+            </div>
+            <div class="bf-link-icon-row">
+              <span class="bf-icon-preview" v-if="link.icon"><i :class="`ri-${link.icon}-fill`" /></span>
+              <input v-model="link.icon" class="bf-input bf-icon-input" placeholder="Иконка: telegram, github, vk...">
+            </div>
           </div>
         </div>
-        <button class="bf-add-link" @click="group.links.push({ label: '', url: '' })">+ Добавить ссылку</button>
+        <button class="bf-add-link" @click="group.links.push({ label: '', url: '', icon: '' })">+ Добавить ссылку</button>
       </div>
       <button class="bf-add-group" @click="config.groups.push({ title: '', links: [] })">+ Группа</button>
     </template>
@@ -108,6 +114,10 @@ defineProps<{ type: string; config: Record<string, unknown> }>()
 .bf-del { color: #3a3a58; transition: color 0.2s; }
 .bf-del:hover { color: #ff7070; }
 .bf-add-link { background: none; border: none; color: #3D8EFF; font-size: 12px; font-family: 'Onest', sans-serif; cursor: pointer; text-align: left; padding: 2px 0; }
+.bf-link-block { display: flex; flex-direction: column; gap: 4px; }
+.bf-link-icon-row { display: flex; align-items: center; gap: 5px; padding-left: 2px; }
+.bf-icon-preview { font-size: 16px; color: #90beff; flex-shrink: 0; width: 20px; text-align: center; }
+.bf-icon-input { font-size: 12px; color: #aaaacc; }
 .bf-add-group {
   background: rgba(61,142,255,0.06); border: 1px dashed rgba(61,142,255,0.20);
   border-radius: 7px; padding: 7px; color: #90beff;

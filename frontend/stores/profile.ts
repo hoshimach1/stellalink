@@ -17,6 +17,9 @@ export interface Profile {
   bio: string | null
   tags: string[]
   blocks: Block[]
+  theme_preset: string
+  accent_color: string | null
+  avatar_url: string | null
 }
 
 export const useProfileStore = defineStore('profile', {
@@ -61,7 +64,7 @@ export const useProfileStore = defineStore('profile', {
       })
     },
 
-    async update(data: Partial<{ slug: string; status: string; display_name: string; bio: string; tags: string[] }>) {
+    async update(data: Partial<{ slug: string; status: string; display_name: string; bio: string | null; tags: string[] }>) {
       const config = useRuntimeConfig()
       this.profile = await $fetch<Profile>(`${config.public.apiBase}/profiles/me`, {
         method: 'PATCH',

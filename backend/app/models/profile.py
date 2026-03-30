@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+from app.models.user import User  # noqa: F401 — needed for relationship resolution
 
 
 class Profile(Base):
@@ -30,6 +31,7 @@ class Profile(Base):
         "ProfileBlock", back_populates="profile", cascade="all, delete-orphan",
         order_by="ProfileBlock.sort_order",
     )
+    user = relationship("User", foreign_keys=[user_id], lazy="raise")
 
 
 class ProfileTranslation(Base):

@@ -70,6 +70,28 @@ export const useAuthStore = defineStore('auth', {
       })
     },
 
+    async uploadAvatar(file: File) {
+      if (!this.accessToken) return
+      const config = useRuntimeConfig()
+      const form = new FormData()
+      form.append('file', file)
+      this.user = await $fetch<User>(`${config.public.apiBase}/auth/avatar`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${this.accessToken}` },
+        body: form,
+      })
+    },
+
+    async deleteAvatar() {
+      if (!this.accessToken) return
+      const config = useRuntimeConfig()
+      await $fetch(`${config.public.apiBase}/auth/avatar`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${this.accessToken}` },
+      })
+      if (this.user) this.user.avatar_url = null
+    },
+
     logout() {
       this.user = null
       this.accessToken = null
