@@ -90,6 +90,13 @@
     </div>
 
     <!-- ── Canvas ── -->
+    <CropAvatarModal
+      :file="avatarCropFile"
+      :saving="avatarUploading"
+      @save="onAvatarCropSave"
+      @cancel="avatarCropFile = null"
+    />
+
     <div class="pt-canvas" @click.self="deselectAll">
       <div class="pt-profile-card">
 
@@ -98,18 +105,38 @@
           <div class="pt-ph-glow" />
 
           <template v-if="editingHeader">
-            <div class="pt-ph-avatar pt-ph-avatar-center">
-              <img v-if="profile.profile?.avatar_url" :src="`${profile.profile.avatar_url}?t=${avatarTs}`" class="pt-ph-avatar-img" alt="avatar">
-              <span v-else>{{ initial }}</span>
+            <!-- Avatar with upload in edit mode -->
+            <div class="pt-ph-avatar-wrap-center">
+              <div class="pt-ph-avatar pt-ph-avatar-center">
+                <img v-if="avatarDisplaySrc" :src="avatarDisplaySrc" class="pt-ph-avatar-img" alt="avatar">
+                <span v-else>{{ initial }}</span>
+              </div>
+              <label class="pt-ph-avatar-cam" title="Изменить фото">
+                <span v-if="avatarUploading" class="pt-avt-spin" />
+                <i v-else class="ri-camera-line" />
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" @change="onAvatarFileChange">
+              </label>
             </div>
             <div class="pt-inline-fields">
-              <input ref="nameInput" v-model="editName" class="pt-inline-input pt-inline-name" placeholder="Имя / Никнейм" @keydown.enter="saveHeader" @keydown.esc="cancelHeader">
-              <div class="pt-slug-row">
-                <span class="pt-slug-prefix">stellalink.app/</span>
-                <input v-model="editSlug" class="pt-inline-input pt-inline-slug-bare" placeholder="username" @keydown.enter="saveHeader" @keydown.esc="cancelHeader">
+              <div class="pt-if-group">
+                <label class="pt-if-label">Имя / Никнейм</label>
+                <input ref="nameInput" v-model="editName" class="pt-inline-input pt-inline-name" placeholder="Иван Иванов" @keydown.enter="saveHeader" @keydown.esc="cancelHeader">
               </div>
-              <textarea v-model="editBio" class="pt-inline-input" placeholder="Bio..." rows="2" />
-              <input v-model="editTagsRaw" class="pt-inline-input" placeholder="теги через запятую">
+              <div class="pt-if-group">
+                <label class="pt-if-label">Адрес страницы</label>
+                <div class="pt-slug-row">
+                  <span class="pt-slug-prefix">stellalink.app/</span>
+                  <input v-model="editSlug" class="pt-inline-input pt-inline-slug-bare" placeholder="username" @keydown.enter="saveHeader" @keydown.esc="cancelHeader">
+                </div>
+              </div>
+              <div class="pt-if-group">
+                <label class="pt-if-label">Биография</label>
+                <textarea v-model="editBio" class="pt-inline-input" placeholder="Расскажи о себе..." rows="2" />
+              </div>
+              <div class="pt-if-group">
+                <label class="pt-if-label">Теги <span class="pt-if-hint">через запятую</span></label>
+                <input v-model="editTagsRaw" class="pt-inline-input" placeholder="developer, gaming, music">
+              </div>
               <div class="pt-inline-actions">
                 <button class="pt-cancel-btn" @click.stop="cancelHeader">Отмена</button>
                 <button class="pt-save-btn" @click.stop="saveHeader">Сохранить</button>
@@ -118,18 +145,26 @@
           </template>
 
           <template v-else>
-            <div class="pt-ph-center" @click="editingHeader = true">
-              <div class="pt-ph-avatar pt-ph-avatar-center">
-                <img v-if="profile.profile?.avatar_url" :src="`${profile.profile.avatar_url}?t=${avatarTs}`" class="pt-ph-avatar-img" alt="avatar">
-                <span v-else>{{ initial }}</span>
+            <div class="pt-ph-center">
+              <!-- Avatar with camera badge (always visible, not dependent on editingHeader) -->
+              <div class="pt-ph-avatar-wrap-center">
+                <div class="pt-ph-avatar pt-ph-avatar-center">
+                  <img v-if="avatarDisplaySrc" :src="avatarDisplaySrc" class="pt-ph-avatar-img" alt="avatar">
+                  <span v-else>{{ initial }}</span>
+                </div>
+                <label class="pt-ph-avatar-cam" title="Изменить фото" @click.stop>
+                  <span v-if="avatarUploading" class="pt-avt-spin" />
+                  <i v-else class="ri-camera-line" />
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" @change="onAvatarFileChange">
+                </label>
               </div>
-              <div class="pt-ph-name">{{ profile.profile!.display_name || '—' }}</div>
-              <div class="pt-ph-slug">stellalink.app/{{ profile.profile!.slug }}</div>
-              <div v-if="profile.profile!.bio" class="pt-ph-bio">{{ profile.profile!.bio }}</div>
-              <div v-if="profile.profile!.tags.length" class="pt-ph-tags">
+              <div class="pt-ph-name" @click="editingHeader = true">{{ profile.profile!.display_name || '—' }}</div>
+              <div class="pt-ph-slug" @click="editingHeader = true">stellalink.app/{{ profile.profile!.slug }}</div>
+              <div v-if="profile.profile!.bio" class="pt-ph-bio" @click="editingHeader = true">{{ profile.profile!.bio }}</div>
+              <div v-if="profile.profile!.tags.length" class="pt-ph-tags" @click="editingHeader = true">
                 <span v-for="tag in profile.profile!.tags" :key="tag" class="pt-tag">{{ tag }}</span>
               </div>
-              <div class="pt-edit-chip"><i class="ri-edit-line" /> Редактировать профиль</div>
+              <div class="pt-edit-chip" @click="editingHeader = true"><i class="ri-edit-line" /> Редактировать профиль</div>
             </div>
           </template>
         </div>
@@ -332,10 +367,34 @@ interface Component { category: string; name: string }
 
 const profile = useProfileStore()
 const auth = useAuthStore()
+const config = useRuntimeConfig()
 const mock = useProfileMockData()
 
-// Cache-bust avatar when it changes
-const avatarTs = computed(() => auth.user?.avatar_url ? Date.now() : 0)
+// ── Avatar upload from profile canvas ────────────────────────────────────────
+const avatarTimestamp = ref(Date.now())
+const avatarCropFile = ref<File | null>(null)
+const avatarUploading = ref(false)
+const avatarDisplaySrc = computed(() =>
+  resolveAvatarUrl(auth.user?.avatar_url ?? null, config.public.apiBase as string, avatarTimestamp.value)
+)
+
+function onAvatarFileChange(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  ;(e.target as HTMLInputElement).value = ''
+  avatarCropFile.value = file
+}
+
+async function onAvatarCropSave(blob: Blob) {
+  avatarCropFile.value = null
+  avatarUploading.value = true
+  try {
+    await auth.uploadAvatar(new File([blob], 'avatar.jpg', { type: 'image/jpeg' }))
+    avatarTimestamp.value = Date.now()
+  } finally {
+    avatarUploading.value = false
+  }
+}
 
 const blockTypes = ref([
   { type: 'links',          icon: '🔗', label: 'Ссылки' },
@@ -788,6 +847,32 @@ async function saveBlock() {
 .pt-fstat { display: flex; flex-direction: column; align-items: center; gap: 1px; }
 .pt-fstat-v { font-size: 14px; font-weight: 800; }
 .pt-fstat-l { font-size: 9px; color: #6a6a90; text-transform: uppercase; letter-spacing: 0.8px; }
+
+/* ── Avatar wrapper in canvas ── */
+.pt-ph-avatar-wrap-center {
+  position: relative; display: inline-block; margin-bottom: 14px;
+}
+.pt-ph-avatar-center { margin-bottom: 0; }
+.pt-ph-avatar-cam {
+  position: absolute; bottom: -2px; right: -2px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(13,13,28,0.92); border: 1.5px solid rgba(61,142,255,0.35);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: #90beff; cursor: pointer;
+  transition: background 0.2s;
+}
+.pt-ph-avatar-cam:hover { background: rgba(61,142,255,0.18); }
+.pt-avt-spin {
+  width: 11px; height: 11px; border-radius: 50%;
+  border: 2px solid rgba(144,190,255,0.25); border-top-color: #90beff;
+  animation: spin 0.7s linear infinite; display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Inline form labels ── */
+.pt-if-group { display: flex; flex-direction: column; gap: 4px; }
+.pt-if-label { font-size: 11px; font-weight: 600; color: #4a4a68; text-transform: uppercase; letter-spacing: 0.6px; }
+.pt-if-hint { font-weight: 400; text-transform: none; letter-spacing: 0; color: #3a3a58; font-size: 10px; }
 
 .pt-ghost { opacity: 0.4; background: rgba(61,142,255,0.08) !important; border-radius: 8px; }
 .pt-ghost-block { opacity: 0.35; }

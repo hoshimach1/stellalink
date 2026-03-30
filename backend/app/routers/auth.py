@@ -125,7 +125,6 @@ async def me(current_user: User = Depends(get_current_user)):
 
 @router.post("/avatar", response_model=UserResponse)
 async def upload_avatar(
-    request: Request,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -144,8 +143,7 @@ async def upload_avatar(
     async with aiofiles.open(dest, "wb") as f:
         await f.write(content)
 
-    base = str(request.base_url).rstrip("/")
-    current_user.avatar_url = f"{base}/uploads/avatars/{filename}"
+    current_user.avatar_url = f"/uploads/avatars/{filename}"
     db.add(current_user)
     await db.commit()
     await db.refresh(current_user)
