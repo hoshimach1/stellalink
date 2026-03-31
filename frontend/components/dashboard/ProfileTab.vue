@@ -90,8 +90,17 @@
               :class="{ active: currentTheme === t.id }"
               @click="setTheme(t.id)"
             >
-              <div class="pt-theme-swatch" :style="t.preview">
-                <span class="pt-theme-dot" :style="`background:${t.previewDot}`" />
+              <div class="pt-theme-swatch" :class="`pt-swatch-${t.id}`">
+                <div v-if="t.id === 'glass'" class="pt-swatch-glass-orbs">
+                  <span class="pt-swatch-orb pt-swatch-orb-1" />
+                  <span class="pt-swatch-orb pt-swatch-orb-2" />
+                </div>
+                <div v-if="t.id === 'glass'" class="pt-swatch-glass-pane" />
+                <div v-if="t.id === 'material3'" class="pt-swatch-m3-shapes">
+                  <span class="pt-swatch-m3-s1" :style="`background:${currentAccent}`" />
+                  <span class="pt-swatch-m3-s2" :style="`background:${currentAccent}`" />
+                </div>
+                <span v-if="t.id === 'fluent'" class="pt-theme-dot" :style="`background:${t.previewDot}`" />
               </div>
               <div class="pt-theme-info">
                 <span class="pt-theme-name">{{ t.label }}</span>
@@ -100,6 +109,26 @@
               <i v-if="currentTheme === t.id" class="ri-check-line pt-theme-check" />
             </button>
           </div>
+
+          <!-- Material 3 palettes -->
+          <template v-if="currentTheme === 'material3'">
+            <div class="pt-section-label" style="margin-top:14px">Палитра</div>
+            <div class="pt-palette-list">
+              <button
+                v-for="p in M3_PALETTES"
+                :key="p.name"
+                class="pt-palette-row"
+                :class="{ active: currentAccent === p.accent }"
+                @click="setAccent(p.accent)"
+              >
+                <div class="pt-palette-chips">
+                  <span v-for="(c, i) in p.colors" :key="i" class="pt-palette-chip" :style="`background:${c}`" />
+                </div>
+                <span class="pt-palette-name">{{ p.name }}</span>
+                <i v-if="currentAccent === p.accent" class="ri-check-line pt-palette-check" />
+              </button>
+            </div>
+          </template>
 
           <div class="pt-section-label" style="margin-top:14px">
             {{ currentTheme === 'material3' ? 'Seed color' : 'Accent' }}
@@ -157,7 +186,7 @@
     />
 
     <div class="pt-canvas" :style="canvasBgStyle" @click.self="deselectAll">
-      <div class="pt-profile-card" :style="canvasThemeStyle">
+      <div class="pt-profile-card" :data-theme="currentTheme" :style="canvasThemeStyle">
 
         <!-- Header -->
         <div class="pt-ph" :class="{ editing: editingHeader }">
@@ -495,6 +524,17 @@ const ACCENT_COLORS = [
   { label: 'Rose',    value: '#F43F5E' },
 ]
 
+const M3_PALETTES = [
+  { name: 'Violet Dream',  accent: '#D0BCFF', colors: ['#D0BCFF', '#9A82DB', '#6750A4', '#381E72', '#1C1135'] },
+  { name: 'Ocean Blue',    accent: '#3D8EFF', colors: ['#A0C4FF', '#3D8EFF', '#1565C0', '#0D3B72', '#091E3A'] },
+  { name: 'Sakura',        accent: '#EC4899', colors: ['#FBB6CE', '#EC4899', '#BE185D', '#831843', '#3B0720'] },
+  { name: 'Emerald',       accent: '#22C55E', colors: ['#86EFAC', '#22C55E', '#15803D', '#14532D', '#052E16'] },
+  { name: 'Sunset',        accent: '#F97316', colors: ['#FED7AA', '#F97316', '#C2410C', '#7C2D12', '#3B1106'] },
+  { name: 'Teal Surf',     accent: '#14B8A6', colors: ['#99F6E4', '#14B8A6', '#0D9488', '#134E4A', '#042F2E'] },
+  { name: 'Golden',        accent: '#F59E0B', colors: ['#FDE68A', '#F59E0B', '#B45309', '#78350F', '#3D1C04'] },
+  { name: 'Rose Quartz',   accent: '#F43F5E', colors: ['#FDA4AF', '#F43F5E', '#BE123C', '#881337', '#4C0519'] },
+]
+
 const currentAccent = computed(() => profile.profile?.accent_color || '#D0BCFF')
 const currentTheme  = computed(() => profile.profile?.theme_preset || 'material3')
 
@@ -518,18 +558,22 @@ const canvasThemeStyle = computed((): Record<string, string> => {
 
   if (preset === 'glass') {
     return {
-      '--th-card':    'rgba(14,12,30,0.55)',
-      '--th-block':   'rgba(255,255,255,0.06)',
+      '--th-card':    'rgba(255,255,255,0.04)',
+      '--th-block':   'rgba(255,255,255,0.04)',
       '--th-hborder': 'rgba(255,255,255,0.08)',
       '--th-text':    '#f0eeff',
       '--th-sub':     'rgba(240,238,255,0.60)',
       '--th-dim':     'rgba(240,238,255,0.32)',
       '--th-accent':  accent,
       '--th-a04': a04, '--th-a08': a08, '--th-a12': a12, '--th-a20': a20, '--th-a28': a28,
-      '--th-radius':  '22px',
-      '--th-blur':    'blur(24px) saturate(180%)',
-      '--th-shadow':  '0 16px 56px rgba(0,0,0,0.55)',
+      '--th-radius':  '24px',
+      '--th-radius-sm': '16px',
+      '--th-blur':    'blur(40px) saturate(180%)',
+      '--th-shadow':  '0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)',
       '--th-glow':    hexToRgba(accent, 0.18),
+      '--th-block-border': 'rgba(255,255,255,0.10)',
+      '--th-block-blur': 'blur(20px) saturate(160%)',
+      '--th-block-shadow': '0 4px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)',
     }
   }
   if (preset === 'fluent') {
@@ -543,15 +587,19 @@ const canvasThemeStyle = computed((): Record<string, string> => {
       '--th-accent':  accent,
       '--th-a04': a04, '--th-a08': a08, '--th-a12': a12, '--th-a20': a20, '--th-a28': a28,
       '--th-radius':  '8px',
+      '--th-radius-sm': '6px',
       '--th-blur':    'blur(32px) saturate(140%)',
-      '--th-shadow':  '0 8px 32px rgba(0,0,0,0.45)',
+      '--th-shadow':  '0 16px 48px rgba(0,0,0,0.45)',
       '--th-glow':    hexToRgba(accent, 0.12),
+      '--th-block-border': 'rgba(255,255,255,0.07)',
+      '--th-block-blur': 'none',
+      '--th-block-shadow': 'none',
     }
   }
   // material3 (default)
   return {
-    '--th-card':    '#13102a',
-    '--th-block':   a04,
+    '--th-card':    hexToRgba(accent, 0.03),
+    '--th-block':   hexToRgba(accent, 0.05),
     '--th-hborder': a12,
     '--th-text':    '#e9e0f8',
     '--th-sub':     '#cac4d0',
@@ -559,9 +607,13 @@ const canvasThemeStyle = computed((): Record<string, string> => {
     '--th-accent':  accent,
     '--th-a04': a04, '--th-a08': a08, '--th-a12': a12, '--th-a20': a20, '--th-a28': a28,
     '--th-radius':  '28px',
+    '--th-radius-sm': '16px',
     '--th-blur':    '',
-    '--th-shadow':  `0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px ${a08}`,
+    '--th-shadow':  `0 24px 80px rgba(0,0,0,0.5), 0 0 0 1px ${a08}`,
     '--th-glow':    hexToRgba(accent, 0.22),
+    '--th-block-border': a12,
+    '--th-block-blur': 'none',
+    '--th-block-shadow': 'none',
   }
 })
 
@@ -569,12 +621,12 @@ const canvasBgStyle = computed((): Record<string, string> => {
   const preset = currentTheme.value
   const accent = currentAccent.value
   if (preset === 'glass') {
-    return { background: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(80,60,180,0.22), transparent), #0a0a1e' }
+    return { background: 'radial-gradient(ellipse 60% 40% at 30% 20%, rgba(120,80,255,0.12), transparent), radial-gradient(ellipse 50% 35% at 70% 60%, rgba(60,160,255,0.10), transparent), #050510' }
   }
   if (preset === 'fluent') {
-    return { background: '#141414' }
+    return { background: '#1a1a1a' }
   }
-  return { background: `radial-gradient(ellipse 60% 30% at 50% 0%, ${hexToRgba(accent, 0.07)}, transparent)` }
+  return { background: `radial-gradient(ellipse 60% 30% at 50% 0%, ${hexToRgba(accent, 0.07)}, transparent), #0c0a1a` }
 })
 
 async function setTheme(id: string) {
@@ -801,6 +853,79 @@ async function saveBlock() {
 .pt-accent-swatch { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
 .pt-accent-hex { font-size: 11px; color: #6a6a90; font-family: monospace; }
 
+/* ── Theme swatch previews ── */
+.pt-swatch-glass {
+  background: linear-gradient(135deg, #0e0c1e 0%, #1a1840 100%);
+  position: relative; overflow: hidden;
+}
+.pt-swatch-glass-orbs {
+  position: absolute; inset: 0; pointer-events: none;
+}
+.pt-swatch-orb {
+  position: absolute; border-radius: 50%; filter: blur(6px);
+}
+.pt-swatch-orb-1 {
+  width: 18px; height: 18px; top: 3px; left: 4px;
+  background: rgba(120,80,255,0.5);
+}
+.pt-swatch-orb-2 {
+  width: 14px; height: 14px; bottom: 4px; right: 5px;
+  background: rgba(60,160,255,0.45);
+}
+.pt-swatch-glass-pane {
+  position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
+  width: 24px; height: 10px; border-radius: 4px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(4px);
+}
+.pt-swatch-material3 {
+  background: linear-gradient(135deg, #13102a 0%, #1a1535 60%, #211e40 100%);
+  position: relative; overflow: hidden;
+}
+.pt-swatch-m3-shapes {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 3px;
+}
+.pt-swatch-m3-s1 {
+  width: 14px; height: 14px; border-radius: 8px 3px 8px 3px;
+  opacity: 0.5;
+}
+.pt-swatch-m3-s2 {
+  width: 10px; height: 10px; border-radius: 3px 6px 3px 6px;
+  opacity: 0.35;
+}
+.pt-swatch-fluent {
+  background: linear-gradient(135deg, #1c1c1c 0%, #242424 100%);
+}
+
+/* ── Palette list ── */
+.pt-palette-list {
+  display: flex; flex-direction: column; gap: 3px; padding: 4px 8px;
+  max-height: 180px; overflow-y: auto;
+}
+.pt-palette-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 8px;
+  border: 1px solid transparent; background: none;
+  cursor: pointer; font-family: 'Onest', sans-serif; transition: all 0.15s;
+  text-align: left;
+}
+.pt-palette-row:hover { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.06); }
+.pt-palette-row.active { background: rgba(208,188,255,0.07); border-color: rgba(208,188,255,0.18); }
+.pt-palette-chips {
+  display: flex; gap: 2px; flex-shrink: 0;
+}
+.pt-palette-chip {
+  width: 12px; height: 18px; border-radius: 3px;
+  transition: transform 0.15s;
+}
+.pt-palette-chip:first-child { border-radius: 5px 3px 3px 5px; }
+.pt-palette-chip:last-child { border-radius: 3px 5px 5px 3px; }
+.pt-palette-row:hover .pt-palette-chip { transform: scaleY(1.1); }
+.pt-palette-name { flex: 1; font-size: 11px; font-weight: 600; color: #aaaacc; }
+.pt-palette-row.active .pt-palette-name { color: #D0BCFF; }
+.pt-palette-check { font-size: 12px; color: #D0BCFF; flex-shrink: 0; }
+
 .pt-block-list { display: flex; flex-direction: column; gap: 2px; padding: 0 8px; overflow-y: auto; max-height: 220px; }
 .pt-block-item {
   display: flex; align-items: center; gap: 6px;
@@ -896,7 +1021,9 @@ async function saveBlock() {
   border-radius: var(--th-radius, 20px); overflow: hidden;
   box-shadow: var(--th-shadow, 0 24px 64px rgba(0,0,0,0.5));
   backdrop-filter: var(--th-blur, none);
-  transition: border-radius 0.3s ease, background 0.3s ease;
+  -webkit-backdrop-filter: var(--th-blur, none);
+  transition: border-radius 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
 }
 
 /* Header */
@@ -999,10 +1126,13 @@ async function saveBlock() {
 .pt-dz-hint { font-size: 12px; color: #3a3a58; max-width: 220px; line-height: 1.5; }
 
 .pt-block-preview {
-  position: relative; border-radius: calc(var(--th-radius, 20px) * 0.4); overflow: hidden;
-  border: 1px solid var(--th-a08, rgba(61,142,255,0.08));
+  position: relative; border-radius: var(--th-radius-sm, calc(var(--th-radius, 20px) * 0.4)); overflow: hidden;
+  border: 1px solid var(--th-block-border, var(--th-a08, rgba(61,142,255,0.08)));
   background: var(--th-block, rgba(255,255,255,0.025));
-  display: flex; align-items: stretch; transition: border-color 0.2s;
+  backdrop-filter: var(--th-block-blur, none);
+  -webkit-backdrop-filter: var(--th-block-blur, none);
+  box-shadow: var(--th-block-shadow, none);
+  display: flex; align-items: stretch; transition: border-color 0.2s, border-radius 0.3s, background 0.3s;
 }
 .pt-block-preview:hover { border-color: var(--th-a28, rgba(61,142,255,0.28)); }
 .pt-block-preview.selected { border-color: var(--th-accent, #3D8EFF); box-shadow: 0 0 0 2px var(--th-a12, rgba(61,142,255,0.14)); }
@@ -1143,6 +1273,25 @@ async function saveBlock() {
 .pt-if-group { display: flex; flex-direction: column; gap: 4px; }
 .pt-if-label { font-size: 11px; font-weight: 600; color: #4a4a68; text-transform: uppercase; letter-spacing: 0.6px; }
 .pt-if-hint { font-weight: 400; text-transform: none; letter-spacing: 0; color: #3a3a58; font-size: 10px; }
+
+/* ── Theme-specific canvas block styles ── */
+/* Material 3 — alternating expressive corners */
+[data-theme="material3"] .pt-block-preview:nth-child(odd) {
+  border-radius: 20px 8px 20px 8px;
+}
+[data-theme="material3"] .pt-block-preview:nth-child(even) {
+  border-radius: 8px 20px 8px 20px;
+}
+
+/* Glass — frosted block appearance */
+[data-theme="glass"] .pt-block-preview::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 50%);
+}
+[data-theme="glass"] .pt-w-divider {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+}
 
 .pt-ghost { opacity: 0.4; background: rgba(61,142,255,0.08) !important; border-radius: 8px; }
 .pt-ghost-block { opacity: 0.35; }
