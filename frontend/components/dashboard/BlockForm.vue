@@ -168,30 +168,30 @@ const POPULAR_ICONS = [
 <style scoped>
 .bf-wrap { display: flex; flex-direction: column; gap: 14px; }
 .bf-field { display: flex; flex-direction: column; gap: 5px; }
-.bf-field label { font-size: 11px; font-weight: 700; color: #6a6a90; text-transform: uppercase; letter-spacing: 0.8px; }
-.bf-hint { font-size: 11px; color: #4a4a68; line-height: 1.4; }
-.bf-hint strong { color: #6a6a90; }
+.bf-field label { font-size: 11px; font-weight: 700; color: #71717a; text-transform: uppercase; letter-spacing: 0.8px; }
+.bf-hint { font-size: 11px; color: #52525b; line-height: 1.4; }
+.bf-hint strong { color: #71717a; }
 
 .bf-input {
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(61,142,255,0.14);
-  border-radius: 7px; padding: 7px 10px; color: #eeeef8;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 7px; padding: 7px 10px; color: #ececef;
   font-size: 13px; font-family: 'Onest', sans-serif; outline: none; width: 100%;
   transition: border-color 0.2s;
 }
-.bf-input:focus { border-color: rgba(61,142,255,0.40); }
+.bf-input:focus { border-color: rgba(255,255,255,0.20); }
 .bf-textarea {
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(61,142,255,0.14);
-  border-radius: 7px; padding: 9px 10px; color: #eeeef8;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 7px; padding: 9px 10px; color: #ececef;
   font-size: 13px; font-family: 'Onest', sans-serif; outline: none; resize: vertical; width: 100%;
   transition: border-color 0.2s;
 }
-.bf-textarea:focus { border-color: rgba(61,142,255,0.40); }
+.bf-textarea:focus { border-color: rgba(255,255,255,0.20); }
 
-.bf-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #aaaacc; cursor: pointer; }
-.bf-check input[type="checkbox"] { accent-color: #3D8EFF; width: 14px; height: 14px; cursor: pointer; }
+.bf-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #a1a1aa; cursor: pointer; }
+.bf-check input[type="checkbox"] { accent-color: #fafafa; width: 14px; height: 14px; cursor: pointer; }
 
 .bf-group {
-  background: rgba(255,255,255,0.02); border: 1px solid rgba(61,142,255,0.08);
+  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
   border-radius: 9px; padding: 10px; display: flex; flex-direction: column; gap: 8px;
 }
 .bf-group-header { display: flex; gap: 7px; }
@@ -199,47 +199,47 @@ const POPULAR_ICONS = [
 .bf-link-row { display: flex; gap: 5px; align-items: center; }
 .bf-url { flex: 1; }
 .bf-icon-btn { background: none; border: none; cursor: pointer; font-size: 15px; display: flex; align-items: center; padding: 3px; flex-shrink: 0; }
-.bf-del { color: #3a3a58; transition: color 0.2s; }
+.bf-del { color: #3f3f46; transition: color 0.2s; }
 .bf-del:hover { color: #ff7070; }
 
 .bf-link-block { display: flex; flex-direction: column; gap: 6px; }
 .bf-icon-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .bf-ic {
-  width: 28px; height: 28px; border-radius: 6px; border: 1px solid rgba(61,142,255,0.12);
-  background: rgba(255,255,255,0.03); color: #6a6a90;
+  width: 28px; height: 28px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03); color: #71717a;
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; cursor: pointer; transition: all 0.15s; flex-shrink: 0;
 }
-.bf-ic:hover { background: rgba(61,142,255,0.12); color: #90beff; border-color: rgba(61,142,255,0.28); }
-.bf-ic.active { background: rgba(61,142,255,0.20); color: #3D8EFF; border-color: rgba(61,142,255,0.45); }
+.bf-ic:hover { background: rgba(255,255,255,0.08); color: #d4d4d8; border-color: rgba(255,255,255,0.14); }
+.bf-ic.active { background: rgba(255,255,255,0.12); color: #fafafa; border-color: rgba(255,255,255,0.25); }
 
 .bf-link-icon-row { display: flex; align-items: center; gap: 6px; }
-.bf-icon-preview { font-size: 16px; color: #90beff; flex-shrink: 0; width: 20px; text-align: center; }
-.bf-icon-input { font-size: 12px; color: #aaaacc; }
+.bf-icon-preview { font-size: 16px; color: #a1a1aa; flex-shrink: 0; width: 20px; text-align: center; }
+.bf-icon-input { font-size: 12px; color: #a1a1aa; }
 
 .bf-add-link {
-  background: none; border: none; color: #3D8EFF;
+  background: none; border: none; color: #d4d4d8;
   font-size: 12px; font-family: 'Onest', sans-serif; cursor: pointer;
   text-align: left; padding: 2px 0;
 }
 .bf-add-group {
-  background: rgba(61,142,255,0.06); border: 1px dashed rgba(61,142,255,0.20);
-  border-radius: 7px; padding: 8px; color: #90beff;
+  background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.12);
+  border-radius: 7px; padding: 8px; color: #a1a1aa;
   font-size: 12px; font-family: 'Onest', sans-serif; cursor: pointer; width: 100%;
   transition: background 0.2s;
 }
-.bf-add-group:hover { background: rgba(61,142,255,0.10); }
+.bf-add-group:hover { background: rgba(255,255,255,0.06); }
 
 /* Faceit game select */
 .bf-game-select { display: flex; gap: 6px; }
 .bf-game-btn {
   flex: 1; padding: 8px; border-radius: 7px;
-  background: rgba(255,255,255,0.03); border: 1px solid rgba(61,142,255,0.12);
-  color: #6a6a90; font-size: 13px; font-weight: 600; font-family: 'Onest', sans-serif;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+  color: #71717a; font-size: 13px; font-weight: 600; font-family: 'Onest', sans-serif;
   cursor: pointer; transition: all 0.15s;
 }
-.bf-game-btn:hover { border-color: rgba(61,142,255,0.25); color: #aaaacc; }
-.bf-game-btn.active { background: rgba(61,142,255,0.15); border-color: rgba(61,142,255,0.35); color: #90beff; }
+.bf-game-btn:hover { border-color: rgba(255,255,255,0.14); color: #a1a1aa; }
+.bf-game-btn.active { background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.20); color: #fafafa; }
 
 /* PC Config */
 .bf-comp-row { display: flex; gap: 5px; align-items: center; }

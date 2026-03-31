@@ -52,25 +52,25 @@ async function logout() {
 }
 .nav-user-pill {
   display: flex; align-items: center; gap: 8px;
-  background: rgba(61,142,255,0.10);
-  border: 1px solid rgba(61,142,255,0.20);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
   border-radius: 100px; padding: 4px 14px 4px 4px;
-  text-decoration: none; color: #eeeef8;
+  text-decoration: none; color: #ececef;
   transition: background 0.2s;
 }
-.nav-user-pill:hover { background: rgba(61,142,255,0.18); }
+.nav-user-pill:hover { background: rgba(255,255,255,0.10); }
 .nav-user-avatar {
   width: 26px; height: 26px; border-radius: 50%;
-  background: linear-gradient(135deg, #2b7ef0, #3D8EFF);
+  background: linear-gradient(135deg, #27272a, #3f3f46);
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; color: #fff;
+  font-size: 12px; font-weight: 700; color: #fafafa;
 }
 .nav-user-email { font-size: 13px; font-weight: 500; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-logout {
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(61,142,255,0.12);
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
   border-radius: 8px; width: 30px; height: 30px;
   display: flex; align-items: center; justify-content: center;
-  color: #6a6a90; cursor: pointer; font-size: 16px;
+  color: #71717a; cursor: pointer; font-size: 16px;
   transition: background 0.2s, color 0.2s;
 }
 .nav-logout:hover { background: rgba(255,80,80,0.12); color: #ff7070; border-color: rgba(255,80,80,0.2); }

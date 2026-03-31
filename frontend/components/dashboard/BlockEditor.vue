@@ -43,35 +43,35 @@ function save() {
   display: flex; align-items: center; justify-content: center; padding: 20px;
 }
 .be-modal {
-  background: #0d0d1c; border: 1px solid rgba(61,142,255,0.18);
+  background: #0f0f12; border: 1px solid rgba(255,255,255,0.08);
   border-radius: 18px; width: 100%; max-width: 520px;
   max-height: 80vh; display: flex; flex-direction: column;
   box-shadow: 0 40px 100px rgba(0,0,0,0.7);
 }
 .be-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; border-bottom: 1px solid rgba(61,142,255,0.08); flex-shrink: 0;
+  padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;
 }
 .be-title { font-size: 14px; font-weight: 700; }
 .be-close {
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(61,142,255,0.12);
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
   border-radius: 7px; width: 30px; height: 30px;
   display: flex; align-items: center; justify-content: center;
-  color: #6a6a90; cursor: pointer; font-size: 17px;
+  color: #71717a; cursor: pointer; font-size: 17px;
 }
 .be-body { padding: 20px; overflow-y: auto; flex: 1; }
 .be-footer {
   display: flex; justify-content: flex-end; gap: 10px;
-  padding: 14px 20px; border-top: 1px solid rgba(61,142,255,0.08); flex-shrink: 0;
+  padding: 14px 20px; border-top: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;
 }
 .be-cancel {
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(61,142,255,0.14);
-  border-radius: 8px; padding: 8px 18px; color: #6a6a90;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; padding: 8px 18px; color: #71717a;
   font-size: 13px; font-family: 'Onest', sans-serif; cursor: pointer;
 }
 .be-save {
-  background: linear-gradient(135deg, #2b7ef0, #3D8EFF); border: none;
-  border-radius: 8px; padding: 8px 22px; color: #fff;
+  background: #fafafa; border: none;
+  border-radius: 8px; padding: 8px 22px; color: #09090b;
   font-size: 13px; font-weight: 700; font-family: 'Onest', sans-serif; cursor: pointer;
 }
 </style>

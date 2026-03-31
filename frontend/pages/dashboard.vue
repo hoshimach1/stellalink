@@ -115,18 +115,18 @@ async function logout() {
 </script>
 
 <style scoped>
-.dash { min-height: 100vh; background: #090910; color: #eeeef8; font-family: 'Onest', sans-serif; display: flex; flex-direction: column; }
+.dash { min-height: 100vh; background: #09090b; color: #ececef; font-family: 'Onest', sans-serif; display: flex; flex-direction: column; }
 
 .dash-header {
   display: flex; align-items: center; gap: 20px;
   padding: 0 20px; height: 58px; flex-shrink: 0;
-  background: rgba(13,13,28,0.95);
-  border-bottom: 1px solid rgba(61,142,255,0.10);
+  background: rgba(15,15,18,0.95);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
   position: sticky; top: 0; z-index: 50;
 }
 .dash-brand {
   display: flex; align-items: center; gap: 8px;
-  text-decoration: none; color: #eeeef8; font-weight: 800; font-size: 15px;
+  text-decoration: none; color: #ececef; font-weight: 800; font-size: 15px;
 }
 .dash-logo { width: 24px; height: 24px; object-fit: contain; mix-blend-mode: screen; }
 
@@ -135,19 +135,19 @@ async function logout() {
   display: flex; align-items: center; gap: 6px;
   background: transparent; border: none;
   padding: 6px 16px; border-radius: 8px;
-  font-size: 13px; font-weight: 600; color: #6a6a90;
+  font-size: 13px; font-weight: 600; color: #71717a;
   cursor: pointer; font-family: 'Onest', sans-serif; transition: all 0.15s;
 }
-.dash-tabs button:hover { color: #aaaacc; background: rgba(255,255,255,0.04); }
-.dash-tabs button.active { color: #eeeef8; background: rgba(61,142,255,0.12); }
+.dash-tabs button:hover { color: #a1a1aa; background: rgba(255,255,255,0.04); }
+.dash-tabs button.active { color: #ececef; background: rgba(255,255,255,0.08); }
 
 .dash-header-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-.dash-email { font-size: 12px; color: #6a6a90; }
+.dash-email { font-size: 12px; color: #71717a; }
 .dash-logout {
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(61,142,255,0.12);
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
   border-radius: 8px; width: 32px; height: 32px;
   display: flex; align-items: center; justify-content: center;
-  color: #6a6a90; cursor: pointer; font-size: 15px; transition: all 0.2s;
+  color: #71717a; cursor: pointer; font-size: 15px; transition: all 0.2s;
 }
 .dash-logout:hover { background: rgba(255,80,80,0.10); color: #ff7070; }
 
@@ -157,29 +157,29 @@ async function logout() {
 /* Setup */
 .setup-wrap { flex: 1; display: flex; justify-content: center; align-items: center; padding: 40px 16px; }
 .setup-card {
-  background: #0d0d1c; border: 1px solid rgba(61,142,255,0.14);
+  background: #0f0f12; border: 1px solid rgba(255,255,255,0.08);
   border-radius: 20px; padding: 40px 36px; width: 100%; max-width: 420px; text-align: center;
 }
 .setup-logo { width: 50px; height: 50px; object-fit: contain; mix-blend-mode: screen; margin: 0 auto 16px; display: block; }
 .setup-card h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
-.setup-card p { color: #6a6a90; font-size: 14px; margin-bottom: 28px; }
+.setup-card p { color: #71717a; font-size: 14px; margin-bottom: 28px; }
 .setup-form { text-align: left; display: flex; flex-direction: column; gap: 14px; }
 .setup-input {
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(61,142,255,0.14);
-  border-radius: 10px; padding: 11px 14px; color: #eeeef8;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; padding: 11px 14px; color: #ececef;
   font-size: 14px; font-family: 'Onest', sans-serif; outline: none; width: 100%;
   transition: border-color 0.2s;
 }
-.setup-input:focus { border-color: rgba(61,142,255,0.40); }
+.setup-input:focus { border-color: rgba(255,255,255,0.20); }
 .setup-url {
   display: flex; align-items: center;
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(61,142,255,0.14);
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
   border-radius: 10px; overflow: hidden;
 }
-.setup-prefix { padding: 11px 0 11px 14px; font-size: 14px; color: #6a6a90; white-space: nowrap; }
+.setup-prefix { padding: 11px 0 11px 14px; font-size: 14px; color: #71717a; white-space: nowrap; }
 .setup-url input {
   flex: 1; background: none; border: none; outline: none;
-  padding: 11px 14px 11px 0; color: #eeeef8; font-size: 14px; font-family: 'Onest', sans-serif;
+  padding: 11px 14px 11px 0; color: #ececef; font-size: 14px; font-family: 'Onest', sans-serif;
 }
 
 .dash-error {
@@ -187,7 +187,7 @@ async function logout() {
   border-radius: 8px; padding: 9px 12px; color: #ff7070; font-size: 13px;
 }
 .dash-btn-primary {
-  background: linear-gradient(135deg, #2b7ef0, #3D8EFF); color: #fff; border: none;
+  background: #fafafa; color: #09090b; border: none;
   border-radius: 10px; padding: 12px; font-size: 15px; font-weight: 700;
   font-family: 'Onest', sans-serif; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
@@ -195,7 +195,7 @@ async function logout() {
 .dash-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 .dash-spinner {
   width: 16px; height: 16px; border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+  border: 2px solid rgba(0,0,0,0.2); border-top-color: #09090b;
   animation: spin 0.7s linear infinite; display: inline-block;
 }
 @keyframes spin { to { transform: rotate(360deg); } }

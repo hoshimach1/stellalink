@@ -159,12 +159,12 @@ async function changePassword() {
 
 .acc-avatar-row { display: flex; align-items: center; gap: 20px; }
 .acc-avatar-wrap { position: relative; flex-shrink: 0; width: 72px; height: 72px; }
-.acc-avatar-img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(61,142,255,0.20); }
+.acc-avatar-img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.10); }
 .acc-avatar-placeholder {
   width: 72px; height: 72px; border-radius: 50%;
-  background: linear-gradient(135deg, #2b7ef0, #3D8EFF);
+  background: linear-gradient(135deg, #27272a, #3f3f46);
   display: flex; align-items: center; justify-content: center;
-  font-size: 28px; font-weight: 800; color: #fff;
+  font-size: 28px; font-weight: 800; color: #fafafa;
 }
 .acc-avatar-overlay {
   position: absolute; inset: 0; border-radius: 50%;
@@ -175,7 +175,7 @@ async function changePassword() {
 .acc-avatar-wrap:hover .acc-avatar-overlay { opacity: 1; }
 .acc-file-input { display: none; }
 .acc-avatar-meta { display: flex; flex-direction: column; gap: 8px; }
-.acc-avatar-hint { font-size: 12px; color: #6a6a90; }
+.acc-avatar-hint { font-size: 12px; color: #71717a; }
 .acc-del-btn {
   align-self: flex-start; background: none; border: 1px solid rgba(255,80,80,0.22);
   border-radius: 7px; padding: 5px 12px; color: #ff7070;
@@ -185,32 +185,32 @@ async function changePassword() {
 .acc-del-btn:hover { background: rgba(255,80,80,0.10); }
 .acc-del-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.acc-card { background: #0d0d1c; border: 1px solid rgba(61,142,255,0.10); border-radius: 16px; padding: 20px 24px; }
-.acc-card-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #6a6a90; margin-bottom: 16px; }
-.acc-email { font-size: 15px; color: #eeeef8; }
+.acc-card { background: #0f0f12; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px 24px; }
+.acc-card-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #71717a; margin-bottom: 16px; }
+.acc-email { font-size: 15px; color: #ececef; }
 
 .acc-form { display: flex; flex-direction: column; gap: 14px; }
 .acc-field { display: flex; flex-direction: column; gap: 6px; }
-.acc-field label { font-size: 12px; font-weight: 600; color: #6a6a90; }
+.acc-field label { font-size: 12px; font-weight: 600; color: #71717a; }
 .acc-field input {
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(61,142,255,0.14);
-  border-radius: 8px; padding: 9px 12px; color: #eeeef8;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; padding: 9px 12px; color: #ececef;
   font-size: 14px; font-family: 'Onest', sans-serif; outline: none; transition: border-color 0.2s;
 }
-.acc-field input:focus { border-color: rgba(61,142,255,0.40); }
+.acc-field input:focus { border-color: rgba(255,255,255,0.20); }
 .acc-error { background: rgba(255,80,80,0.10); border: 1px solid rgba(255,80,80,0.22); border-radius: 8px; padding: 9px 12px; color: #ff7070; font-size: 13px; }
 .acc-ok { background: rgba(93,224,193,0.10); border: 1px solid rgba(93,224,193,0.22); border-radius: 8px; padding: 9px 12px; color: #5de0c1; font-size: 13px; }
 .acc-btn {
-  align-self: flex-start; background: rgba(61,142,255,0.12); border: 1px solid rgba(61,142,255,0.24);
-  border-radius: 8px; padding: 9px 20px; color: #90beff;
+  align-self: flex-start; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px; padding: 9px 20px; color: #d4d4d8;
   font-size: 13px; font-weight: 600; font-family: 'Onest', sans-serif; cursor: pointer;
   display: flex; align-items: center; gap: 8px; transition: background 0.2s;
 }
-.acc-btn:hover { background: rgba(61,142,255,0.20); }
+.acc-btn:hover { background: rgba(255,255,255,0.10); }
 .acc-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .acc-spinner {
   width: 14px; height: 14px; border-radius: 50%;
-  border: 2px solid rgba(144,190,255,0.3); border-top-color: #90beff;
+  border: 2px solid rgba(255,255,255,0.15); border-top-color: #d4d4d8;
   animation: spin 0.7s linear infinite; display: inline-block;
 }
 @keyframes spin { to { transform: rotate(360deg); } }

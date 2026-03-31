@@ -121,7 +121,7 @@
           <div v-else-if="block.block_type === 'widget_github'" class="pub-block">
             <div class="pub-wh">
               <div class="pub-wh-left">
-                <div class="pub-w-ico-bg" style="background:rgba(255,255,255,0.06);color:#eeeef8">🐙</div>
+                <div class="pub-w-ico-bg" style="background:rgba(255,255,255,0.06);color:#ececef">🐙</div>
                 <div>
                   <div class="pub-w-name">GitHub</div>
                   <div class="pub-w-id">@{{ block.config.username || '—' }}</div>
@@ -162,7 +162,7 @@
           <div v-else-if="block.block_type === 'pc_config'" class="pub-block">
             <div class="pub-wh" style="margin-bottom:0">
               <div class="pub-wh-left">
-                <div class="pub-w-ico-bg" style="background:rgba(61,142,255,0.12);color:#90beff">💻</div>
+                <div class="pub-w-ico-bg" style="background:var(--t-accent12);color:var(--t-accent)">💻</div>
                 <div class="pub-w-name">{{ (block.config.title as string) || 'PC Config' }}</div>
               </div>
             </div>
@@ -283,24 +283,24 @@ const visibleBlocks = computed(() => profile.value?.blocks.filter(b => b.is_visi
 }
 .pub-spinner {
   width: 36px; height: 36px; border-radius: 50%;
-  border: 3px solid rgba(61,142,255,0.2); border-top-color: #3D8EFF;
+  border: 3px solid rgba(255,255,255,0.12); border-top-color: #d4d4d8;
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .pub-notfound {
-  min-height: 100vh; background: #090910; color: #eeeef8;
+  min-height: 100vh; background: #09090b; color: #ececef;
   font-family: 'Onest', sans-serif;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; padding: 24px; gap: 12px;
 }
 .pub-nf-logo { width: 56px; opacity: 0.5; mix-blend-mode: screen; }
 .pub-notfound h2 { font-size: 24px; font-weight: 800; }
-.pub-notfound p { color: #6a6a90; font-size: 15px; }
+.pub-notfound p { color: #71717a; font-size: 15px; }
 .pub-home-btn {
   margin-top: 8px; padding: 10px 24px;
-  background: rgba(61,142,255,0.12); border: 1px solid rgba(61,142,255,0.24);
-  border-radius: 10px; color: #90beff; text-decoration: none; font-size: 14px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px; color: #a1a1aa; text-decoration: none; font-size: 14px;
 }
 
 /* ── Theme tokens ────────────────────────────────────────────────────────────── */

@@ -149,22 +149,22 @@ async function submit() {
 
 .auth-modal {
   position: relative;
-  background: #0d0d1c;
-  border: 1px solid rgba(61, 142, 255, 0.18);
+  background: #0f0f12;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   padding: 40px 36px 32px;
   width: 100%; max-width: 420px;
-  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(61, 142, 255, 0.06);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.7);
 }
 
 .auth-close {
   position: absolute; top: 14px; right: 14px;
-  background: rgba(255,255,255,0.06); border: 1px solid rgba(61,142,255,0.12); border-radius: 8px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
   width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  color: #6a6a90; cursor: pointer; font-size: 18px;
+  color: #71717a; cursor: pointer; font-size: 18px;
   transition: background 0.2s, color 0.2s;
 }
-.auth-close:hover { background: rgba(255,255,255,0.10); color: #eeeef8; }
+.auth-close:hover { background: rgba(255,255,255,0.10); color: #ececef; }
 
 .auth-logo {
   display: block; margin: 0 auto 20px;
@@ -175,54 +175,54 @@ async function submit() {
 .auth-tabs {
   display: flex; gap: 4px;
   background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(61,142,255,0.10);
+  border: 1px solid rgba(255,255,255,0.06);
   border-radius: 10px; padding: 4px;
   margin-bottom: 28px;
 }
 .auth-tabs button {
   flex: 1; padding: 8px;
   background: transparent; border: none; border-radius: 7px;
-  font-size: 14px; font-weight: 600; color: #6a6a90;
+  font-size: 14px; font-weight: 600; color: #71717a;
   cursor: pointer; transition: background 0.2s, color 0.2s;
   font-family: 'Onest', sans-serif;
 }
 .auth-tabs button.active {
-  background: rgba(61,142,255,0.16);
-  color: #eeeef8;
+  background: rgba(255,255,255,0.08);
+  color: #ececef;
 }
 
 .auth-field {
   margin-bottom: 16px;
 }
 .auth-field label {
-  display: block; font-size: 13px; font-weight: 600; color: #6a6a90;
+  display: block; font-size: 13px; font-weight: 600; color: #71717a;
   margin-bottom: 6px;
 }
 .auth-field input {
   width: 100%; padding: 11px 14px;
   background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(61,142,255,0.14);
-  border-radius: 10px; color: #eeeef8;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; color: #ececef;
   font-size: 14px; font-family: 'Onest', sans-serif;
   outline: none; transition: border-color 0.2s, background 0.2s;
 }
 .auth-field input:focus {
-  border-color: rgba(61,142,255,0.45);
-  background: rgba(61,142,255,0.05);
+  border-color: rgba(255,255,255,0.20);
+  background: rgba(255,255,255,0.06);
 }
-.auth-field input::placeholder { color: #3a3a58; }
+.auth-field input::placeholder { color: #3f3f46; }
 
 .pass-wrap { position: relative; }
 .pass-wrap input { padding-right: 44px; }
 .pass-toggle {
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  background: none; border: none; color: #6a6a90; cursor: pointer; font-size: 17px;
+  background: none; border: none; color: #71717a; cursor: pointer; font-size: 17px;
   display: flex; align-items: center;
   transition: color 0.2s;
 }
-.pass-toggle:hover { color: #eeeef8; }
+.pass-toggle:hover { color: #ececef; }
 
-.auth-hint { font-size: 11px; color: #3a3a58; margin-top: 5px; }
+.auth-hint { font-size: 11px; color: #3f3f46; margin-top: 5px; }
 
 .auth-error {
   display: flex; align-items: center; gap: 7px;
@@ -241,8 +241,8 @@ async function submit() {
 
 .auth-spinner {
   width: 18px; height: 18px; border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
+  border: 2px solid rgba(0,0,0,0.15);
+  border-top-color: #09090b;
   animation: spin 0.7s linear infinite;
   display: inline-block;
 }
@@ -250,10 +250,10 @@ async function submit() {
 
 .auth-switch {
   text-align: center; margin-top: 20px;
-  font-size: 13px; color: #6a6a90;
+  font-size: 13px; color: #71717a;
 }
 .auth-switch button {
-  background: none; border: none; color: #3D8EFF;
+  background: none; border: none; color: #d4d4d8;
   font-size: 13px; font-family: 'Onest', sans-serif;
   cursor: pointer; text-decoration: underline;
 }
