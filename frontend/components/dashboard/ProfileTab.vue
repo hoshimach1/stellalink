@@ -621,10 +621,10 @@ const canvasBgStyle = computed((): Record<string, string> => {
   const preset = currentTheme.value
   const accent = currentAccent.value
   if (preset === 'glass') {
-    return { background: 'radial-gradient(ellipse 60% 40% at 30% 20%, rgba(120,80,255,0.12), transparent), radial-gradient(ellipse 50% 35% at 70% 60%, rgba(60,160,255,0.10), transparent), #050510' }
+    return { background: 'radial-gradient(ellipse 60% 40% at 30% 20%, rgba(120,80,255,0.38), transparent), radial-gradient(ellipse 50% 35% at 70% 60%, rgba(60,160,255,0.30), transparent), radial-gradient(ellipse 40% 30% at 80% 80%, rgba(160,40,255,0.22), transparent), #050510' }
   }
   if (preset === 'fluent') {
-    return { background: '#1a1a1a' }
+    return { background: 'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(255,255,255,0.06), transparent), #1c1c1c' }
   }
   return { background: `radial-gradient(ellipse 60% 30% at 50% 0%, ${hexToRgba(accent, 0.07)}, transparent), #0c0a1a` }
 })
@@ -1275,22 +1275,54 @@ async function saveBlock() {
 .pt-if-hint { font-weight: 400; text-transform: none; letter-spacing: 0; color: #3f3f46; font-size: 10px; }
 
 /* ── Theme-specific canvas block styles ── */
-/* Material 3 — alternating expressive corners */
+/* Material 3 — alternating expressive corners + tonal surface */
 [data-theme="material3"] .pt-block-preview:nth-child(odd) {
   border-radius: 20px 8px 20px 8px;
 }
 [data-theme="material3"] .pt-block-preview:nth-child(even) {
   border-radius: 8px 20px 8px 20px;
 }
+[data-theme="material3"] .pt-profile-card {
+  background: linear-gradient(150deg, var(--th-a08, rgba(208,188,255,0.08)) 0%, var(--th-a04, rgba(208,188,255,0.04)) 100%);
+}
 
 /* Glass — frosted block appearance */
+[data-theme="glass"] .pt-block-preview {
+  background: rgba(255,255,255,0.06) !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+}
 [data-theme="glass"] .pt-block-preview::after {
   content: '';
   position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 50%);
+  background: linear-gradient(135deg, rgba(255,255,255,0.07) 0%, transparent 60%);
+}
+[data-theme="glass"] .pt-profile-card {
+  background: rgba(255,255,255,0.03) !important;
 }
 [data-theme="glass"] .pt-w-divider {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+}
+
+/* Fluent 2 — flat acrylic appearance */
+[data-theme="fluent"] .pt-profile-card {
+  background: rgba(24,24,24,0.82) !important;
+  backdrop-filter: blur(40px) saturate(150%);
+  -webkit-backdrop-filter: blur(40px) saturate(150%);
+  border-color: rgba(255,255,255,0.09) !important;
+  border-radius: 8px !important;
+}
+[data-theme="fluent"] .pt-block-preview {
+  border-radius: 6px !important;
+  background: rgba(255,255,255,0.055) !important;
+  border-color: rgba(255,255,255,0.09) !important;
+}
+[data-theme="fluent"] .pt-block-preview:hover {
+  background: rgba(255,255,255,0.09) !important;
+}
+[data-theme="fluent"] .pt-ph {
+  border-bottom-color: rgba(255,255,255,0.07);
 }
 
 .pt-ghost { opacity: 0.4; background: rgba(255,255,255,0.08) !important; border-radius: 8px; }
