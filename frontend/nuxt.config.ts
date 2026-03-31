@@ -29,7 +29,14 @@ export default defineNuxtConfig({
     vue: {
       template: {
         transformAssetUrls,
+        compilerOptions: {
+          isCustomElement: (tag: string) => tag.startsWith('fluent-'),
+        },
       },
+    },
+    ssr: {
+      noExternal: ['vuetify'],
+      external: ['@wxperia/liquid-glass-vue'],
     },
   },
 
