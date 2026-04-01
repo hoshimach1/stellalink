@@ -312,16 +312,9 @@
             <div v-if="block.block_type === 'links'" class="pub-block-links">
               <div v-for="group in (block.config.groups as Group[])" :key="group.title" class="pub-links-group">
                 <div v-if="group.title" class="pub-group-title">{{ group.title }}</div>
-                <glass-element
+                <div
                   v-for="link in group.links"
                   :key="link.url"
-                  auto-size
-                  radius="14"
-                  depth="4"
-                  blur="0.8"
-                  strength="30"
-                  chromatic-aberration="1"
-                  background-color="rgba(255,255,255,0.04)"
                   class="pub-glass-link-wrap"
                 >
                   <a
@@ -337,20 +330,13 @@
                     <span class="pub-link-label">{{ link.label || link.url }}</span>
                     <i class="ri-arrow-right-up-line pub-link-arrow" />
                   </a>
-                </glass-element>
+                </div>
               </div>
             </div>
 
             <!-- Other blocks in glass panes -->
-            <glass-element
+            <div
               v-else
-              auto-size
-              radius="18"
-              depth="5"
-              blur="1"
-              strength="35"
-              chromatic-aberration="2"
-              background-color="rgba(255,255,255,0.04)"
               class="pub-glass-block"
             >
               <!-- Text -->
@@ -493,7 +479,7 @@
                   </div>
                 </template>
               </template>
-            </glass-element>
+            </div>
           </template>
         </div>
 
@@ -1013,7 +999,6 @@ function faceitStatsList(block: Block) {
   flex-shrink: 0;
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  --glass-padding: 36px 24px 24px;
 }
 .pub-glass-tag {
   display: inline-flex;
@@ -1026,19 +1011,20 @@ function faceitStatsList(block: Block) {
 .pub-glass-block {
   display: block;
   width: 100%;
+  padding: 16px 18px;
   border-radius: 18px;
-  overflow: hidden;
+  background: rgba(255,255,255,0.04);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255,255,255,0.08);
   box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.07);
-  --glass-padding: 16px 18px;
 }
 .pub-glass-link-wrap {
   display: block;
   width: 100%;
   border-radius: 14px;
   overflow: hidden;
+  background: rgba(255,255,255,0.04);
   backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
   border: 1px solid rgba(255,255,255,0.08);
