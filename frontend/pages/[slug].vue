@@ -268,17 +268,16 @@
 
     <!-- ═══════════ LIQUID GLASS THEME ═══════════ -->
     <ClientOnly v-else-if="theme === 'glass'">
-      <div ref="glassContainerRef" class="pub-card pub-card-glass">
+      <div class="pub-card pub-card-glass">
         <!-- Header -->
-        <LiquidGlass
-          :displacement-scale="50"
-          :blur-amount="0.08"
-          :saturation="150"
-          :aberration-intensity="1.5"
-          :elasticity="0.2"
-          :corner-radius="24"
-          padding="36px 24px 24px"
-          :mouse-container="glassContainerRef ?? undefined"
+        <glass-element
+          auto-size
+          radius="24"
+          depth="5"
+          blur="1"
+          strength="35"
+          chromatic-aberration="2"
+          background-color="rgba(255,255,255,0.04)"
           class="pub-glass-header"
         >
           <div class="pub-header">
@@ -289,23 +288,22 @@
             <h1 class="pub-name">{{ profile.display_name }}</h1>
             <p v-if="profile.bio" class="pub-bio">{{ profile.bio }}</p>
             <div v-if="profile.tags.length" class="pub-tags">
-              <LiquidGlass
+              <glass-element
                 v-for="tag in profile.tags"
                 :key="tag"
-                :displacement-scale="30"
-                :blur-amount="0.06"
-                :saturation="140"
-                :aberration-intensity="1"
-                :elasticity="0.3"
-                :corner-radius="100"
-                padding="3px 12px"
+                auto-size
+                radius="100"
+                depth="3"
+                blur="0.5"
+                strength="25"
+                background-color="rgba(255,255,255,0.06)"
                 class="pub-glass-tag"
               >
                 <span class="pub-tag-text">{{ tag }}</span>
-              </LiquidGlass>
+              </glass-element>
             </div>
           </div>
-        </LiquidGlass>
+        </glass-element>
 
         <!-- Blocks -->
         <div class="pub-blocks">
@@ -314,17 +312,16 @@
             <div v-if="block.block_type === 'links'" class="pub-block-links">
               <div v-for="group in (block.config.groups as Group[])" :key="group.title" class="pub-links-group">
                 <div v-if="group.title" class="pub-group-title">{{ group.title }}</div>
-                <LiquidGlass
+                <glass-element
                   v-for="link in group.links"
                   :key="link.url"
-                  :displacement-scale="40"
-                  :blur-amount="0.07"
-                  :saturation="145"
-                  :aberration-intensity="1.5"
-                  :elasticity="0.25"
-                  :corner-radius="16"
-                  padding="0"
-                  :mouse-container="glassContainerRef ?? undefined"
+                  auto-size
+                  radius="14"
+                  depth="4"
+                  blur="0.8"
+                  strength="30"
+                  chromatic-aberration="1"
+                  background-color="rgba(255,255,255,0.04)"
                   class="pub-glass-link-wrap"
                 >
                   <a
@@ -340,21 +337,20 @@
                     <span class="pub-link-label">{{ link.label || link.url }}</span>
                     <i class="ri-arrow-right-up-line pub-link-arrow" />
                   </a>
-                </LiquidGlass>
+                </glass-element>
               </div>
             </div>
 
             <!-- Other blocks in glass panes -->
-            <LiquidGlass
+            <glass-element
               v-else
-              :displacement-scale="55"
-              :blur-amount="0.07"
-              :saturation="150"
-              :aberration-intensity="2"
-              :elasticity="0.2"
-              :corner-radius="20"
-              padding="16px 18px"
-              :mouse-container="glassContainerRef ?? undefined"
+              auto-size
+              radius="18"
+              depth="5"
+              blur="1"
+              strength="35"
+              chromatic-aberration="2"
+              background-color="rgba(255,255,255,0.04)"
               class="pub-glass-block"
             >
               <!-- Text -->
@@ -497,7 +493,7 @@
                   </div>
                 </template>
               </template>
-            </LiquidGlass>
+            </glass-element>
           </template>
         </div>
 
@@ -746,10 +742,6 @@
 <script setup lang="ts">
 import type { Block } from '~/stores/profile'
 
-// Lazy-load LiquidGlass only on client (it uses DOM APIs)
-const LiquidGlass = defineAsyncComponent(() =>
-  import('@wxperia/liquid-glass-vue').then(m => m.LiquidGlass)
-)
 
 interface Link { label: string; url: string; icon?: string }
 interface Group { title: string; links: Link[] }
@@ -801,7 +793,7 @@ const accentVars = computed(() => {
 })
 
 // Glass theme mouse container ref
-const glassContainerRef = ref<HTMLDivElement>()
+
 
 function normalizeUrl(url: string | undefined): string {
   if (!url) return '#'
@@ -1015,29 +1007,41 @@ function faceitStatsList(block: Block) {
   overflow: clip;
 }
 .pub-glass-header {
+  display: block;
+  width: 100%;
   border-bottom: 1px solid rgba(255,255,255,0.06);
   flex-shrink: 0;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  --glass-padding: 36px 24px 24px;
 }
 .pub-glass-tag {
   display: inline-flex;
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
 }
 .pub-tag-text {
   font-size: 12px; font-weight: 500; color: var(--t-tag-c);
 }
 .pub-glass-block {
+  display: block;
   width: 100%;
   border-radius: 18px;
   overflow: hidden;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.07);
+  --glass-padding: 16px 18px;
 }
 .pub-glass-link-wrap {
+  display: block;
   width: 100%;
   border-radius: 14px;
   overflow: hidden;
-}
-/* Glass blocks CSS fallback (for when WebGL is not available) */
-.pub-card-glass .pub-blocks > * > * {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.10);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.08);
 }
 
 /* ── Fluent 2 / Windows 11 Card ──────────────────────────────────────────── */

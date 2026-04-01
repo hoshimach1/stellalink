@@ -21,9 +21,13 @@ __pycache__/
 venv/
 backend/__pycache__/
 
-# Logs
+# Logs and mcp
 *.log
 logs/
+.playwright-mcp/*
+.claude/*
+.mcp.json
+settings.local.json
 
 # Uploads (user files – never commit)
 backend/uploads/avatars/*
@@ -32,5 +36,4 @@ backend/uploads/avatars/*
 # OS
 .DS_Store
 Thumbs.db
-settings.local.json
 *.sql

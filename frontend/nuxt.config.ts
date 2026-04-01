@@ -9,6 +9,10 @@ export default defineNuxtConfig({
         { rel: 'icon', type: 'image/png', href: '/images/logos/logo.png' },
         { rel: 'apple-touch-icon', href: '/images/logos/logo_big.png' },
       ],
+      script: [
+        { src: '/glass/displacement-utils.js', defer: true },
+        { src: '/glass/glass-element.js', defer: true },
+      ],
     },
   },
 
@@ -30,13 +34,12 @@ export default defineNuxtConfig({
       template: {
         transformAssetUrls,
         compilerOptions: {
-          isCustomElement: (tag: string) => tag.startsWith('fluent-'),
+          isCustomElement: (tag: string) => tag.startsWith('fluent-') || tag === 'glass-element',
         },
       },
     },
     ssr: {
       noExternal: ['vuetify'],
-      external: ['@wxperia/liquid-glass-vue'],
     },
   },
 
