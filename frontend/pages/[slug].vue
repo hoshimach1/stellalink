@@ -20,6 +20,7 @@
       <div class="pub-bg-orb pub-bg-orb-1" />
       <div class="pub-bg-orb pub-bg-orb-2" />
       <div class="pub-bg-orb pub-bg-orb-3" />
+      <div class="pub-bg-orb pub-bg-orb-4" />
     </div>
 
     <!-- ═══════════ MATERIAL 3 THEME ═══════════ -->
@@ -269,41 +270,28 @@
     <!-- ═══════════ LIQUID GLASS THEME ═══════════ -->
     <ClientOnly v-else-if="theme === 'glass'">
       <div class="pub-card pub-card-glass">
+        <div class="pub-card-glass-scroll">
         <!-- Header -->
-        <glass-element
-          auto-size
-          radius="24"
-          depth="5"
-          blur="1"
-          strength="35"
-          chromatic-aberration="2"
-          background-color="rgba(255,255,255,0.04)"
-          class="pub-glass-header"
-        >
-          <div class="pub-header">
-            <div class="pub-avatar">
-              <img v-if="profile.avatar_url" :src="avatarSrc ?? undefined" class="pub-avatar-img" alt="avatar">
-              <span v-else>{{ initial }}</span>
+        <div class="pub-glass-header">
+          <div class="pub-header-glass-row">
+            <div class="pub-avatar-glass-wrap">
+              <div class="pub-avatar pub-avatar-glass">
+                <img v-if="profile.avatar_url" :src="avatarSrc ?? undefined" class="pub-avatar-img" alt="avatar">
+                <span v-else>{{ initial }}</span>
+              </div>
+              <span class="pub-avatar-online" />
             </div>
-            <h1 class="pub-name">{{ profile.display_name }}</h1>
-            <p v-if="profile.bio" class="pub-bio">{{ profile.bio }}</p>
-            <div v-if="profile.tags.length" class="pub-tags">
-              <glass-element
-                v-for="tag in profile.tags"
-                :key="tag"
-                auto-size
-                radius="100"
-                depth="3"
-                blur="0.5"
-                strength="25"
-                background-color="rgba(255,255,255,0.06)"
-                class="pub-glass-tag"
-              >
-                <span class="pub-tag-text">{{ tag }}</span>
-              </glass-element>
+            <div class="pub-header-glass-info">
+              <h1 class="pub-name">{{ profile.display_name }}</h1>
+              <p v-if="profile.bio" class="pub-bio">{{ profile.bio }}</p>
+              <div v-if="profile.tags.length" class="pub-tags pub-tags-glass">
+                <span v-for="tag in profile.tags" :key="tag" class="pub-glass-tag">
+                  <span class="pub-tag-text">{{ tag }}</span>
+                </span>
+              </div>
             </div>
           </div>
-        </glass-element>
+        </div>
 
         <!-- Blocks -->
         <div class="pub-blocks">
@@ -483,13 +471,15 @@
           </template>
         </div>
 
-        <!-- Footer -->
-        <div class="pub-footer">
+        <!-- Footer — sticky bottom inside scroll -->
+        <div class="pub-footer pub-footer-glass">
           <NuxtLink to="/" class="pub-footer-link">
             <img src="/images/logos/logo.png" alt="" class="pub-footer-logo">
             Сделано на Stellalink
           </NuxtLink>
         </div>
+
+        </div><!-- /pub-card-glass-scroll -->
       </div>
 
       <template #fallback>
@@ -778,8 +768,51 @@ const accentVars = computed(() => {
   return `--t-accent:${c};--t-accent20:${c}20;--t-accent30:${c}30;--t-accent12:${c}1e`
 })
 
-// Glass theme mouse container ref
+// Liquid Glass — SVG displacement filter applied once after mount
+type DisplacementUtils = {
+  getDisplacementFilter(opts: { height: number; width: number; radius: number; depth: number; strength: number; chromaticAberration: number }): string
+}
 
+let glassApplied = false
+
+function applyLiquidGlass() {
+  if (typeof window === 'undefined') return
+  if (theme.value !== 'glass') return
+
+  const utils = (window as unknown as { DisplacementUtils?: DisplacementUtils }).DisplacementUtils
+  if (!utils) {
+    setTimeout(applyLiquidGlass, 80)
+    return
+  }
+
+  const elements = document.querySelectorAll<HTMLElement>('.pub-glass-block, .pub-glass-link-wrap, .pub-glass-header, .pub-footer-glass')
+  elements.forEach(el => {
+    const rect = el.getBoundingClientRect()
+    if (rect.width < 10 || rect.height < 10) return
+
+    const isHeader = el.classList.contains('pub-glass-header')
+    const isFooter = el.classList.contains('pub-footer-glass')
+    const radius = (isHeader || isFooter) ? 28 : el.classList.contains('pub-glass-block') ? 20 : 16
+
+    const filterUrl = utils.getDisplacementFilter({
+      height: Math.ceil(rect.height),
+      width: Math.ceil(rect.width),
+      radius,
+      depth: 14,
+      strength: 70,
+      chromaticAberration: 3,
+    })
+
+    const bf = `blur(1px) url('${filterUrl}') blur(8px) brightness(1.10) saturate(2.2)`
+    el.style.backdropFilter = bf
+    ;(el.style as CSSStyleDeclaration & { webkitBackdropFilter: string }).webkitBackdropFilter = bf
+  })
+
+  glassApplied = true
+}
+
+onMounted(() => nextTick(() => setTimeout(applyLiquidGlass, 200)))
+watch(theme, () => { glassApplied = false; nextTick(() => setTimeout(applyLiquidGlass, 200)) })
 
 function normalizeUrl(url: string | undefined): string {
   if (!url) return '#'
@@ -860,22 +893,22 @@ function faceitStatsList(block: Block) {
   --t-accent20: rgba(168,216,255,0.20);
   --t-accent30: rgba(168,216,255,0.30);
   --t-accent12: rgba(168,216,255,0.12);
-  --t-bg:       #050510;
-  --t-surface:  rgba(255,255,255,0.05);
-  --t-card-bg:  rgba(255,255,255,0.04);
-  --t-card-border: rgba(255,255,255,0.10);
+  --t-bg:       #000000;
+  --t-surface:  rgba(255,255,255,0.06);
+  --t-card-bg:  rgba(255,255,255,0.05);
+  --t-card-border: rgba(255,255,255,0.15);
   --t-text:     #f0eeff;
-  --t-muted:    rgba(240,238,255,0.60);
-  --t-dim:      rgba(240,238,255,0.32);
-  --t-border:   rgba(255,255,255,0.10);
-  --t-glow:     rgba(168,216,255,0.18);
+  --t-muted:    rgba(240,238,255,0.65);
+  --t-dim:      rgba(240,238,255,0.35);
+  --t-border:   rgba(255,255,255,0.12);
+  --t-glow:     rgba(130,80,255,0.35);
   --t-tag-bg:   rgba(168,216,255,0.10);
   --t-tag-c:    #c8e8ff;
   --t-radius:   24px;
   --t-radius-sm: 16px;
-  --t-blur:     blur(24px) saturate(180%);
-  --t-card-shadow: 0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
-  --t-block-shadow: 0 4px 24px rgba(0,0,0,0.2);
+  --t-blur:     blur(40px) saturate(220%);
+  --t-card-shadow: 0 32px 80px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.15);
+  --t-block-shadow: 0 4px 24px rgba(0,0,0,0.3);
 }
 
 /* Fluent 2 tokens */
@@ -923,28 +956,31 @@ function faceitStatsList(block: Block) {
   position: fixed; inset: 0; pointer-events: none; z-index: 0;
 }
 .pub-glow {
-  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-  width: 700px; height: 350px;
-  background: radial-gradient(ellipse 60% 80% at 50% 0%, var(--t-glow), transparent);
+  display: none;
 }
 .pub-bg-orb {
-  position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0;
+  position: absolute; border-radius: 50%; filter: blur(30px); opacity: 0;
 }
 [data-theme="glass"] .pub-bg-orb { opacity: 1; }
 [data-theme="glass"] .pub-bg-orb-1 {
-  width: 400px; height: 400px; top: -10%; left: 10%;
-  background: rgba(120,80,255,0.18);
+  width: 480px; height: 480px; top: -15%; left: -5%;
+  background: radial-gradient(circle, rgba(110,60,230,0.35) 0%, rgba(80,40,180,0.18) 55%, transparent 75%);
   animation: orbFloat1 12s ease-in-out infinite;
 }
 [data-theme="glass"] .pub-bg-orb-2 {
-  width: 350px; height: 350px; top: 30%; right: 5%;
-  background: rgba(60,160,255,0.15);
+  width: 420px; height: 420px; top: 25%; right: -5%;
+  background: radial-gradient(circle, rgba(40,130,220,0.30) 0%, rgba(20,90,180,0.15) 55%, transparent 75%);
   animation: orbFloat2 15s ease-in-out infinite;
 }
 [data-theme="glass"] .pub-bg-orb-3 {
-  width: 300px; height: 300px; bottom: 10%; left: 20%;
-  background: rgba(180,60,255,0.12);
+  width: 380px; height: 380px; bottom: 0%; left: 10%;
+  background: radial-gradient(circle, rgba(160,40,210,0.28) 0%, rgba(120,30,170,0.14) 55%, transparent 75%);
   animation: orbFloat3 18s ease-in-out infinite;
+}
+[data-theme="glass"] .pub-bg-orb-4 {
+  width: 300px; height: 300px; top: 35%; left: 50%; transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(200,100,50,0.16) 0%, rgba(160,70,30,0.08) 55%, transparent 75%);
+  animation: orbFloat1 20s ease-in-out infinite reverse;
 }
 @keyframes orbFloat1 {
   0%, 100% { transform: translate(0, 0); }
@@ -961,7 +997,7 @@ function faceitStatsList(block: Block) {
 
 /* ── Card wrapper (shared) ────────────────────────────────────────────────── */
 .pub-card {
-  width: 100%; max-width: 420px;
+  width: 100%; max-width: 380px;
   position: relative; z-index: 1;
   max-height: calc(92vh - 48px);
   display: flex; flex-direction: column;
@@ -985,23 +1021,63 @@ function faceitStatsList(block: Block) {
 }
 
 /* ── Glass Card ───────────────────────────────────────────────────────────── */
+.pub-card-glass-scroll {
+  width: 100%;
+  max-height: calc(92vh - 48px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+}
+.pub-card-glass-scroll::-webkit-scrollbar { width: 3px; }
+.pub-card-glass-scroll::-webkit-scrollbar-track { background: transparent; }
+.pub-card-glass-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 .pub-card-glass {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 24px;
-  box-shadow: var(--t-card-shadow);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.20);
+  border-top: 1px solid rgba(255,255,255,0.38);
+  border-radius: 28px;
+  box-shadow:
+    0 12px 60px rgba(0,0,0,0.60),
+    0 1px 0 rgba(255,255,255,0.40) inset,
+    0 -1px 0 rgba(0,0,0,0.30) inset,
+    0 0 0 0.5px rgba(255,255,255,0.08) inset;
   overflow: clip;
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  /* height handled by pub-card-glass-scroll child */
+  max-height: none;
 }
 .pub-glass-header {
   display: block;
   width: 100%;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 0;
   flex-shrink: 0;
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border-bottom: 1px solid rgba(255,255,255,0.14);
+}
+.pub-glass-header::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.70) 30%, rgba(255,255,255,0.80) 50%, rgba(255,255,255,0.70) 70%, transparent);
+  pointer-events: none;
 }
 .pub-glass-tag {
   display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 100px;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.20);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 1px 4px rgba(0,0,0,0.20);
   backdrop-filter: blur(12px) saturate(150%);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
 }
@@ -1012,22 +1088,27 @@ function faceitStatsList(block: Block) {
   display: block;
   width: 100%;
   padding: 16px 18px;
-  border-radius: 18px;
+  border-radius: 20px;
   background: rgba(255,255,255,0.04);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-top-color: rgba(255,255,255,0.22);
+  box-shadow:
+    0 4px 20px rgba(0,0,0,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.40),
+    inset 0 -1px 0 rgba(0,0,0,0.15);
 }
 .pub-glass-link-wrap {
   display: block;
   width: 100%;
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
   background: rgba(255,255,255,0.04);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-top-color: rgba(255,255,255,0.20);
+  box-shadow:
+    0 2px 12px rgba(0,0,0,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.36),
+    inset 0 -1px 0 rgba(0,0,0,0.12);
 }
 
 /* ── Fluent 2 / Windows 11 Card ──────────────────────────────────────────── */
@@ -1100,6 +1181,70 @@ function faceitStatsList(block: Block) {
   position: relative; z-index: 1;
   flex-shrink: 0;
 }
+[data-theme="glass"] .pub-header {
+  padding: 14px 20px 10px; gap: 4px;
+}
+[data-theme="glass"] .pub-avatar {
+  width: 52px; height: 52px; font-size: 20px;
+}
+.pub-header-glass-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px 12px;
+  width: 100%;
+}
+.pub-avatar-glass-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.pub-avatar-glass {
+  width: 54px !important;
+  height: 54px !important;
+  font-size: 22px !important;
+}
+.pub-avatar-online {
+  position: absolute;
+  bottom: 1px; right: 1px;
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  background: #4ade80;
+  border: 2px solid rgba(10,7,30,0.9);
+}
+.pub-header-glass-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+}
+.pub-header-glass-info .pub-name {
+  font-size: 16px;
+  font-weight: 700;
+  text-align: left;
+  margin: 0;
+  line-height: 1.2;
+}
+.pub-header-glass-info .pub-bio {
+  font-size: 12px;
+  text-align: left;
+  margin: 0;
+  color: var(--t-muted);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.pub-tags-glass {
+  justify-content: flex-start !important;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
 .pub-avatar {
   width: 68px; height: 68px; border-radius: 50%; flex-shrink: 0;
   background: var(--t-accent);
@@ -1128,8 +1273,6 @@ function faceitStatsList(block: Block) {
   padding: 10px 14px 14px;
   position: relative; z-index: 1;
   flex: 1;
-  overflow-y: auto;
-  overscroll-behavior: contain;
 }
 .pub-blocks::-webkit-scrollbar { width: 3px; }
 .pub-blocks::-webkit-scrollbar-track { background: transparent; }
@@ -1316,6 +1459,17 @@ function faceitStatsList(block: Block) {
 }
 [data-theme="glass"] .pub-footer {
   border-top-color: rgba(255,255,255,0.06);
+}
+.pub-footer-glass {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  border-bottom-left-radius: 28px;
+  border-bottom-right-radius: 28px;
 }
 .pub-footer-link {
   display: flex; align-items: center; gap: 7px;
