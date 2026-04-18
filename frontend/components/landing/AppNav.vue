@@ -21,7 +21,7 @@
         </div>
       </li>
       <li v-else>
-        <button class="btn-nav" @click="$emit('openAuth')">Создать профиль</button>
+        <md-filled-button class="btn-nav" @click="$emit('openAuth')">Создать профиль</md-filled-button>
       </li>
     </ul>
     <button class="burger" :class="{ open: menuOpen }" :aria-expanded="menuOpen" aria-label="Меню" @click="menuOpen = !menuOpen">

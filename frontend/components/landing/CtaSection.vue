@@ -7,9 +7,9 @@
       <div class="cta-row">
         <div class="input-wrap">
           <div class="input-prefix">stellalink.app/</div>
-          <input v-model="slug" class="input-slug" type="text" placeholder="username" @keydown.enter="submit">
+          <md-outlined-text-field class="input-slug" :value="slug" type="text" placeholder="username" @input="onSlugInput" @keydown.enter.prevent="submit" />
         </div>
-        <button class="btn-primary" @click="submit">Создать →</button>
+        <md-filled-button class="btn-primary" @click="submit">Создать →</md-filled-button>
       </div>
     </div>
   </div>
@@ -19,4 +19,8 @@
 const emit = defineEmits<{ openAuth: [slug: string] }>()
 const slug = ref('')
 const submit = () => emit('openAuth', slug.value)
+
+function onSlugInput(event: Event) {
+  slug.value = (event.target as { value?: string } | null)?.value ?? ''
+}
 </script>

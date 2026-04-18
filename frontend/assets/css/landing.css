@@ -82,13 +82,22 @@ nav {
 .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }
 .nav-links a:hover { color: var(--text); }
 
-.btn-nav {
+button.btn-nav {
   background: #fafafa; color: #09090b; border: none;
   border-radius: 8px; padding: 8px 20px;
   font-size: 14px; font-weight: 700; font-family: var(--font); cursor: pointer;
   transition: opacity 0.2s, transform 0.15s;
 }
-.btn-nav:hover { opacity: 0.85; transform: translateY(-1px); }
+button.btn-nav:hover { opacity: 0.85; transform: translateY(-1px); }
+
+md-filled-button.btn-nav {
+  --md-filled-button-container-color: #fafafa;
+  --md-filled-button-label-text-color: #09090b;
+  --md-filled-button-container-shape: 8px;
+}
+md-filled-button.btn-nav:hover {
+  transform: translateY(-1px);
+}
 
 .hero {
   position: relative; min-height: 100vh;
@@ -153,30 +162,49 @@ h1 {
   animation: fadeUp 0.6s ease 0.26s both;
 }
 
-.btn-primary {
+button.btn-primary {
   background: #fafafa; color: #09090b; border: none;
   border-radius: 10px; padding: 14px 32px;
   font-size: 15px; font-weight: 700; font-family: var(--font); cursor: pointer;
   transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
   position: relative; overflow: hidden;
 }
-.btn-primary:hover { opacity: 0.88; transform: translateY(-2px); box-shadow: 0 10px 36px rgba(255,255,255,0.10); }
-.btn-primary::after {
+button.btn-primary:hover { opacity: 0.88; transform: translateY(-2px); box-shadow: 0 10px 36px rgba(255,255,255,0.10); }
+button.btn-primary::after {
   content: '';
   position: absolute; inset: 0;
   background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%);
   transform: translateX(-100%);
   transition: transform 0.55s ease;
 }
-.btn-primary:hover::after { transform: translateX(100%); }
+button.btn-primary:hover::after { transform: translateX(100%); }
 
-.btn-secondary {
+md-filled-button.btn-primary {
+  --md-filled-button-container-color: #fafafa;
+  --md-filled-button-label-text-color: #09090b;
+  --md-filled-button-container-shape: 10px;
+}
+md-filled-button.btn-primary:hover {
+  transform: translateY(-2px);
+  filter: drop-shadow(0 10px 36px rgba(255,255,255,0.10));
+}
+
+button.btn-secondary {
   background: transparent; color: var(--text);
   border: 1px solid var(--border2); border-radius: 10px; padding: 14px 28px;
   font-size: 15px; font-weight: 500; font-family: var(--font); cursor: pointer;
   transition: background 0.2s, border-color 0.2s, transform 0.15s;
 }
-.btn-secondary:hover { background: var(--bg3); border-color: rgba(255,255,255,0.20); transform: translateY(-2px); }
+button.btn-secondary:hover { background: var(--bg3); border-color: rgba(255,255,255,0.20); transform: translateY(-2px); }
+
+md-outlined-button.btn-secondary {
+  --md-outlined-button-label-text-color: var(--text);
+  --md-outlined-button-outline-color: var(--border2);
+  --md-outlined-button-container-shape: 10px;
+}
+md-outlined-button.btn-secondary:hover {
+  transform: translateY(-2px);
+}
 
 @keyframes fadeUp { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
 
@@ -419,14 +447,25 @@ section { padding: 100px 24px; max-width: 1100px; margin: 0 auto; }
   font-size: 14px; font-family: var(--mono); color: var(--muted);
   border-right: none; white-space: nowrap;
 }
-.input-slug {
+input.input-slug {
   flex: 1; background: var(--bg3); border: 1px solid var(--border2); border-left: none;
   border-radius: 0 10px 10px 0; padding: 12px 16px;
   font-size: 15px; font-family: var(--mono); color: var(--text);
   outline: none; transition: border-color 0.2s;
 }
-.input-slug:focus { border-color: var(--blue); }
-.input-slug::placeholder { color: var(--muted); }
+input.input-slug:focus { border-color: var(--blue); }
+input.input-slug::placeholder { color: var(--muted); }
+
+md-outlined-text-field.input-slug {
+  flex: 1;
+  min-width: 0;
+  --md-outlined-text-field-container-shape: 0 10px 10px 0;
+  --md-outlined-text-field-container-color: var(--bg3);
+  --md-outlined-text-field-input-text-color: var(--text);
+  --md-outlined-text-field-input-text-font: var(--mono);
+  --md-outlined-text-field-outline-color: var(--border2);
+  --md-outlined-text-field-focus-outline-color: var(--blue);
+}
 .cta-row { display: flex; gap: 10px; max-width: 420px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
 
 footer {

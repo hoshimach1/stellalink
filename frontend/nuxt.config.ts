@@ -34,7 +34,8 @@ export default defineNuxtConfig({
       template: {
         transformAssetUrls,
         compilerOptions: {
-          isCustomElement: (tag: string) => tag.startsWith('fluent-') || tag === 'glass-element',
+          isCustomElement: (tag: string) =>
+            tag.startsWith('fluent-') || tag.startsWith('md-') || tag === 'glass-element',
         },
       },
     },

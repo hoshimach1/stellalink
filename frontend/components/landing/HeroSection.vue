@@ -11,8 +11,8 @@
       <h1><span class="h1-gradient">Твой профиль,<br>который дышит</span></h1>
       <p class="hero-sub">Один линк — и все видят кто ты есть прямо сейчас. Что слушаешь, во что играешь, куда написать — всё в одном месте и всегда актуально.</p>
       <div class="hero-actions">
-        <button class="btn-primary" @click="$emit('openAuth')">Создать профиль →</button>
-        <button class="btn-secondary" @click="scrollToDemo">Смотреть демо</button>
+        <md-filled-button class="btn-primary" @click="$emit('openAuth')">Создать профиль →</md-filled-button>
+        <md-outlined-button class="btn-secondary" @click="scrollToDemo">Смотреть демо</md-outlined-button>
       </div>
       <div class="url-strip">
         <span class="url-pill">stellalink.app/<strong>username</strong></span>
