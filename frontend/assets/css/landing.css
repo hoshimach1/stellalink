@@ -91,12 +91,14 @@ button.btn-nav {
 button.btn-nav:hover { opacity: 0.85; transform: translateY(-1px); }
 
 md-filled-button.btn-nav {
-  --md-filled-button-container-color: #fafafa;
-  --md-filled-button-label-text-color: #09090b;
-  --md-filled-button-container-shape: 8px;
+  --md-filled-button-container-color: #6750a4;
+  --md-filled-button-label-text-color: #ffffff;
+  --md-filled-button-container-shape: 999px;
+  --md-filled-button-container-height: 38px;
 }
 md-filled-button.btn-nav:hover {
   transform: translateY(-1px);
+  filter: drop-shadow(0 8px 20px rgba(103, 80, 164, 0.45));
 }
 
 .hero {
@@ -180,13 +182,14 @@ button.btn-primary::after {
 button.btn-primary:hover::after { transform: translateX(100%); }
 
 md-filled-button.btn-primary {
-  --md-filled-button-container-color: #fafafa;
-  --md-filled-button-label-text-color: #09090b;
-  --md-filled-button-container-shape: 10px;
+  --md-filled-button-container-color: #6750a4;
+  --md-filled-button-label-text-color: #ffffff;
+  --md-filled-button-container-shape: 14px;
+  --md-filled-button-container-height: 48px;
 }
 md-filled-button.btn-primary:hover {
   transform: translateY(-2px);
-  filter: drop-shadow(0 10px 36px rgba(255,255,255,0.10));
+  filter: drop-shadow(0 12px 30px rgba(103, 80, 164, 0.55));
 }
 
 button.btn-secondary {
@@ -198,12 +201,14 @@ button.btn-secondary {
 button.btn-secondary:hover { background: var(--bg3); border-color: rgba(255,255,255,0.20); transform: translateY(-2px); }
 
 md-outlined-button.btn-secondary {
-  --md-outlined-button-label-text-color: var(--text);
-  --md-outlined-button-outline-color: var(--border2);
-  --md-outlined-button-container-shape: 10px;
+  --md-outlined-button-label-text-color: #c5b6ff;
+  --md-outlined-button-outline-color: rgba(197, 182, 255, 0.5);
+  --md-outlined-button-container-shape: 14px;
+  --md-outlined-button-container-height: 48px;
 }
 md-outlined-button.btn-secondary:hover {
   transform: translateY(-2px);
+  filter: drop-shadow(0 8px 20px rgba(109, 85, 170, 0.35));
 }
 
 @keyframes fadeUp { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
