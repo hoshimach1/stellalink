@@ -1,9 +1,9 @@
 <template>
   <div class="cta-section">
-    <div class="cta-card reveal">
+    <md-filled-card class="cta-card reveal">
       <img src="/images/logos/logo.png" alt="" class="cta-logo">
-      <h2 class="cta-title">Займи своё имя</h2>
-      <p class="cta-sub">Бесплатно. Профиль готов за 2 минуты. Подключи сервисы — и он живёт сам.</p>
+      <h2 class="cta-title md-typescale-headline-large">Займи своё имя</h2>
+      <p class="cta-sub md-typescale-body-large">Бесплатно. Профиль готов за 2 минуты. Подключи сервисы — и он живёт сам.</p>
       <div class="cta-row">
         <div class="input-wrap">
           <div class="input-prefix">stellalink.app/</div>
@@ -11,7 +11,7 @@
         </div>
         <md-filled-button class="btn-primary" @click="submit">Создать →</md-filled-button>
       </div>
-    </div>
+    </md-filled-card>
   </div>
 </template>
 

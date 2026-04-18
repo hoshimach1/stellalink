@@ -2,25 +2,25 @@
   <div class="demo-wrap">
     <div class="demo-floater">
       <div class="demo-float-label">Пример профиля</div>
-      <div class="demo-card">
+      <md-elevated-card class="demo-card">
         <div class="demo-header">
           <div class="avatar-wrap">
             <div class="avatar">A</div>
             <div class="avatar-online" />
           </div>
           <div style="flex:1;min-width:0;">
-            <div class="demo-name">Alexander K.</div>
-            <div class="demo-bio">Геймер · Меломан · Живу в онлайне</div>
-            <div class="demo-tags">
-              <span class="tag">CS2</span>
-              <span class="tag">Музыка</span>
-              <span class="tag">Аниме</span>
-              <span class="tag">Кофе</span>
-            </div>
+            <div class="demo-name md-typescale-title-medium">Alexander K.</div>
+            <div class="demo-bio md-typescale-body-small">Геймер · Меломан · Живу в онлайне</div>
+            <md-chip-set class="demo-tags">
+              <md-suggestion-chip label="CS2" />
+              <md-suggestion-chip label="Музыка" />
+              <md-suggestion-chip label="Аниме" />
+              <md-suggestion-chip label="Кофе" />
+            </md-chip-set>
           </div>
         </div>
         <div class="demo-body">
-          <div class="widget">
+          <md-outlined-card class="widget">
             <div class="widget-label">
               <span class="widget-icon" style="background:#1b2838;"><i class="ri-steam-fill" /></span>
               Steam<span class="live-pill">live</span>
@@ -32,8 +32,8 @@
                 <div class="game-hours">2,847 ч · онлайн сейчас</div>
               </div>
             </div>
-          </div>
-          <div class="widget">
+          </md-outlined-card>
+          <md-outlined-card class="widget">
             <div class="widget-label">
               <span class="widget-icon" style="background:#ff5500;"><i class="ri-trophy-fill" /></span>Faceit
             </div>
@@ -45,8 +45,8 @@
                 <div class="stat-col"><div class="stat-num">54%</div><div class="stat-key">WR</div></div>
               </div>
             </div>
-          </div>
-          <div class="widget">
+          </md-outlined-card>
+          <md-outlined-card class="widget">
             <div class="widget-label">
               <span class="widget-icon" style="background:#b90000;"><i class="ri-lastfm-fill" /></span>
               Сейчас слушает<span class="live-pill">live</span>
@@ -61,8 +61,8 @@
                 <div class="bar" /><div class="bar" /><div class="bar" /><div class="bar" />
               </div>
             </div>
-          </div>
-          <div class="widget">
+          </md-outlined-card>
+          <md-outlined-card class="widget">
             <div class="widget-label"><i class="ri-links-fill" style="margin-right:6px;color:var(--accent);" />Ссылки</div>
             <div class="link-list">
               <div class="link-item">
@@ -74,8 +74,8 @@
                 Telegram канал<span class="link-arrow"><i class="ri-arrow-right-up-line" /></span>
               </div>
             </div>
-          </div>
-          <div class="widget">
+          </md-outlined-card>
+          <md-outlined-card class="widget">
             <div class="widget-label"><i class="ri-computer-fill" style="margin-right:6px;color:var(--accent);" />PC конфиг</div>
             <div class="pc-grid">
               <div class="pc-item"><div class="pc-key">CPU</div><div class="pc-val">R5 7500F</div></div>
@@ -83,10 +83,10 @@
               <div class="pc-item"><div class="pc-key">RAM</div><div class="pc-val">32GB DDR5</div></div>
               <div class="pc-item"><div class="pc-key">SSD</div><div class="pc-val">2TB NVMe</div></div>
             </div>
-          </div>
+          </md-outlined-card>
         </div>
         <div class="demo-fade-bottom" />
-      </div>
+      </md-elevated-card>
     </div>
   </div>
 </template>

@@ -1,9 +1,10 @@
 <template>
   <section id="compare">
-    <div class="section-label reveal">Сравнение</div>
-    <h2 class="section-title reveal">Чем отличается<br>от Linktree?</h2>
-    <p class="section-sub reveal">Linktree — это просто список ссылок. Stellalink — живой профиль, который рассказывает кто ты есть прямо сейчас.</p>
-    <div class="compare-wrap reveal">
+    <div class="section-label md-typescale-label-large reveal">Сравнение</div>
+    <h2 class="section-title md-typescale-headline-large reveal">Чем отличается<br>от Linktree?</h2>
+    <p class="section-sub md-typescale-body-large reveal">Linktree — это просто список ссылок. Stellalink — живой профиль, который рассказывает кто ты есть прямо сейчас.</p>
+    <md-outlined-card class="compare-wrap reveal">
+      <md-divider />
       <table class="compare-table">
         <thead>
           <tr>
@@ -22,7 +23,7 @@
           </tr>
         </tbody>
       </table>
-    </div>
+    </md-outlined-card>
   </section>
 </template>
 
