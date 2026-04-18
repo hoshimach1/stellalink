@@ -29,8 +29,8 @@ jobs:
           DOCKER_BUILDKIT: 1
         run: |
           docker compose up -d db redis
-          until docker exec backend-db-1 pg_isready -U stellalink 2>/dev/null; do sleep 1; done
-          docker exec -i backend-db-1 psql -U stellalink -d stellalink < ../schema.sql
+          until docker compose exec -T db pg_isready -U stellalink 2>/dev/null; do sleep 1; done
+          docker compose exec -T db psql -U stellalink -d stellalink < ../schema.sql
           docker compose build --parallel api frontend
           docker compose up -d --no-deps --force-recreate api frontend dozzle
           docker image prune -f
