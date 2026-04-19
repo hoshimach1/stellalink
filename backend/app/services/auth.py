@@ -1,10 +1,12 @@
 import secrets
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from uuid import UUID
 
 import bcrypt
 from jose import JWTError, jwt
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -20,6 +22,16 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
+
+
+def validate_password(password: str) -> Optional[str]:
+    if len(password) < 8:
+        return "Password must be at least 8 characters"
+    if not re.search(r"[A-Za-z]", password):
+        return "Password must include at least one letter"
+    if not re.search(r"\d", password):
+        return "Password must include at least one digit"
+    return None
 
 
 def create_access_token(user_id: str) -> str:
@@ -84,6 +96,29 @@ async def get_session_by_refresh_token(db: AsyncSession, token: str) -> Optional
         .where(
             UserSession.refresh_token == token,
             UserSession.expires_at > datetime.now(timezone.utc),
+            UserSession.user.has(User.deleted_at.is_(None)),
         )
     )
     return result.scalar_one_or_none()
+
+
+async def revoke_refresh_session(db: AsyncSession, refresh_token: str) -> bool:
+    session = await get_session_by_refresh_token(db, refresh_token)
+    if not session:
+        return False
+    await db.delete(session)
+    await db.commit()
+    return True
+
+
+async def revoke_user_sessions(
+    db: AsyncSession,
+    user_id: UUID,
+    exclude_refresh_token: Optional[str] = None,
+) -> None:
+    stmt = delete(UserSession).where(UserSession.user_id == user_id)
+    if exclude_refresh_token:
+        stmt = stmt.where(UserSession.refresh_token != exclude_refresh_token)
+
+    await db.execute(stmt)
+    await db.commit()

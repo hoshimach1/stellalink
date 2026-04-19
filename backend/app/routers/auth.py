@@ -21,6 +21,9 @@ from app.services.auth import (
     get_session_by_refresh_token,
     get_user_by_email,
     hash_password,
+    revoke_refresh_session,
+    revoke_user_sessions,
+    validate_password,
     verify_password,
 )
 
@@ -41,8 +44,9 @@ async def register(
     if await get_user_by_email(db, body.email):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
-    if len(body.password) < 8:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Password must be at least 8 characters")
+    password_error = validate_password(body.password)
+    if password_error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=password_error)
 
     user = User(email=body.email, password_hash=hash_password(body.password))
     db.add(user)
@@ -89,7 +93,7 @@ async def refresh(
 ):
     session = await get_session_by_refresh_token(db, body.refresh_token)
 
-    if not session:
+    if not session or not session.user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
@@ -112,10 +116,7 @@ async def logout(
     body: RefreshRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    session = await get_session_by_refresh_token(db, body.refresh_token)
-    if session:
-        await db.delete(session)
-        await db.commit()
+    await revoke_refresh_session(db, body.refresh_token)
 
 
 @router.get("/me", response_model=UserResponse)
@@ -130,11 +131,11 @@ async def upload_avatar(
     current_user: User = Depends(get_current_user),
 ):
     if file.content_type not in ALLOWED_MIME:
-        raise HTTPException(status_code=400, detail="Недопустимый формат. Разрешены: JPEG, PNG, WebP, GIF")
+        raise HTTPException(status_code=400, detail="Unsupported avatar format. Allowed: JPEG, PNG, WebP, GIF")
 
     content = await file.read()
     if len(content) > MAX_SIZE:
-        raise HTTPException(status_code=413, detail="Файл слишком большой. Максимум 5 МБ")
+        raise HTTPException(status_code=413, detail="Avatar is too large. Maximum size is 5 MB")
 
     ext = os.path.splitext(file.filename or "")[1].lower() or ".jpg"
     filename = f"{current_user.id}{ext}"
@@ -172,9 +173,21 @@ async def change_password(
     current_user: User = Depends(get_current_user),
 ):
     if not current_user.password_hash or not verify_password(body.old_password, current_user.password_hash):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неверный текущий пароль")
-    if len(body.new_password) < 8:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Минимум 8 символов")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+
+    password_error = validate_password(body.new_password)
+    if password_error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=password_error)
+
+    if verify_password(body.new_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from current password",
+        )
+
     current_user.password_hash = hash_password(body.new_password)
     db.add(current_user)
     await db.commit()
+
+    # Revoke every session except the current one passed from client.
+    await revoke_user_sessions(db, current_user.id, exclude_refresh_token=body.refresh_token)

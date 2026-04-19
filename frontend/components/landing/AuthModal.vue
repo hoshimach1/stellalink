@@ -44,6 +44,23 @@
               <p v-if="tab === 'register'" class="auth-hint">Минимум 8 символов</p>
             </div>
 
+            <div v-if="tab === 'register'" class="auth-field">
+              <label>Повтори пароль</label>
+              <div class="pass-wrap">
+                <input
+                  v-model="confirmPassword"
+                  :type="showPass ? 'text' : 'password'"
+                  placeholder="••••••••"
+                  autocomplete="new-password"
+                  required
+                  minlength="8"
+                >
+                <button type="button" class="pass-toggle" @click="showPass = !showPass">
+                  <i :class="showPass ? 'ri-eye-off-line' : 'ri-eye-line'" />
+                </button>
+              </div>
+            </div>
+
             <div v-if="error" class="auth-error">
               <i class="ri-error-warning-line" /> {{ error }}
             </div>
@@ -76,6 +93,7 @@ import { useAuthStore } from '~/stores/auth'
 const props = defineProps<{
   modelValue: boolean
   initialSlug?: string
+  initialTab?: 'login' | 'register'
 }>()
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
@@ -87,19 +105,32 @@ const router = useRouter()
 const tab = ref<'login' | 'register'>('register')
 const email = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const showPass = ref(false)
 const error = ref('')
 const loading = ref(false)
 
 watch(() => props.modelValue, (val) => {
   if (val) {
+    tab.value = props.initialTab ?? 'register'
     error.value = ''
     password.value = ''
+    confirmPassword.value = ''
   }
 })
 
-function switchTab(t: 'login' | 'register') {
-  tab.value = t
+function normalizeSlug(input?: string): string {
+  if (!input) return ''
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9_-]/g, '')
+    .slice(0, 50)
+}
+
+function switchTab(next: 'login' | 'register') {
+  tab.value = next
   error.value = ''
 }
 
@@ -109,13 +140,20 @@ function close() {
 
 function extractError(err: unknown): string {
   if (!err || typeof err !== 'object') return 'Что-то пошло не так'
-  const e = err as { data?: { detail?: unknown }; message?: string }
+  const e = err as {
+    data?: { detail?: unknown }
+    message?: string
+    status?: number
+    statusCode?: number
+  }
+
   const detail = e.data?.detail
   if (typeof detail === 'string') return detail
   if (Array.isArray(detail) && detail.length > 0) {
     const first = detail[0] as { msg?: string }
     return first.msg ?? 'Ошибка валидации'
   }
+
   return e.message ?? 'Что-то пошло не так'
 }
 
@@ -126,10 +164,19 @@ async function submit() {
     if (tab.value === 'login') {
       await auth.login(email.value, password.value)
     } else {
+      if (password.value !== confirmPassword.value) {
+        throw new Error('Пароли не совпадают')
+      }
       await auth.register(email.value, password.value)
     }
+
     close()
-    await router.push('/dashboard')
+    const slug = normalizeSlug(props.initialSlug)
+    if (tab.value === 'register' && slug) {
+      await router.push({ path: '/dashboard', query: { slug } })
+    } else {
+      await router.push('/dashboard')
+    }
   } catch (err) {
     error.value = extractError(err)
   } finally {
@@ -258,7 +305,6 @@ async function submit() {
   cursor: pointer; text-decoration: underline;
 }
 
-/* transition */
 .modal-enter-active,
 .modal-leave-active { transition: opacity 0.22s ease; }
 .modal-enter-active .auth-modal,

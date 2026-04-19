@@ -34,21 +34,16 @@ export const useProfileStore = defineStore('profile', {
   },
 
   actions: {
-    _headers() {
-      const auth = useAuthStore()
-      return { Authorization: `Bearer ${auth.accessToken}` }
-    },
-
     async fetch() {
       const config = useRuntimeConfig()
+      const auth = useAuthStore()
       this.loading = true
       try {
-        this.profile = await $fetch<Profile>(`${config.public.apiBase}/profiles/me`, {
-          headers: this._headers(),
-        })
+        this.profile = await auth.authorizedFetch<Profile>(`${config.public.apiBase}/profiles/me`)
       } catch (e: unknown) {
-        const err = e as { status?: number }
-        if (err?.status === 404) this.profile = null
+        const err = e as { status?: number; statusCode?: number }
+        const status = err?.status ?? err?.statusCode
+        if (status === 404) this.profile = null
         else throw e
       } finally {
         this.loading = false
@@ -57,27 +52,27 @@ export const useProfileStore = defineStore('profile', {
 
     async create(data: { slug: string; display_name: string; bio?: string; tags?: string[] }) {
       const config = useRuntimeConfig()
-      this.profile = await $fetch<Profile>(`${config.public.apiBase}/profiles`, {
+      const auth = useAuthStore()
+      this.profile = await auth.authorizedFetch<Profile>(`${config.public.apiBase}/profiles`, {
         method: 'POST',
-        headers: this._headers(),
         body: data,
       })
     },
 
     async update(data: Partial<{ slug: string; status: string; display_name: string; bio: string | null; tags: string[]; theme_preset: string; accent_color: string | null }>) {
       const config = useRuntimeConfig()
-      this.profile = await $fetch<Profile>(`${config.public.apiBase}/profiles/me`, {
+      const auth = useAuthStore()
+      this.profile = await auth.authorizedFetch<Profile>(`${config.public.apiBase}/profiles/me`, {
         method: 'PATCH',
-        headers: this._headers(),
         body: data,
       })
     },
 
     async createBlock(block_type: string, blockConfig: Record<string, unknown> = {}) {
       const config = useRuntimeConfig()
-      const block = await $fetch<Block>(`${config.public.apiBase}/profiles/me/blocks`, {
+      const auth = useAuthStore()
+      const block = await auth.authorizedFetch<Block>(`${config.public.apiBase}/profiles/me/blocks`, {
         method: 'POST',
-        headers: this._headers(),
         body: { block_type, config: blockConfig },
       })
       if (this.profile) {
@@ -88,9 +83,9 @@ export const useProfileStore = defineStore('profile', {
 
     async updateBlock(id: string, data: { config?: Record<string, unknown>; is_visible?: boolean }) {
       const config = useRuntimeConfig()
-      const block = await $fetch<Block>(`${config.public.apiBase}/profiles/me/blocks/${id}`, {
+      const auth = useAuthStore()
+      const block = await auth.authorizedFetch<Block>(`${config.public.apiBase}/profiles/me/blocks/${id}`, {
         method: 'PATCH',
-        headers: this._headers(),
         body: data,
       })
       if (this.profile) {
@@ -105,9 +100,9 @@ export const useProfileStore = defineStore('profile', {
 
     async deleteBlock(id: string) {
       const config = useRuntimeConfig()
-      await $fetch(`${config.public.apiBase}/profiles/me/blocks/${id}`, {
+      const auth = useAuthStore()
+      await auth.authorizedFetch(`${config.public.apiBase}/profiles/me/blocks/${id}`, {
         method: 'DELETE',
-        headers: this._headers(),
       })
       if (this.profile) {
         this.profile.blocks = this.profile.blocks.filter(b => b.id !== id)
@@ -116,9 +111,9 @@ export const useProfileStore = defineStore('profile', {
 
     async reorder(ids: string[]) {
       const config = useRuntimeConfig()
-      await $fetch(`${config.public.apiBase}/profiles/me/blocks/reorder`, {
+      const auth = useAuthStore()
+      await auth.authorizedFetch(`${config.public.apiBase}/profiles/me/blocks/reorder`, {
         method: 'PUT',
-        headers: this._headers(),
         body: { ids },
       })
       if (this.profile) {

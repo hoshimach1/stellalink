@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="home-page">
     <header class="app-topbar">
       <a href="#hero" class="brand" @click.prevent="scrollTo('hero')">
@@ -20,7 +20,7 @@
 
       <nav class="app-nav" :class="{ open: menuOpen }">
         <a href="#profile" @click.prevent="scrollTo('profile')">Профиль</a>
-        <a href="#features" @click.prevent="scrollTo('features')">Сценарии</a>
+        <a href="#features" @click.prevent="scrollTo('features')">Преимущества</a>
         <a href="#compare" @click.prevent="scrollTo('compare')">Сравнение</a>
 
         <template v-if="auth.isAuthenticated">
@@ -34,10 +34,10 @@
         </template>
 
         <template v-else>
-          <md-outlined-button class="btn btn-nav-secondary" @click="openAuth('', 'login')">
+          <md-outlined-button class="btn btn-nav-secondary" @click="openAuth('')">
             Войти
           </md-outlined-button>
-          <md-filled-button class="btn btn-nav-primary" @click="openAuth(previewSlug, 'register')">
+          <md-filled-button class="btn btn-nav-primary" @click="openAuth(previewSlug)">
             Создать профиль
           </md-filled-button>
         </template>
@@ -60,7 +60,7 @@
             </p>
 
             <div class="hero-actions">
-              <md-filled-button class="btn btn-hero-primary btn-hero-main" @click="openAuth(previewSlug, 'register')">
+              <md-filled-button class="btn btn-hero-primary btn-hero-main" @click="openAuth(previewSlug)">
                 Создать профиль
               </md-filled-button>
               <md-outlined-button class="btn btn-hero-secondary btn-hero-main" @click="scrollTo('profile')">
@@ -78,14 +78,47 @@
             </md-chip-set>
           </div>
 
-          <div class="hero-photo reveal" style="--reveal-delay: 100ms">
-            <img
-              src="/images/landing/preview.png"
-              alt="Stellalink mobile profile screenshot"
-              class="hero-photo-image"
-              loading="lazy"
-            >
-          </div>
+          <md-filled-card class="hero-side">
+            <p class="hero-side-label md-typescale-label-large">Почему кликают дальше</p>
+            <h2 class="hero-side-title md-typescale-headline-small">Вместо списка ссылок — короткая история о тебе</h2>
+            <p class="hero-side-sub md-typescale-body-medium">
+              Посетитель видит структуру, где понятно: кто ты, что ты делаешь сейчас
+              и где с тобой связаться без лишнего скролла.
+            </p>
+
+            <div class="hero-storyline">
+              <article
+                v-for="(stage, stageIndex) in heroStages"
+                :key="stage.title"
+                class="hero-stage"
+                :style="{ '--stage-delay': `${stageIndex * 80}ms` }"
+              >
+                <span class="hero-stage-index">{{ stage.step }}</span>
+                <div class="hero-stage-copy">
+                  <p>{{ stage.title }}</p>
+                  <small>{{ stage.description }}</small>
+                </div>
+                <i :class="stage.icon" />
+              </article>
+            </div>
+
+            <div class="hero-mini-card">
+              <div class="hero-mini-head">
+                <div class="hero-mini-avatar">AK</div>
+                <div>
+                  <p>alexk</p>
+                  <small>онлайн • профиль обновляется сам</small>
+                </div>
+              </div>
+              <div class="hero-mini-tags">
+                <span v-for="pill in heroMiniPills" :key="pill">{{ pill }}</span>
+              </div>
+            </div>
+
+            <md-outlined-button class="btn btn-hero-side" @click="scrollTo('profile')">
+              Посмотреть живой пример
+            </md-outlined-button>
+          </md-filled-card>
         </div>
       </section>
 
@@ -247,12 +280,13 @@
 
       <section id="features" class="section capabilities">
         <div class="section-head reveal">
-          <p class="section-label md-typescale-label-large">Сценарии</p>
+          <p class="section-label md-typescale-label-large">Преимущества</p>
           <h2 class="section-title md-typescale-headline-large">
-            Что пользователь получает сразу и какие блоки можно включить
+            Ключевые фишки, блоки и запуск в одном месте
           </h2>
           <p class="section-sub md-typescale-body-large">
-            Коротко: ценность, рабочие сценарии и доступные категории блоков без лишнего текста.
+            Без длинных описаний: сначала ценность, затем доступные блоки и сразу понятный
+            сценарий запуска профиля.
           </p>
         </div>
 
@@ -308,22 +342,22 @@
 
         <div id="blocks" class="block-grid">
           <md-filled-card class="block-summary reveal">
-            <p class="block-summary-title">Доступные категории блоков</p>
-            <p class="block-summary-sub">Выбираешь только нужное и собираешь страницу как модульный профиль.</p>
-            <div class="block-compact">
-              <article
-                v-for="group in blockGroups"
-                :key="group.title"
-                class="block-compact-item"
-              >
-                <p class="block-compact-title">
-                  <i :class="group.icon" />
-                  <span>{{ group.title }}</span>
-                </p>
-                <p class="block-compact-sub">{{ group.items.join(' · ') }}</p>
-              </article>
-            </div>
+            <p class="block-summary-title">Какие блоки доступны</p>
+            <p class="block-summary-sub">Подключаешь только нужные категории и собираешь свой профиль как конструктор.</p>
           </md-filled-card>
+
+          <md-outlined-card
+            v-for="(block, blockIndex) in blocks"
+            :key="block.title"
+            class="block-card reveal"
+            :style="{ '--reveal-delay': `${(blockIndex + 1) * 55}ms` }"
+          >
+            <span class="block-icon"><i :class="block.icon" /></span>
+            <div>
+              <p class="block-title">{{ block.title }}</p>
+              <p class="block-sub">{{ block.description }}</p>
+            </div>
+          </md-outlined-card>
         </div>
       </section>
 
@@ -376,11 +410,11 @@
                 placeholder="username"
                 aria-label="username"
                 @input="onSlugInput"
-                @keydown.enter.prevent="openAuth(previewSlug, 'register')"
+                @keydown.enter.prevent="openAuth(previewSlug)"
               >
             </div>
 
-            <md-filled-button class="btn btn-hero-primary cta-button" @click="openAuth(previewSlug, 'register')">
+            <md-filled-button class="btn btn-hero-primary cta-button" @click="openAuth(previewSlug)">
               Создать профиль
             </md-filled-button>
           </div>
@@ -409,7 +443,7 @@
       </div>
     </footer>
 
-    <LandingAuthModal v-model="authOpen" :initial-slug="initialSlug" :initial-tab="initialTab" />
+    <LandingAuthModal v-model="authOpen" :initial-slug="initialSlug" />
   </div>
 </template>
 
@@ -434,7 +468,6 @@ const auth = useAuthStore()
 const menuOpen = ref(false)
 const authOpen = ref(false)
 const initialSlug = ref('')
-const initialTab = ref<'login' | 'register'>('register')
 const slug = ref('')
 
 const emailInitial = computed(() => auth.user?.email?.[0]?.toUpperCase() ?? '?')
@@ -442,6 +475,28 @@ const previewSlug = computed(() => slug.value.trim().replace(/\s+/g, '-').toLowe
 
 const heroChips = ['Steam', 'Faceit', 'Now Playing', 'GitHub', 'Telegram']
 
+const heroStages = [
+  {
+    step: '01',
+    title: 'Понимает, кто ты',
+    description: 'Короткая шапка и ключевые роли без воды.',
+    icon: 'ri-user-smile-line',
+  },
+  {
+    step: '02',
+    title: 'Видит живую активность',
+    description: 'Игры, музыка и контент обновляются в текущем ритме.',
+    icon: 'ri-pulse-line',
+  },
+  {
+    step: '03',
+    title: 'Переходит по делу',
+    description: 'Ссылки и контакты на расстоянии одного клика.',
+    icon: 'ri-cursor-line',
+  },
+]
+
+const heroMiniPills = ['Steam Live', 'Faceit', 'Now Playing', 'GitHub', 'Telegram']
 
 const profileTags = ['CS2', 'Музыка', 'Anime', 'Coffee']
 
@@ -453,8 +508,8 @@ const pcParts = [
 ]
 
 const liveInsights = [
-  'Ключевая информация читается за 10–15 секунд',
-  'Блоки можно включать, скрывать и переставлять',
+  'Вся важная информация читается за 10–15 секунд',
+  'Блоки можно включать, скрывать и менять местами',
   'Один URL работает для bio, портфолио и чатов',
 ]
 
@@ -467,52 +522,52 @@ const profileThemeNotes = [
 const proofPoints = [
   { value: '1 URL', label: 'для bio, портфолио и контактов' },
   { value: '9 блоков', label: 'от Steam до GitHub и музыки' },
-  { value: '2 темы', label: 'с авто-подстройкой под систему' },
+  { value: '2 режима темы', label: 'с авто-подстройкой под систему' },
 ]
 
 const scenarios = [
   {
     icon: 'ri-gamepad-fill',
     title: 'Для геймеров',
-    points: ['Steam и Faceit в одном экране', 'Статистика и активность без ручных апдейтов'],
+    points: ['Steam и Faceit в одном экране', 'Статистика и текущая активность без ручных апдейтов'],
   },
   {
     icon: 'ri-code-s-slash-fill',
     title: 'Для разработчиков',
-    points: ['GitHub и проекты в одном профиле', 'Контактные каналы без лишней навигации'],
+    points: ['GitHub и проекты на одной странице', 'Контактные каналы без лишней навигации'],
   },
   {
     icon: 'ri-music-2-fill',
     title: 'Для креаторов',
-    points: ['Now Playing и медийные ссылки', 'Тема страницы под стиль автора'],
+    points: ['Now Playing и медийные ссылки', 'Гибкий внешний вид страницы под стиль автора'],
   },
 ]
 
-const blockGroups = [
+const blocks = [
   {
     icon: 'ri-gamepad-fill',
     title: 'Игровые',
-    items: ['Steam', 'Faceit', 'игровая статистика'],
+    description: 'Steam, Faceit, игровая статистика и текущая сессия.',
   },
   {
     icon: 'ri-music-2-fill',
     title: 'Музыкальные',
-    items: ['Now Playing', 'Last.fm', 'Spotify'],
+    description: 'Now Playing, Last.fm, Spotify и любимые релизы.',
   },
   {
     icon: 'ri-links-fill',
-    title: 'Контакты и соцсети',
-    items: ['Telegram', 'Discord', 'X', 'VK'],
+    title: 'Соцсети и контакты',
+    description: 'Telegram, Discord, X, VK и любые внешние ссылки.',
   },
   {
     icon: 'ri-github-fill',
     title: 'Портфолио',
-    items: ['GitHub', 'Behance', 'Dribbble'],
+    description: 'GitHub, Behance, Dribbble, проекты и кейсы.',
   },
   {
     icon: 'ri-file-text-line',
-    title: 'О себе',
-    items: ['bio', 'сетап', 'кастомные карточки'],
+    title: 'О тебе',
+    description: 'Bio, текстовые карточки, сетап и важные детали.',
   },
 ]
 
@@ -564,9 +619,8 @@ function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-function openAuth(slugValue: string, tab: 'login' | 'register' = 'register') {
+function openAuth(slugValue: string) {
   initialSlug.value = slugValue
-  initialTab.value = tab
   authOpen.value = true
   closeMenu()
 }
@@ -592,7 +646,7 @@ function statusClass(state: CompareState): string {
 }
 
 async function logout() {
-  await auth.logout()
+  auth.logout()
   closeMenu()
   await navigateTo('/')
 }
@@ -633,6 +687,3 @@ onBeforeUnmount(() => {
 </script>
 
 <style src="~/assets/css/landing.css" />
-
-
-

@@ -41,7 +41,7 @@ const closeMenu = () => { menuOpen.value = false }
 const emailInitial = computed(() => auth.user?.email?.[0]?.toUpperCase() ?? '?')
 
 async function logout() {
-  auth.logout()
+  await auth.logout()
   await navigateTo('/')
 }
 </script>
@@ -52,26 +52,26 @@ async function logout() {
 }
 .nav-user-pill {
   display: flex; align-items: center; gap: 8px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(16, 27, 45, 0.82);
+  border: 1px solid rgba(149, 188, 255, 0.22);
   border-radius: 100px; padding: 4px 14px 4px 4px;
-  text-decoration: none; color: #ececef;
+  text-decoration: none; color: #dbe9ff;
   transition: background 0.2s;
 }
-.nav-user-pill:hover { background: rgba(255,255,255,0.10); }
+.nav-user-pill:hover { background: rgba(22, 35, 58, 0.94); }
 .nav-user-avatar {
   width: 26px; height: 26px; border-radius: 50%;
-  background: linear-gradient(135deg, #27272a, #3f3f46);
+  background: linear-gradient(145deg, #3a66bf, #79a8ff);
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; color: #fafafa;
+  font-size: 12px; font-weight: 700; color: #f2f7ff;
 }
 .nav-user-email { font-size: 13px; font-weight: 500; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-logout {
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(16, 27, 45, 0.82); border: 1px solid rgba(149, 188, 255, 0.2);
   border-radius: 8px; width: 30px; height: 30px;
   display: flex; align-items: center; justify-content: center;
-  color: #71717a; cursor: pointer; font-size: 16px;
+  color: #b9c9e5; cursor: pointer; font-size: 16px;
   transition: background 0.2s, color 0.2s;
 }
-.nav-logout:hover { background: rgba(255,80,80,0.12); color: #ff7070; border-color: rgba(255,80,80,0.2); }
+.nav-logout:hover { background: rgba(58, 26, 28, 0.95); color: #ffb4b4; border-color: rgba(255, 158, 158, 0.3); }
 </style>

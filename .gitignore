@@ -28,6 +28,7 @@ logs/
 .claude/*
 .mcp.json
 settings.local.json
+artifacts/*
 
 # Uploads (user files – never commit)
 backend/uploads/avatars/*

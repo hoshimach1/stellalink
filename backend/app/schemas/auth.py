@@ -2,19 +2,27 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
 
-    model_config = {"str_strip_whitespace": True}
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
 
 
 class TokenResponse(BaseModel):
@@ -30,6 +38,7 @@ class RefreshRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str
+    refresh_token: Optional[str] = None
 
 
 class UserResponse(BaseModel):

@@ -12,6 +12,28 @@ interface AuthState {
   user: User | null
   accessToken: string | null
   refreshToken: string | null
+  initialized: boolean
+}
+
+interface TokenPair {
+  access_token: string
+  refresh_token: string
+}
+
+type RequestOptions = {
+  method?: string
+  body?: unknown
+  headers?: Record<string, string>
+}
+
+const ACCESS_COOKIE_KEY = 'sl_access'
+const REFRESH_COOKIE_KEY = 'sl_refresh'
+
+let refreshPromise: Promise<boolean> | null = null
+let bootstrapPromise: Promise<boolean> | null = null
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -19,86 +41,279 @@ export const useAuthStore = defineStore('auth', {
     user: null,
     accessToken: null,
     refreshToken: null,
+    initialized: false,
   }),
 
   getters: {
-    isAuthenticated: (state) => !!state.accessToken,
+    isAuthenticated: state => Boolean(state.accessToken),
   },
 
   actions: {
     init() {
+      if (this.initialized) {
+        return
+      }
+
+      const accessCookie = useCookie<string | null>(ACCESS_COOKIE_KEY, { sameSite: 'lax' })
+      const refreshCookie = useCookie<string | null>(REFRESH_COOKIE_KEY, { sameSite: 'lax' })
+
+      const localAccess = import.meta.client ? localStorage.getItem(ACCESS_COOKIE_KEY) : null
+      const localRefresh = import.meta.client ? localStorage.getItem(REFRESH_COOKIE_KEY) : null
+
+      this.accessToken = accessCookie.value ?? localAccess ?? null
+      this.refreshToken = refreshCookie.value ?? localRefresh ?? null
+
       if (import.meta.client) {
-        this.accessToken = localStorage.getItem('sl_access') ?? null
-        this.refreshToken = localStorage.getItem('sl_refresh') ?? null
+        if (this.accessToken) {
+          localStorage.setItem(ACCESS_COOKIE_KEY, this.accessToken)
+          accessCookie.value = this.accessToken
+        }
+        if (this.refreshToken) {
+          localStorage.setItem(REFRESH_COOKIE_KEY, this.refreshToken)
+          refreshCookie.value = this.refreshToken
+        }
+      }
+
+      this.initialized = true
+    },
+
+    _persistTokens(access: string, refresh: string) {
+      this.accessToken = access
+      this.refreshToken = refresh
+
+      const accessCookie = useCookie<string | null>(ACCESS_COOKIE_KEY, { sameSite: 'lax' })
+      const refreshCookie = useCookie<string | null>(REFRESH_COOKIE_KEY, { sameSite: 'lax' })
+      accessCookie.value = access
+      refreshCookie.value = refresh
+
+      if (import.meta.client) {
+        localStorage.setItem(ACCESS_COOKIE_KEY, access)
+        localStorage.setItem(REFRESH_COOKIE_KEY, refresh)
       }
     },
 
-    async login(email: string, password: string) {
-      const config = useRuntimeConfig()
-      const data = await $fetch<{ access_token: string; refresh_token: string }>(
-        `${config.public.apiBase}/auth/login`,
-        { method: 'POST', body: { email, password } }
-      )
-      this._saveTokens(data.access_token, data.refresh_token)
-      await this.fetchMe()
+    _clearSessionState() {
+      this.user = null
+      this.accessToken = null
+      this.refreshToken = null
+
+      const accessCookie = useCookie<string | null>(ACCESS_COOKIE_KEY, { sameSite: 'lax' })
+      const refreshCookie = useCookie<string | null>(REFRESH_COOKIE_KEY, { sameSite: 'lax' })
+      accessCookie.value = null
+      refreshCookie.value = null
+
+      if (import.meta.client) {
+        localStorage.removeItem(ACCESS_COOKIE_KEY)
+        localStorage.removeItem(REFRESH_COOKIE_KEY)
+      }
+    },
+
+    clearSession() {
+      this._clearSessionState()
+    },
+
+    _isUnauthorized(err: unknown): boolean {
+      if (!err || typeof err !== 'object') return false
+      const maybe = err as {
+        status?: number
+        statusCode?: number
+        response?: { status?: number }
+      }
+      const status = maybe.status ?? maybe.statusCode ?? maybe.response?.status
+      return status === 401
     },
 
     async register(email: string, password: string) {
       const config = useRuntimeConfig()
-      const data = await $fetch<{ access_token: string; refresh_token: string }>(
-        `${config.public.apiBase}/auth/register`,
-        { method: 'POST', body: { email, password } }
-      )
-      this._saveTokens(data.access_token, data.refresh_token)
-      await this.fetchMe()
+      const data = await $fetch<TokenPair>(`${config.public.apiBase}/auth/register`, {
+        method: 'POST',
+        body: { email: normalizeEmail(email), password },
+      })
+      this._persistTokens(data.access_token, data.refresh_token)
+      await this.fetchMe(false)
     },
 
-    _saveTokens(access: string, refresh: string) {
-      this.accessToken = access
-      this.refreshToken = refresh
-      if (import.meta.client) {
-        localStorage.setItem('sl_access', access)
-        localStorage.setItem('sl_refresh', refresh)
+    async login(email: string, password: string) {
+      const config = useRuntimeConfig()
+      const data = await $fetch<TokenPair>(`${config.public.apiBase}/auth/login`, {
+        method: 'POST',
+        body: { email: normalizeEmail(email), password },
+      })
+      this._persistTokens(data.access_token, data.refresh_token)
+      await this.fetchMe(false)
+    },
+
+    async refresh(): Promise<boolean> {
+      this.init()
+      if (!this.refreshToken) {
+        return false
+      }
+
+      if (refreshPromise) {
+        return refreshPromise
+      }
+
+      const config = useRuntimeConfig()
+
+      refreshPromise = (async () => {
+        try {
+          const data = await $fetch<TokenPair>(`${config.public.apiBase}/auth/refresh`, {
+            method: 'POST',
+            body: { refresh_token: this.refreshToken },
+          })
+          this._persistTokens(data.access_token, data.refresh_token)
+          return true
+        } catch {
+          this._clearSessionState()
+          return false
+        } finally {
+          refreshPromise = null
+        }
+      })()
+
+      return refreshPromise
+    },
+
+    async bootstrap(force = false): Promise<boolean> {
+      this.init()
+
+      if (!force && bootstrapPromise) {
+        return bootstrapPromise
+      }
+      if (!force && this.user && this.accessToken) {
+        return true
+      }
+      if (!this.accessToken && !this.refreshToken) {
+        this.user = null
+        return false
+      }
+
+      bootstrapPromise = (async () => {
+        if (this.accessToken) {
+          try {
+            await this.fetchMe(false)
+            return true
+          } catch (err) {
+            if (!this._isUnauthorized(err)) {
+              throw err
+            }
+          }
+        }
+
+        const refreshed = await this.refresh()
+        if (!refreshed) {
+          this._clearSessionState()
+          return false
+        }
+
+        try {
+          await this.fetchMe(false)
+          return true
+        } catch {
+          this._clearSessionState()
+          return false
+        }
+      })()
+
+      try {
+        return await bootstrapPromise
+      } finally {
+        bootstrapPromise = null
       }
     },
 
-    async fetchMe() {
-      if (!this.accessToken) return
+    async fetchMe(allowRefresh = true) {
       const config = useRuntimeConfig()
-      this.user = await $fetch<User>(`${config.public.apiBase}/auth/me`, {
-        headers: { Authorization: `Bearer ${this.accessToken}` },
-      })
+      if (!this.accessToken) {
+        if (!allowRefresh || !(await this.refresh())) {
+          this.user = null
+          return
+        }
+      }
+
+      try {
+        this.user = await $fetch<User>(`${config.public.apiBase}/auth/me`, {
+          headers: { Authorization: `Bearer ${this.accessToken}` },
+        })
+      } catch (err) {
+        if (allowRefresh && this._isUnauthorized(err) && await this.refresh()) {
+          this.user = await $fetch<User>(`${config.public.apiBase}/auth/me`, {
+            headers: { Authorization: `Bearer ${this.accessToken}` },
+          })
+          return
+        }
+        throw err
+      }
+    },
+
+    async authorizedFetch<T>(url: string, options: RequestOptions = {}, allowRefresh = true): Promise<T> {
+      this.init()
+
+      if (!this.accessToken) {
+        const restored = allowRefresh && await this.refresh()
+        if (!restored) {
+          throw new Error('Not authenticated')
+        }
+      }
+
+      const headers: Record<string, string> = {
+        ...(options.headers ?? {}),
+        Authorization: `Bearer ${this.accessToken}`,
+      }
+
+      try {
+        return await $fetch<T>(url, { ...options, headers })
+      } catch (err) {
+        if (allowRefresh && this._isUnauthorized(err) && await this.refresh()) {
+          return this.authorizedFetch<T>(url, options, false)
+        }
+        throw err
+      }
     },
 
     async uploadAvatar(file: File) {
-      if (!this.accessToken) return
       const config = useRuntimeConfig()
       const form = new FormData()
       form.append('file', file)
-      this.user = await $fetch<User>(`${config.public.apiBase}/auth/avatar`, {
+
+      this.user = await this.authorizedFetch<User>(`${config.public.apiBase}/auth/avatar`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${this.accessToken}` },
         body: form,
       })
     },
 
     async deleteAvatar() {
-      if (!this.accessToken) return
       const config = useRuntimeConfig()
-      await $fetch(`${config.public.apiBase}/auth/avatar`, {
+      await this.authorizedFetch(`${config.public.apiBase}/auth/avatar`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${this.accessToken}` },
       })
       if (this.user) this.user.avatar_url = null
     },
 
-    logout() {
-      this.user = null
-      this.accessToken = null
-      this.refreshToken = null
-      if (import.meta.client) {
-        localStorage.removeItem('sl_access')
-        localStorage.removeItem('sl_refresh')
+    async changePassword(oldPassword: string, newPassword: string) {
+      const config = useRuntimeConfig()
+      await this.authorizedFetch(`${config.public.apiBase}/auth/change-password`, {
+        method: 'POST',
+        body: {
+          old_password: oldPassword,
+          new_password: newPassword,
+          refresh_token: this.refreshToken,
+        },
+      })
+    },
+
+    async logout() {
+      const config = useRuntimeConfig()
+      const refreshToken = this.refreshToken
+      try {
+        if (refreshToken) {
+          await $fetch(`${config.public.apiBase}/auth/logout`, {
+            method: 'POST',
+            body: { refresh_token: refreshToken },
+          })
+        }
+      } finally {
+        this.clearSession()
       }
     },
   },

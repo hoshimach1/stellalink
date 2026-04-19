@@ -20,6 +20,13 @@ async def test_register_duplicate(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_register_duplicate_case_insensitive(client: AsyncClient):
+    await client.post("/auth/register", json={"email": "Case@Example.com", "password": "strongpass1"})
+    r = await client.post("/auth/register", json={"email": "case@example.com", "password": "strongpass1"})
+    assert r.status_code == 409
+
+
+@pytest.mark.asyncio
 async def test_register_short_password(client: AsyncClient):
     r = await client.post("/auth/register", json={"email": "x@example.com", "password": "123"})
     assert r.status_code == 422
@@ -74,3 +81,40 @@ async def test_logout(client: AsyncClient):
     # после logout refresh не работает
     r2 = await client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
     assert r2.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_change_password_rotates_other_sessions(client: AsyncClient):
+    reg = await client.post("/auth/register", json={"email": "pwchange@example.com", "password": "strongpass1"})
+    old_refresh = reg.json()["refresh_token"]
+
+    login = await client.post("/auth/login", json={"email": "pwchange@example.com", "password": "strongpass1"})
+    new_tokens = login.json()
+    access_token = new_tokens["access_token"]
+    active_refresh = new_tokens["refresh_token"]
+
+    change = await client.post(
+        "/auth/change-password",
+        json={
+            "old_password": "strongpass1",
+            "new_password": "newstrong2",
+            "refresh_token": active_refresh,
+        },
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert change.status_code == 204
+
+    # Old session should be revoked.
+    old_refresh_attempt = await client.post("/auth/refresh", json={"refresh_token": old_refresh})
+    assert old_refresh_attempt.status_code == 401
+
+    # Current session refresh token should stay valid.
+    active_refresh_attempt = await client.post("/auth/refresh", json={"refresh_token": active_refresh})
+    assert active_refresh_attempt.status_code == 200
+
+    # Login with old password must fail, new password should work.
+    bad_login = await client.post("/auth/login", json={"email": "pwchange@example.com", "password": "strongpass1"})
+    assert bad_login.status_code == 401
+
+    good_login = await client.post("/auth/login", json={"email": "pwchange@example.com", "password": "newstrong2"})
+    assert good_login.status_code == 200

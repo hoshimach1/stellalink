@@ -7,7 +7,7 @@
       <div class="cta-row">
         <div class="input-wrap">
           <div class="input-prefix">stellalink.app/</div>
-          <md-outlined-text-field class="input-slug" :value="slug" type="text" placeholder="username" @input="onSlugInput" @keydown.enter.prevent="submit" />
+          <md-outlined-text-field class="input-slug" :value="slug" type="text" label="username" aria-label="Username" placeholder="username" @input="onSlugInput" @keydown.enter.prevent="submit" />
         </div>
         <md-filled-button class="btn-primary" @click="submit">Создать →</md-filled-button>
       </div>

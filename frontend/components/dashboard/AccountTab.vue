@@ -137,12 +137,7 @@ async function changePassword() {
   if (newPass.value.length < 8) { passError.value = 'Минимум 8 символов'; return }
   passLoading.value = true
   try {
-    const res = await fetch(`${config.public.apiBase}/auth/change-password`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${auth.accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ old_password: oldPass.value, new_password: newPass.value }),
-    })
-    if (!res.ok) { const d = await res.json().catch(() => ({})); throw { data: d } }
+    await auth.changePassword(oldPass.value, newPass.value)
     passOk.value = true
     oldPass.value = ''; newPass.value = ''; confirmPass.value = ''
   } catch (e: unknown) {

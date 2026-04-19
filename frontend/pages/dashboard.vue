@@ -76,14 +76,13 @@
 import { useAuthStore } from '~/stores/auth'
 import { useProfileStore } from '~/stores/profile'
 
-definePageMeta({ layout: 'default' })
+definePageMeta({ layout: 'default', middleware: 'auth' })
 useHead({ title: 'Dashboard — Stellalink' })
 
 const auth = useAuthStore()
 const profile = useProfileStore()
 const router = useRouter()
-
-if (!auth.isAuthenticated) await navigateTo('/')
+const route = useRoute()
 
 await profile.fetch()
 
@@ -95,8 +94,26 @@ const setupSlug = ref('')
 const setupError = ref('')
 const setupLoading = ref(false)
 
+function normalizeSlug(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9_-]/g, '')
+    .slice(0, 50)
+}
+
+if (!profile.hasProfile && typeof route.query.slug === 'string') {
+  setupSlug.value = normalizeSlug(route.query.slug)
+}
+
 async function createProfile() {
   setupError.value = ''
+  setupSlug.value = normalizeSlug(setupSlug.value)
+  if (setupSlug.value.length < 2) {
+    setupError.value = 'Slug must be at least 2 characters'
+    return
+  }
   setupLoading.value = true
   try {
     await profile.create({ slug: setupSlug.value, display_name: setupName.value || setupSlug.value })
@@ -109,7 +126,7 @@ async function createProfile() {
 }
 
 async function logout() {
-  auth.logout()
+  await auth.logout()
   await router.push('/')
 }
 </script>
