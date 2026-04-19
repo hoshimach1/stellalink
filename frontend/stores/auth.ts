@@ -20,6 +20,16 @@ interface TokenPair {
   refresh_token: string
 }
 
+interface ForgotPasswordResponse {
+  detail: string
+  reset_token?: string | null
+}
+
+interface RequestEmailVerificationResponse {
+  detail: string
+  verification_token?: string | null
+}
+
 type RequestOptions = {
   method?: string
   body?: unknown
@@ -28,6 +38,17 @@ type RequestOptions = {
 
 const ACCESS_COOKIE_KEY = 'sl_access'
 const REFRESH_COOKIE_KEY = 'sl_refresh'
+const TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
+const ACCESS_COOKIE_OPTIONS = {
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: TOKEN_MAX_AGE_SECONDS,
+}
+const REFRESH_COOKIE_OPTIONS = {
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: TOKEN_MAX_AGE_SECONDS,
+}
 
 let refreshPromise: Promise<boolean> | null = null
 let bootstrapPromise: Promise<boolean> | null = null
@@ -46,16 +67,23 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: state => Boolean(state.accessToken),
+    isEmailVerified: state => Boolean(state.user?.email_verified),
   },
 
   actions: {
-    init() {
-      if (this.initialized) {
+    init(force = false) {
+      const canRecoverFromClientStorage = import.meta.client
+        && this.initialized
+        && !force
+        && !this.accessToken
+        && !this.refreshToken
+
+      if (this.initialized && !force && !canRecoverFromClientStorage) {
         return
       }
 
-      const accessCookie = useCookie<string | null>(ACCESS_COOKIE_KEY, { sameSite: 'lax' })
-      const refreshCookie = useCookie<string | null>(REFRESH_COOKIE_KEY, { sameSite: 'lax' })
+      const accessCookie = useCookie<string | null>(ACCESS_COOKIE_KEY, ACCESS_COOKIE_OPTIONS)
+      const refreshCookie = useCookie<string | null>(REFRESH_COOKIE_KEY, REFRESH_COOKIE_OPTIONS)
 
       const localAccess = import.meta.client ? localStorage.getItem(ACCESS_COOKIE_KEY) : null
       const localRefresh = import.meta.client ? localStorage.getItem(REFRESH_COOKIE_KEY) : null
@@ -81,8 +109,8 @@ export const useAuthStore = defineStore('auth', {
       this.accessToken = access
       this.refreshToken = refresh
 
-      const accessCookie = useCookie<string | null>(ACCESS_COOKIE_KEY, { sameSite: 'lax' })
-      const refreshCookie = useCookie<string | null>(REFRESH_COOKIE_KEY, { sameSite: 'lax' })
+      const accessCookie = useCookie<string | null>(ACCESS_COOKIE_KEY, ACCESS_COOKIE_OPTIONS)
+      const refreshCookie = useCookie<string | null>(REFRESH_COOKIE_KEY, REFRESH_COOKIE_OPTIONS)
       accessCookie.value = access
       refreshCookie.value = refresh
 
@@ -97,8 +125,8 @@ export const useAuthStore = defineStore('auth', {
       this.accessToken = null
       this.refreshToken = null
 
-      const accessCookie = useCookie<string | null>(ACCESS_COOKIE_KEY, { sameSite: 'lax' })
-      const refreshCookie = useCookie<string | null>(REFRESH_COOKIE_KEY, { sameSite: 'lax' })
+      const accessCookie = useCookie<string | null>(ACCESS_COOKIE_KEY, ACCESS_COOKIE_OPTIONS)
+      const refreshCookie = useCookie<string | null>(REFRESH_COOKIE_KEY, REFRESH_COOKIE_OPTIONS)
       accessCookie.value = null
       refreshCookie.value = null
 
@@ -298,6 +326,44 @@ export const useAuthStore = defineStore('auth', {
           old_password: oldPassword,
           new_password: newPassword,
           refresh_token: this.refreshToken,
+        },
+      })
+    },
+
+    async requestEmailVerification(): Promise<RequestEmailVerificationResponse> {
+      const config = useRuntimeConfig()
+      return this.authorizedFetch<RequestEmailVerificationResponse>(
+        `${config.public.apiBase}/auth/request-email-verification`,
+        { method: 'POST' },
+      )
+    },
+
+    async verifyEmail(token: string): Promise<void> {
+      const config = useRuntimeConfig()
+      await $fetch(`${config.public.apiBase}/auth/verify-email`, {
+        method: 'POST',
+        body: { token },
+      })
+      if (this.user) {
+        this.user.email_verified = true
+      }
+    },
+
+    async forgotPassword(email: string): Promise<ForgotPasswordResponse> {
+      const config = useRuntimeConfig()
+      return $fetch<ForgotPasswordResponse>(`${config.public.apiBase}/auth/forgot-password`, {
+        method: 'POST',
+        body: { email: normalizeEmail(email) },
+      })
+    },
+
+    async resetPassword(token: string, newPassword: string): Promise<void> {
+      const config = useRuntimeConfig()
+      await $fetch(`${config.public.apiBase}/auth/reset-password`, {
+        method: 'POST',
+        body: {
+          token,
+          new_password: newPassword,
         },
       })
     },

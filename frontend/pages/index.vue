@@ -409,7 +409,6 @@
       </div>
     </footer>
 
-    <LandingAuthModal v-model="authOpen" :initial-slug="initialSlug" :initial-tab="initialTab" />
   </div>
 </template>
 
@@ -432,9 +431,6 @@ type CompareState = 'check' | 'partial' | 'none'
 
 const auth = useAuthStore()
 const menuOpen = ref(false)
-const authOpen = ref(false)
-const initialSlug = ref('')
-const initialTab = ref<'login' | 'register'>('register')
 const slug = ref('')
 
 const emailInitial = computed(() => auth.user?.email?.[0]?.toUpperCase() ?? '?')
@@ -564,11 +560,30 @@ function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-function openAuth(slugValue: string, tab: 'login' | 'register' = 'register') {
-  initialSlug.value = slugValue
-  initialTab.value = tab
-  authOpen.value = true
+function normalizeSlugForAuth(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9_-]/g, '')
+    .slice(0, 50)
+}
+
+async function openAuth(slugValue: string, tab: 'login' | 'register' = 'register') {
   closeMenu()
+
+  if (tab === 'login') {
+    await navigateTo('/auth/login')
+    return
+  }
+
+  const normalizedSlug = normalizeSlugForAuth(slugValue)
+  if (normalizedSlug) {
+    await navigateTo({ path: '/auth/register', query: { slug: normalizedSlug } })
+    return
+  }
+
+  await navigateTo('/auth/register')
 }
 
 function onSlugInput(event: Event) {

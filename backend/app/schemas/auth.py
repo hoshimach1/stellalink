@@ -35,6 +35,34 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class RequestEmailVerificationResponse(BaseModel):
+    detail: str = "Verification email sent if account exists"
+    verification_token: Optional[str] = None
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
+
+
+class ForgotPasswordResponse(BaseModel):
+    detail: str = "Password reset email sent if account exists"
+    reset_token: Optional[str] = None
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
 class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str

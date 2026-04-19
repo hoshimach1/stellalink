@@ -1,6 +1,6 @@
 import { useAuthStore } from '~/stores/auth'
 
-export default defineNuxtRouteMiddleware(async () => {
+export default defineNuxtRouteMiddleware(async (to) => {
   const auth = useAuthStore()
 
   try {
@@ -10,5 +10,8 @@ export default defineNuxtRouteMiddleware(async () => {
     auth.clearSession()
   }
 
-  return navigateTo('/')
+  return navigateTo({
+    path: '/auth/login',
+    query: { redirect: to.fullPath },
+  })
 })

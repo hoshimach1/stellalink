@@ -23,6 +23,18 @@
       </div>
     </header>
 
+    <div v-if="auth.user && !auth.user.email_verified" class="dash-verify">
+      <div class="dash-verify-text">
+        <strong>Email не подтверждён.</strong>
+        <span>Подтвердите адрес, чтобы повысить безопасность аккаунта.</span>
+      </div>
+      <button class="dash-verify-btn" :disabled="verifyLoading" @click="sendVerification">
+        <span v-if="verifyLoading" class="dash-spinner" />
+        <span v-else>Отправить письмо</span>
+      </button>
+      <div v-if="verifyNotice" class="dash-verify-note">{{ verifyNotice }}</div>
+    </div>
+
     <!-- Setup: no profile -->
     <div v-if="!profile.hasProfile" class="setup-wrap">
       <div class="setup-card">
@@ -87,6 +99,8 @@ const route = useRoute()
 await profile.fetch()
 
 const tab = ref<'profile' | 'account'>('profile')
+const verifyLoading = ref(false)
+const verifyNotice = ref('')
 
 // Setup
 const setupName = ref('')
@@ -105,6 +119,31 @@ function normalizeSlug(input: string): string {
 
 if (!profile.hasProfile && typeof route.query.slug === 'string') {
   setupSlug.value = normalizeSlug(route.query.slug)
+}
+
+function extractError(err: unknown, fallback: string): string {
+  if (!err || typeof err !== 'object') return fallback
+  const e = err as { data?: { detail?: unknown }; message?: string }
+  const detail = e.data?.detail
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0] as { msg?: string }
+    if (first?.msg) return first.msg
+  }
+  return e.message ?? fallback
+}
+
+async function sendVerification() {
+  verifyLoading.value = true
+  verifyNotice.value = ''
+  try {
+    const response = await auth.requestEmailVerification()
+    verifyNotice.value = response.detail
+  } catch (err) {
+    verifyNotice.value = extractError(err, 'Не удалось отправить письмо')
+  } finally {
+    verifyLoading.value = false
+  }
 }
 
 async function createProfile() {
@@ -168,6 +207,60 @@ async function logout() {
 }
 .dash-logout:hover { background: rgba(255,80,80,0.10); color: #ff7070; }
 
+.dash-verify {
+  margin: 14px 20px 0;
+  border-radius: 14px;
+  padding: 14px;
+  background: linear-gradient(135deg, rgba(92, 129, 222, 0.16), rgba(90, 100, 160, 0.08));
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px 14px;
+  align-items: center;
+}
+
+.dash-verify-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dash-verify-text strong {
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.dash-verify-text span {
+  color: #b5b7c5;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.dash-verify-btn {
+  background: rgba(255,255,255,0.14);
+  color: #ececef;
+  border: none;
+  border-radius: 10px;
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Onest', sans-serif;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dash-verify-btn:hover { background: rgba(255,255,255,0.2); }
+.dash-verify-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.dash-verify-note {
+  grid-column: 1 / -1;
+  color: #c8cada;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 /* Account tab wrapper */
 .dash-body { padding: 32px 28px; flex: 1; }
 
@@ -216,4 +309,15 @@ async function logout() {
   animation: spin 0.7s linear infinite; display: inline-block;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 760px) {
+  .dash-verify {
+    margin: 10px 12px 0;
+    grid-template-columns: 1fr;
+  }
+
+  .dash-verify-btn {
+    width: 100%;
+  }
+}
 </style>
