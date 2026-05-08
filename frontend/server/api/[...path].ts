@@ -5,8 +5,6 @@ import {
   getMethod,
   getRequestURL,
   readRawBody,
-  setHeader,
-  setResponseStatus,
 } from 'h3'
 
 const HOP_BY_HOP_HEADERS = new Set([
@@ -49,7 +47,7 @@ export default defineEventHandler(async (event) => {
     ? undefined
     : await readRawBody(event, false)
 
-  const response = await $fetch.raw(targetUrl, {
+  const response = await $fetch.raw<ArrayBuffer>(targetUrl, {
     method,
     headers,
     body,
@@ -57,13 +55,16 @@ export default defineEventHandler(async (event) => {
     responseType: 'arrayBuffer',
   })
 
-  setResponseStatus(event, response.status)
+  const responseHeaders = new Headers()
 
   response.headers.forEach((value, key) => {
     if (!HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
-      setHeader(event, key, value)
+      responseHeaders.set(key, value)
     }
   })
 
-  return response._data
+  return new Response(response._data, {
+    status: response.status,
+    headers: responseHeaders,
+  })
 })
