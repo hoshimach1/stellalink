@@ -42,7 +42,7 @@
         </md-outlined-card>
 
         <md-outlined-card class="hero-signal">
-          <div class="hero-signal-head"><i class="ri-trophy-fill" /> Faceit</div>
+          <div class="hero-signal-head"><FaceitLogo class="hero-faceit-logo" /> Faceit</div>
           <div class="hero-signal-value">Lvl 8 · 1847 ELO · 54% WR</div>
         </md-outlined-card>
 

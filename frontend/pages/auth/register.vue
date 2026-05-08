@@ -1,7 +1,5 @@
 <template>
   <main class="auth-page">
-    <NuxtLink class="auth-top-right-link" to="/auth/login">Вход</NuxtLink>
-
     <section class="auth-card">
       <NuxtLink class="auth-brand" to="/">
         <img src="/images/logos/logo.png" alt="Stellalink">
@@ -9,14 +7,21 @@
       </NuxtLink>
 
       <h1 class="auth-headline">Создать аккаунт</h1>
-      <p class="auth-subtitle">После регистрации отправим письмо для подтверждения email.</p>
+      <p class="auth-subtitle">Регистрация займёт минуту. После этого можно будет сразу перейти к настройке профиля.</p>
 
-      <div v-if="error" class="auth-alert auth-alert-error">{{ error }}</div>
+      <div v-if="error" class="auth-alert auth-alert-error" role="alert">{{ error }}</div>
 
       <form class="auth-form" @submit.prevent="submit">
         <div class="auth-field">
           <label>Email</label>
-          <input v-model="email" class="auth-input" type="email" autocomplete="email" required placeholder="you@example.com">
+          <input
+            v-model="email"
+            class="auth-input"
+            type="email"
+            autocomplete="email"
+            required
+            placeholder="you@example.com"
+          >
         </div>
 
         <div class="auth-field">
@@ -38,7 +43,7 @@
         </div>
 
         <div class="auth-field">
-          <label>Подтверждение пароля</label>
+          <label>Повторите пароль</label>
           <input
             v-model="confirmPassword"
             class="auth-input"
@@ -65,6 +70,7 @@
 </template>
 
 <script setup lang="ts">
+import { extractAuthError } from '~/utils/auth-feedback'
 import { useAuthStore } from '~/stores/auth'
 
 definePageMeta({ layout: 'auth', middleware: 'guest' })
@@ -98,21 +104,6 @@ function normalizeSlug(input?: string): string {
     .slice(0, 50)
 }
 
-function extractError(err: unknown): string {
-  if (!err || typeof err !== 'object') return 'Не удалось создать аккаунт'
-  const e = err as {
-    data?: { detail?: unknown }
-    message?: string
-  }
-  const detail = e.data?.detail
-  if (typeof detail === 'string') return detail
-  if (Array.isArray(detail) && detail.length > 0) {
-    const first = detail[0] as { msg?: string }
-    if (first?.msg) return first.msg
-  }
-  return e.message ?? 'Не удалось создать аккаунт'
-}
-
 async function submit() {
   loading.value = true
   error.value = ''
@@ -128,9 +119,10 @@ async function submit() {
       await navigateTo({ path: '/dashboard', query: { slug } })
       return
     }
+
     await navigateTo(redirectPath.value)
   } catch (err) {
-    error.value = extractError(err)
+    error.value = extractAuthError(err, 'Не удалось создать аккаунт.')
   } finally {
     loading.value = false
   }

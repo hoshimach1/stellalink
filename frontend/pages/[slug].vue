@@ -24,248 +24,225 @@
     </div>
 
     <!-- ═══════════ MATERIAL 3 THEME ═══════════ -->
-    <v-card
+    <section
       v-if="theme === 'material3'"
       class="pub-card pub-card-m3"
-      :color="profile.accent_color ? undefined : '#0c0a1a'"
-      variant="tonal"
-      :rounded="'xl'"
-      elevation="8"
+      aria-label="Публичный профиль Stellalink"
     >
-      <!-- Header -->
-      <v-card-text class="pub-header">
-        <v-sheet
-          class="pub-avatar"
-          :color="profile.accent_color || '#D0BCFF'"
-          rounded="circle"
-          elevation="4"
-        >
-          <img v-if="profile.avatar_url" :src="avatarSrc ?? undefined" class="pub-avatar-img" alt="avatar">
-          <span v-else>{{ initial }}</span>
-        </v-sheet>
-        <h1 class="pub-name">{{ profile.display_name }}</h1>
-        <p v-if="profile.bio" class="pub-bio">{{ profile.bio }}</p>
-        <div v-if="profile.tags.length" class="pub-tags">
-          <v-chip
+      <header class="pub-m3-hero">
+        <div class="pub-m3-hero-row">
+          <div class="pub-m3-avatar-wrap">
+            <div class="pub-avatar pub-avatar-m3">
+              <img v-if="profile.avatar_url" :src="avatarSrc ?? undefined" class="pub-avatar-img" alt="avatar">
+              <span v-else>{{ initial }}</span>
+            </div>
+            <span class="pub-m3-presence" aria-hidden="true" />
+          </div>
+          <div class="pub-m3-identity">
+            <h1 class="pub-name">{{ profile.display_name }}</h1>
+            <p v-if="profile.bio" class="pub-bio">{{ profile.bio }}</p>
+          </div>
+        </div>
+
+        <div v-if="profile.tags.length" class="pub-tags pub-tags-m3">
+          <span
             v-for="tag in profile.tags"
             :key="tag"
-            size="small"
-            variant="tonal"
-            :color="profile.accent_color || '#D0BCFF'"
-            label
-          >{{ tag }}</v-chip>
+            class="pub-m3-chip"
+          >{{ tag }}</span>
         </div>
-      </v-card-text>
+      </header>
 
-      <v-divider />
+      <div class="pub-divider pub-m3-divider" />
 
-      <!-- Blocks -->
       <div class="pub-blocks">
-        <template v-for="(block, idx) in visibleBlocks" :key="block.id">
-          <!-- Links -->
+        <template v-for="block in visibleBlocks" :key="block.id">
           <div v-if="block.block_type === 'links'" class="pub-block-links">
             <div v-for="group in (block.config.groups as Group[])" :key="group.title" class="pub-links-group">
               <div v-if="group.title" class="pub-group-title">{{ group.title }}</div>
-              <v-card
+              <a
                 v-for="link in group.links"
                 :key="link.url"
                 :href="normalizeUrl(link.url)"
                 target="_blank"
                 rel="noopener"
-                class="pub-link"
-                variant="tonal"
-                :rounded="idx % 2 === 0 ? 'lg-sm-lg-sm' : 'sm-lg-sm-lg'"
-                hover
+                class="pub-link pub-link-m3"
               >
-                <v-card-text class="pub-link-inner d-flex align-center ga-3 pa-3">
-                  <v-sheet
-                    class="pub-link-icon-wrap"
-                    :color="profile.accent_color || '#D0BCFF'"
-                    rounded="lg"
-                    width="34"
-                    height="34"
-                  >
-                    <i v-if="link.icon" :class="`ri-${link.icon}-fill`" class="pub-link-icon" />
-                    <i v-else class="ri-link pub-link-icon" />
-                  </v-sheet>
-                  <span class="pub-link-label flex-grow-1">{{ link.label || link.url }}</span>
+                <span class="pub-link-icon-wrap pub-m3-link-icon">
+                  <i v-if="link.icon" :class="`ri-${link.icon}-fill`" class="pub-link-icon" />
+                  <i v-else class="ri-link pub-link-icon" />
+                </span>
+                <span class="pub-link-label">{{ link.label || link.url }}</span>
+                <span class="pub-m3-link-action" aria-hidden="true">
                   <i class="ri-arrow-right-up-line pub-link-arrow" />
-                </v-card-text>
-              </v-card>
+                </span>
+              </a>
             </div>
           </div>
 
-          <!-- Other blocks wrapped in v-card -->
-          <v-card
+          <article
             v-else
-            class="pub-block"
-            variant="tonal"
-            :rounded="idx % 2 === 0 ? 'xl-lg-xl-lg' : 'lg-xl-lg-xl'"
+            class="pub-block pub-block-m3"
           >
-            <v-card-text>
-              <!-- Text -->
-              <div v-if="block.block_type === 'text'" class="pub-text">
-                {{ (block.config.content as string) }}
+            <div v-if="block.block_type === 'text'" class="pub-text pub-text-m3">
+              {{ (block.config.content as string) }}
+            </div>
+
+            <template v-else-if="block.block_type === 'widget_steam'">
+              <div class="pub-wh pub-m3-widget-head">
+                <div class="pub-wh-left">
+                  <div class="pub-w-ico-bg pub-m3-service-icon pub-m3-steam">
+                    <i class="ri-steam-fill" />
+                  </div>
+                  <div>
+                    <div class="pub-w-name">Steam</div>
+                    <div class="pub-w-id">{{ block.config.steam_id || '-' }}</div>
+                  </div>
+                </div>
+                <span class="pub-m3-status-pill">
+                  <span class="pub-m3-status-dot" aria-hidden="true" />
+                  Online
+                </span>
               </div>
-
-              <!-- Steam -->
-              <template v-else-if="block.block_type === 'widget_steam'">
-                <div class="pub-wh">
-                  <div class="pub-wh-left">
-                    <v-sheet class="pub-w-ico-bg" color="rgba(25,144,212,0.15)" rounded="lg" width="40" height="40">
-                      <span style="color:#66c0f4">🎮</span>
-                    </v-sheet>
-                    <div>
-                      <div class="pub-w-name">Steam</div>
-                      <div class="pub-w-id">{{ block.config.steam_id || '—' }}</div>
-                    </div>
-                  </div>
-                  <v-chip size="small" color="success" variant="tonal">● Online</v-chip>
+              <template v-if="block.config.show_recent_games && block.config.steam_id">
+                <div class="pub-divider" />
+                <div class="pub-sub-label">Недавно в игре</div>
+                <div v-for="g in mock.steamGames(block.config.steam_id as string)" :key="g.name" class="pub-steam-row">
+                  <span class="pub-steam-name">{{ g.name }}</span>
+                  <span class="pub-steam-h">{{ g.hours.toLocaleString('ru') }} ч</span>
                 </div>
-                <template v-if="block.config.show_recent_games && block.config.steam_id">
-                  <v-divider class="my-3" />
-                  <div class="pub-sub-label">Недавно в игре</div>
-                  <div v-for="g in mock.steamGames(block.config.steam_id as string)" :key="g.name" class="pub-steam-row">
-                    <span class="pub-steam-name">{{ g.name }}</span>
-                    <span class="pub-steam-h">{{ g.hours.toLocaleString('ru') }} ч</span>
-                  </div>
-                </template>
               </template>
+            </template>
 
-              <!-- Last.fm -->
-              <template v-else-if="block.block_type === 'widget_lastfm'">
-                <div class="pub-wh">
-                  <div class="pub-wh-left">
-                    <v-sheet class="pub-w-ico-bg" color="rgba(200,0,0,0.15)" rounded="lg" width="40" height="40">
-                      <span style="color:#e5343a">🎵</span>
-                    </v-sheet>
-                    <div>
-                      <div class="pub-w-name">Last.fm</div>
-                      <div class="pub-w-id">@{{ block.config.username || '—' }}</div>
-                    </div>
+            <template v-else-if="block.block_type === 'widget_lastfm'">
+              <div class="pub-wh pub-m3-widget-head">
+                <div class="pub-wh-left">
+                  <div class="pub-w-ico-bg pub-m3-service-icon pub-m3-lastfm">
+                    <i class="ri-music-2-fill" />
                   </div>
-                  <div v-if="block.config.show_now_playing && block.config.username" class="pub-np-bars">
-                    <span v-for="i in 5" :key="i" class="pub-np-bar" :style="`animation-delay:${(i-1)*0.18}s`" />
+                  <div>
+                    <div class="pub-w-name">Last.fm</div>
+                    <div class="pub-w-id">@{{ block.config.username || '-' }}</div>
                   </div>
                 </div>
-                <template v-if="block.config.show_now_playing && block.config.username">
-                  <v-divider class="my-3" />
-                  <div class="pub-np-row">
-                    <div class="pub-np-disc">♫</div>
-                    <div>
-                      <div class="pub-np-label">Сейчас слушает</div>
-                      <div class="pub-np-track">{{ mock.lastfmTrack(block.config.username as string).track }}</div>
-                      <div class="pub-np-artist">{{ mock.lastfmTrack(block.config.username as string).artist }}</div>
-                    </div>
+                <div v-if="block.config.show_now_playing && block.config.username" class="pub-np-bars">
+                  <span v-for="i in 5" :key="i" class="pub-np-bar" :style="`animation-delay:${(i-1)*0.18}s`" />
+                </div>
+              </div>
+              <template v-if="block.config.show_now_playing && block.config.username">
+                <div class="pub-divider" />
+                <div class="pub-np-row">
+                  <div class="pub-np-disc"><i class="ri-disc-fill" /></div>
+                  <div>
+                    <div class="pub-np-label">Сейчас слушает</div>
+                    <div class="pub-np-track">{{ mock.lastfmTrack(block.config.username as string).track }}</div>
+                    <div class="pub-np-artist">{{ mock.lastfmTrack(block.config.username as string).artist }}</div>
                   </div>
-                </template>
+                </div>
               </template>
+            </template>
 
-              <!-- GitHub -->
-              <template v-else-if="block.block_type === 'widget_github'">
-                <div class="pub-wh">
-                  <div class="pub-wh-left">
-                    <v-sheet class="pub-w-ico-bg" color="rgba(255,255,255,0.06)" rounded="lg" width="40" height="40">
-                      <span style="color:#ececef">🐙</span>
-                    </v-sheet>
-                    <div>
-                      <div class="pub-w-name">GitHub</div>
-                      <div class="pub-w-id">@{{ block.config.username || '—' }}</div>
-                    </div>
+            <template v-else-if="block.block_type === 'widget_github'">
+              <div class="pub-wh pub-m3-widget-head">
+                <div class="pub-wh-left">
+                  <div class="pub-w-ico-bg pub-m3-service-icon pub-m3-github">
+                    <i class="ri-github-fill" />
                   </div>
-                  <v-chip v-if="block.config.username" size="small" variant="tonal" :color="profile.accent_color || '#D0BCFF'">
-                    {{ mock.ghStats(block.config.username as string).repos }} репо
-                  </v-chip>
-                </div>
-                <template v-if="block.config.username">
-                  <v-divider class="my-3" />
-                  <div class="pub-gh-grid-wrap">
-                    <div class="pub-gh-grid">
-                      <div
-                        v-for="(level, i) in mock.ghHeatmap(block.config.username as string)"
-                        :key="i"
-                        class="pub-gh-cell"
-                        :class="`pub-gh-l${level}`"
-                      />
-                    </div>
-                  </div>
-                  <div class="pub-gh-count">
-                    {{ mock.ghStats(block.config.username as string).contributions.toLocaleString('ru') }} contributions за последний год
-                  </div>
-                  <template v-if="block.config.show_pinned_repos">
-                    <div class="pub-sub-label" style="margin-top:12px">Закреплённые репозитории</div>
-                    <div class="pub-gh-repos">
-                      <v-chip v-for="r in mock.ghRepos(block.config.username as string)" :key="r" variant="tonal" size="small" :color="profile.accent_color || '#D0BCFF'" prepend-icon="mdi-source-repository">
-                        {{ block.config.username }}/{{ r }}
-                      </v-chip>
-                    </div>
-                  </template>
-                </template>
-              </template>
-
-              <!-- PC Config -->
-              <template v-else-if="block.block_type === 'pc_config'">
-                <div class="pub-wh" style="margin-bottom:0">
-                  <div class="pub-wh-left">
-                    <v-sheet class="pub-w-ico-bg" color="var(--t-accent12)" rounded="lg" width="40" height="40">
-                      <span style="color:var(--t-accent)">💻</span>
-                    </v-sheet>
-                    <div class="pub-w-name">{{ (block.config.title as string) || 'PC Config' }}</div>
+                  <div>
+                    <div class="pub-w-name">GitHub</div>
+                    <div class="pub-w-id">@{{ block.config.username || '-' }}</div>
                   </div>
                 </div>
-                <template v-if="(block.config.components as Component[]).length">
-                  <v-divider class="mt-3 mb-3" />
-                  <div class="pub-pc-list">
-                    <div v-for="c in (block.config.components as Component[])" :key="c.category" class="pub-pc-row">
-                      <span class="pub-pc-cat">{{ c.category }}</span>
-                      <span class="pub-pc-val">{{ c.name }}</span>
+                <span v-if="block.config.username" class="pub-m3-soft-chip">
+                  {{ mock.ghStats(block.config.username as string).repos }} репо
+                </span>
+              </div>
+              <template v-if="block.config.username">
+                <div class="pub-divider" />
+                <div class="pub-gh-grid-wrap">
+                  <div class="pub-gh-grid">
+                    <div
+                      v-for="(level, i) in mock.ghHeatmap(block.config.username as string)"
+                      :key="i"
+                      class="pub-gh-cell"
+                      :class="`pub-gh-l${level}`"
+                    />
+                  </div>
+                </div>
+                <div class="pub-gh-count">
+                  {{ mock.ghStats(block.config.username as string).contributions.toLocaleString('ru') }} contributions за последний год
+                </div>
+                <template v-if="block.config.show_pinned_repos">
+                  <div class="pub-sub-label pub-m3-pin-label">Закреплённые репозитории</div>
+                  <div class="pub-gh-repos">
+                    <div v-for="r in mock.ghRepos(block.config.username as string)" :key="r" class="pub-gh-repo pub-m3-repo">
+                      <i class="ri-git-repository-line" />
+                      <span>{{ block.config.username }}/{{ r }}</span>
                     </div>
                   </div>
                 </template>
               </template>
+            </template>
 
-              <!-- Faceit -->
-              <template v-else-if="block.block_type === 'widget_faceit'">
-                <div class="pub-wh">
-                  <div class="pub-wh-left">
-                    <v-sheet class="pub-w-ico-bg" color="rgba(255,90,0,0.15)" rounded="lg" width="40" height="40">
-                      <span style="color:#ff8c42">⚡</span>
-                    </v-sheet>
-                    <div>
-                      <div class="pub-w-name">FACEIT · CS2</div>
-                      <div class="pub-w-id">{{ block.config.nickname || '—' }}</div>
-                    </div>
+            <template v-else-if="block.block_type === 'pc_config'">
+              <div class="pub-wh pub-m3-widget-head">
+                <div class="pub-wh-left">
+                  <div class="pub-w-ico-bg pub-m3-service-icon pub-m3-pc">
+                    <i class="ri-computer-fill" />
                   </div>
-                  <div
-                    v-if="block.config.nickname"
-                    class="pub-faceit-lvl"
-                    :style="`background:${mock.faceitLevelColor(mock.faceitData(block.config.nickname as string).level)}`"
-                  >{{ mock.faceitData(block.config.nickname as string).level }}</div>
+                  <div class="pub-w-name">{{ (block.config.title as string) || 'PC Config' }}</div>
                 </div>
-                <template v-if="block.config.nickname">
-                  <v-divider class="my-3" />
-                  <div class="pub-faceit-stats">
-                    <v-sheet v-for="s in faceitStatsList(block)" :key="s.label" class="pub-faceit-stat" rounded="lg" color="rgba(255,255,255,0.04)">
-                      <div class="pub-fstat-v">{{ s.value }}</div>
-                      <div class="pub-fstat-l">{{ s.label }}</div>
-                    </v-sheet>
+              </div>
+              <template v-if="(block.config.components as Component[]).length">
+                <div class="pub-divider" />
+                <div class="pub-pc-list">
+                  <div v-for="c in (block.config.components as Component[])" :key="c.category" class="pub-pc-row">
+                    <span class="pub-pc-cat">{{ c.category }}</span>
+                    <span class="pub-pc-val">{{ c.name }}</span>
                   </div>
-                </template>
+                </div>
               </template>
-            </v-card-text>
-          </v-card>
+            </template>
+
+            <template v-else-if="block.block_type === 'widget_faceit'">
+              <div class="pub-wh pub-m3-widget-head">
+                <div class="pub-wh-left">
+                  <div class="pub-w-ico-bg pub-m3-service-icon pub-m3-faceit">
+                    <FaceitLogo class="pub-faceit-logo" />
+                  </div>
+                  <div>
+                    <div class="pub-w-name">FACEIT · CS2</div>
+                    <div class="pub-w-id">{{ block.config.nickname || '-' }}</div>
+                  </div>
+                </div>
+                <FaceitSkillLevel
+                  v-if="block.config.nickname"
+                  class="pub-faceit-lvl"
+                  :level="mock.faceitData(block.config.nickname as string).level"
+                />
+              </div>
+              <template v-if="block.config.nickname">
+                <div class="pub-divider" />
+                <div class="pub-faceit-stats">
+                  <div v-for="s in faceitStatsList(block)" :key="s.label" class="pub-faceit-stat pub-m3-stat">
+                    <div class="pub-fstat-v">{{ s.value }}</div>
+                    <div class="pub-fstat-l">{{ s.label }}</div>
+                  </div>
+                </div>
+              </template>
+            </template>
+          </article>
         </template>
       </div>
 
-      <!-- Footer -->
-      <v-divider />
+      <div class="pub-divider pub-m3-divider" />
       <div class="pub-footer">
         <NuxtLink to="/" class="pub-footer-link">
           <img src="/images/logos/logo.png" alt="" class="pub-footer-logo">
           Сделано на Stellalink
         </NuxtLink>
       </div>
-    </v-card>
+    </section>
 
     <!-- ═══════════ LIQUID GLASS THEME ═══════════ -->
     <ClientOnly v-else-if="theme === 'glass'">
@@ -445,17 +422,19 @@
               <template v-else-if="block.block_type === 'widget_faceit'">
                 <div class="pub-wh">
                   <div class="pub-wh-left">
-                    <div class="pub-w-ico-bg" style="background:rgba(255,90,0,0.15);color:#ff8c42">⚡</div>
+                    <div class="pub-w-ico-bg pub-faceit-icon-bg">
+                      <FaceitLogo class="pub-faceit-logo" />
+                    </div>
                     <div>
                       <div class="pub-w-name">FACEIT · CS2</div>
                       <div class="pub-w-id">{{ block.config.nickname || '—' }}</div>
                     </div>
                   </div>
-                  <div
+                  <FaceitSkillLevel
                     v-if="block.config.nickname"
                     class="pub-faceit-lvl"
-                    :style="`background:${mock.faceitLevelColor(mock.faceitData(block.config.nickname as string).level)}`"
-                  >{{ mock.faceitData(block.config.nickname as string).level }}</div>
+                    :level="mock.faceitData(block.config.nickname as string).level"
+                  />
                 </div>
                 <template v-if="block.config.nickname">
                   <div class="pub-divider" />
@@ -665,17 +644,19 @@
               <div v-else-if="block.block_type === 'widget_faceit'" class="pub-block-inner">
                 <div class="pub-wh">
                   <div class="pub-wh-left">
-                    <div class="pub-w-ico-bg" style="background:rgba(255,90,0,0.15);color:#ff8c42">⚡</div>
+                    <div class="pub-w-ico-bg pub-faceit-icon-bg">
+                      <FaceitLogo class="pub-faceit-logo" />
+                    </div>
                     <div>
                       <div class="pub-w-name">FACEIT · CS2</div>
                       <div class="pub-w-id">{{ block.config.nickname || '—' }}</div>
                     </div>
                   </div>
-                  <div
+                  <FaceitSkillLevel
                     v-if="block.config.nickname"
                     class="pub-faceit-lvl"
-                    :style="`background:${mock.faceitLevelColor(mock.faceitData(block.config.nickname as string).level)}`"
-                  >{{ mock.faceitData(block.config.nickname as string).level }}</div>
+                    :level="mock.faceitData(block.config.nickname as string).level"
+                  />
                 </div>
                 <template v-if="block.config.nickname">
                   <div class="pub-divider" />
@@ -865,26 +846,43 @@ function faceitStatsList(block: Block) {
 
 /* ── Theme tokens ────────────────────────────────────────────────────────────── */
 .pub-page {
-  --t-accent:   #D0BCFF;
-  --t-accent20: rgba(208,188,255,0.20);
-  --t-accent30: rgba(208,188,255,0.30);
-  --t-accent12: rgba(208,188,255,0.12);
-  --t-bg:       #0c0a1a;
-  --t-surface:  rgba(208,188,255,0.06);
-  --t-card-bg:  rgba(208,188,255,0.03);
-  --t-card-border: rgba(208,188,255,0.10);
-  --t-text:     #e9e0f8;
-  --t-muted:    #cac4d0;
-  --t-dim:      #938f99;
-  --t-border:   rgba(208,188,255,0.14);
-  --t-glow:     rgba(208,188,255,0.14);
-  --t-tag-bg:   rgba(208,188,255,0.10);
-  --t-tag-c:    #D0BCFF;
-  --t-radius:   28px;
-  --t-radius-sm: 16px;
+  --t-accent:   #6750a4;
+  --t-accent20: rgba(103,80,164,0.20);
+  --t-accent30: rgba(103,80,164,0.30);
+  --t-accent12: rgba(103,80,164,0.12);
+  --t-bg:       #121116;
+  --t-surface:  #f5eff7;
+  --t-card-bg:  #fffbff;
+  --t-card-border: rgba(73,69,79,0.18);
+  --t-text:     #1d1b20;
+  --t-muted:    #514d58;
+  --t-dim:      #6e6876;
+  --t-border:   rgba(73,69,79,0.16);
+  --t-glow:     rgba(103,80,164,0.20);
+  --t-tag-bg:   #e8def8;
+  --t-tag-c:    #4f378b;
+  --t-radius:   32px;
+  --t-radius-sm: 18px;
   --t-blur:     none;
-  --t-card-shadow: 0 24px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(208,188,255,0.06);
-  --t-block-shadow: none;
+  --t-card-shadow: 0 24px 80px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.10);
+  --t-block-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  --m3-primary: color-mix(in srgb, var(--t-accent) 72%, #34205f);
+  --m3-on-primary: #ffffff;
+  --m3-primary-container: color-mix(in srgb, var(--t-accent) 24%, #ffffff);
+  --m3-on-primary-container: color-mix(in srgb, var(--t-accent) 46%, #1d1b20);
+  --m3-secondary: #006b5f;
+  --m3-secondary-container: #a9f2df;
+  --m3-on-secondary-container: #00201c;
+  --m3-tertiary: #8f4c38;
+  --m3-tertiary-container: #ffdad0;
+  --m3-on-tertiary-container: #3a0a00;
+  --m3-surface: #fffbff;
+  --m3-surface-container-low: #f8f2fa;
+  --m3-surface-container: #f1ebf4;
+  --m3-surface-container-high: #e9e3ed;
+  --m3-outline: rgba(73,69,79,0.22);
+  --m3-focus: color-mix(in srgb, var(--t-accent) 60%, #ffffff);
+  --m3-spring: cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* Glass tokens */
@@ -951,6 +949,14 @@ function faceitStatsList(block: Block) {
   padding: 24px 16px 48px; position: relative; overflow-x: clip;
 }
 
+[data-theme="material3"].pub-page {
+  justify-content: center;
+  padding: clamp(14px, 3vh, 28px) 14px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--t-accent) 14%, transparent) 0%, transparent 42%),
+    linear-gradient(180deg, #19171f 0%, #111014 100%);
+}
+
 /* ── Background effects ────────────────────────────────────────────────────── */
 .pub-bg-effects {
   position: fixed; inset: 0; pointer-events: none; z-index: 0;
@@ -1004,20 +1010,313 @@ function faceitStatsList(block: Block) {
   transition: border-radius 0.4s ease, background 0.4s ease, box-shadow 0.4s ease;
 }
 
-/* ── Material 3 Card (Vuetify) ────────────────────────────────────────────── */
+/* ── Material 3 Expressive ─────────────────────────────────────────────────── */
 .pub-card-m3 {
-  background: linear-gradient(180deg, var(--t-accent12) 0%, rgba(208,188,255,0.01) 100%) !important;
-  border: 1px solid var(--t-card-border) !important;
-  box-shadow: var(--t-card-shadow) !important;
-  overflow: hidden !important;
-  display: flex !important;
-  flex-direction: column !important;
+  max-width: 420px;
+  max-height: min(860px, calc(100svh - 28px));
+  color: var(--t-text);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,251,255,0.98)),
+    var(--m3-surface);
+  border: 1px solid rgba(255,255,255,0.72);
+  border-radius: 34px;
+  box-shadow: var(--t-card-shadow);
+  overflow: hidden;
+  isolation: isolate;
 }
-.pub-card-m3 :deep(.v-card__text) {
-  padding: 0;
+.pub-card-m3::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--t-accent) 20%, transparent), transparent 34%),
+    linear-gradient(225deg, rgba(169,242,223,0.28), transparent 30%),
+    linear-gradient(0deg, transparent 72%, rgba(255,218,208,0.38));
+  opacity: 0.9;
+  z-index: 0;
 }
-.pub-card-m3 :deep(.v-card__underlay) {
-  display: none;
+.pub-card-m3 > * {
+  position: relative;
+  z-index: 1;
+}
+
+.pub-m3-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 22px 18px;
+  background:
+    linear-gradient(135deg, var(--m3-primary-container), rgba(255,255,255,0.64) 48%),
+    linear-gradient(225deg, var(--m3-tertiary-container), transparent 58%);
+  border-bottom: 1px solid rgba(73,69,79,0.10);
+}
+.pub-m3-hero-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.pub-m3-avatar-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+.pub-avatar-m3 {
+  width: 82px;
+  height: 82px;
+  border-radius: 28px 28px 22px 28px;
+  background:
+    linear-gradient(145deg, var(--m3-primary), color-mix(in srgb, var(--m3-primary) 58%, var(--m3-tertiary)));
+  color: var(--m3-on-primary);
+  box-shadow:
+    0 12px 32px color-mix(in srgb, var(--t-accent) 28%, transparent),
+    0 0 0 6px rgba(255,255,255,0.58);
+  font-size: 30px;
+  transition: transform 320ms var(--m3-spring), border-radius 320ms var(--m3-spring);
+}
+.pub-card-m3:hover .pub-avatar-m3 {
+  border-radius: 24px 30px 24px 30px;
+  transform: translateY(-1px) rotate(-1deg);
+}
+.pub-m3-presence {
+  position: absolute;
+  right: -2px;
+  bottom: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #24d18f;
+  border: 4px solid var(--m3-primary-container);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+}
+.pub-m3-identity {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+.pub-card-m3 .pub-name {
+  color: var(--t-text);
+  font-size: 23px;
+  line-height: 1.12;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+.pub-card-m3 .pub-bio {
+  max-width: 100%;
+  color: var(--t-muted);
+  font-size: 13px;
+  line-height: 1.46;
+}
+.pub-tags-m3 {
+  justify-content: flex-start;
+  gap: 7px;
+}
+.pub-m3-chip,
+.pub-m3-soft-chip,
+.pub-m3-status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--m3-on-primary-container);
+  background: color-mix(in srgb, var(--m3-primary-container) 72%, #ffffff);
+  border: 1px solid rgba(73,69,79,0.10);
+}
+.pub-m3-chip {
+  padding: 0 12px;
+}
+.pub-m3-soft-chip,
+.pub-m3-status-pill {
+  padding: 0 10px;
+}
+.pub-m3-status-pill {
+  gap: 7px;
+  color: #0b3d2d;
+  background: color-mix(in srgb, #a9f2df 78%, #ffffff);
+}
+.pub-m3-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #0f9f6e;
+  box-shadow: 0 0 0 5px rgba(15,159,110,0.12);
+}
+.pub-m3-divider {
+  margin: 0;
+  background: linear-gradient(90deg, transparent, rgba(73,69,79,0.16), transparent);
+}
+.pub-card-m3 .pub-blocks {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px 14px;
+  gap: 10px;
+  overscroll-behavior: contain;
+}
+.pub-card-m3 .pub-blocks::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--t-accent) 30%, rgba(73,69,79,0.22));
+}
+.pub-block-m3,
+.pub-link-m3 {
+  border: 1px solid var(--m3-outline);
+  background: color-mix(in srgb, var(--m3-surface-container-low) 86%, #ffffff);
+  box-shadow: var(--t-block-shadow);
+  transition:
+    transform 260ms var(--m3-spring),
+    border-color 260ms var(--m3-spring),
+    background 260ms var(--m3-spring),
+    box-shadow 260ms var(--m3-spring);
+  animation: m3Enter 360ms var(--m3-spring) both;
+}
+.pub-block-m3 {
+  padding: 16px;
+  border-radius: 24px;
+}
+.pub-link-m3 {
+  min-height: 58px;
+  padding: 10px 12px;
+  border-radius: 22px;
+}
+.pub-link-m3:hover,
+.pub-block-m3:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--t-accent) 38%, rgba(73,69,79,0.22));
+  background: color-mix(in srgb, var(--m3-primary-container) 42%, #ffffff);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+}
+.pub-link-m3:active {
+  transform: translateY(0) scale(0.99);
+}
+.pub-link-m3:focus-visible,
+.pub-footer-link:focus-visible {
+  outline: 3px solid var(--m3-focus);
+  outline-offset: 3px;
+}
+.pub-m3-link-icon,
+.pub-m3-service-icon {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 16px;
+  color: var(--m3-on-primary);
+  background: var(--m3-primary);
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.10);
+}
+.pub-m3-link-action {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  color: var(--m3-on-primary-container);
+  background: rgba(255,255,255,0.58);
+  transition: transform 260ms var(--m3-spring), background 260ms var(--m3-spring);
+}
+.pub-link-m3:hover .pub-m3-link-action {
+  transform: rotate(8deg);
+  background: var(--m3-surface);
+}
+.pub-m3-widget-head {
+  gap: 12px;
+  margin-bottom: 0;
+}
+.pub-m3-steam {
+  color: #ffffff;
+  background: #1b6ea8;
+}
+.pub-m3-lastfm {
+  color: #ffffff;
+  background: #c81f32;
+}
+.pub-m3-github {
+  color: #ffffff;
+  background: #24292f;
+}
+.pub-m3-pc {
+  color: var(--m3-on-primary);
+  background: var(--m3-primary);
+}
+.pub-m3-faceit {
+  color: #ff5500;
+  background: rgba(255,85,0,0.14);
+}
+.pub-faceit-icon-bg {
+  color: #ff8c42;
+  background: rgba(255,90,0,0.15);
+}
+.pub-faceit-logo {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+.pub-card-m3 .pub-divider {
+  background: rgba(73,69,79,0.12);
+}
+.pub-card-m3 .pub-sub-label,
+.pub-card-m3 .pub-np-label,
+.pub-card-m3 .pub-fstat-l,
+.pub-card-m3 .pub-group-title {
+  letter-spacing: 0;
+}
+.pub-text-m3 {
+  color: var(--t-muted);
+  border-left-color: var(--m3-primary);
+  background: color-mix(in srgb, var(--m3-primary-container) 34%, transparent);
+  border-radius: 0 18px 18px 0;
+  padding-block: 4px;
+}
+.pub-card-m3 .pub-gh-l0 {
+  background: rgba(73,69,79,0.10);
+}
+.pub-card-m3 .pub-gh-l1 {
+  background: color-mix(in srgb, var(--t-accent) 22%, #ffffff);
+}
+.pub-card-m3 .pub-gh-l2 {
+  background: color-mix(in srgb, var(--t-accent) 42%, #ffffff);
+}
+.pub-card-m3 .pub-gh-l3 {
+  background: color-mix(in srgb, var(--t-accent) 62%, #ffffff);
+  opacity: 1;
+}
+.pub-card-m3 .pub-gh-l4 {
+  background: var(--m3-primary);
+}
+.pub-m3-pin-label {
+  margin-top: 14px;
+}
+.pub-m3-repo,
+.pub-m3-stat {
+  background: var(--m3-surface-container);
+  border-color: rgba(73,69,79,0.12);
+}
+.pub-card-m3 .pub-footer {
+  border-top: 0;
+  background: rgba(255,251,255,0.74);
+  backdrop-filter: blur(14px);
+}
+.pub-card-m3 .pub-footer-link {
+  color: var(--t-dim);
+  border-radius: 999px;
+  padding: 7px 11px;
+}
+.pub-card-m3 .pub-footer-link:hover {
+  color: var(--m3-on-primary-container);
+  background: var(--m3-primary-container);
+}
+
+@keyframes m3Enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* ── Glass Card ───────────────────────────────────────────────────────────── */
@@ -1257,7 +1556,7 @@ function faceitStatsList(block: Block) {
   box-shadow: 0 0 0 3px rgba(255,255,255,0.15), 0 8px 40px rgba(0,0,0,0.3), 0 0 24px var(--t-accent20);
 }
 .pub-avatar-img { width: 100%; height: 100%; object-fit: cover; }
-.pub-name { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
+.pub-name { font-size: 20px; font-weight: 800; letter-spacing: 0; margin: 0; }
 .pub-bio { font-size: 14px; color: var(--t-muted); line-height: 1.5; margin: 0; max-width: 360px; }
 .pub-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .pub-tag {
@@ -1283,7 +1582,7 @@ function faceitStatsList(block: Block) {
 .pub-links-group { display: flex; flex-direction: column; gap: 6px; }
 .pub-group-title {
   font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 1.4px; color: var(--t-dim); padding: 0 4px;
+  letter-spacing: 0; color: var(--t-dim); padding: 0 4px;
 }
 .pub-link {
   display: flex; align-items: center; gap: 12px;
@@ -1311,11 +1610,17 @@ function faceitStatsList(block: Block) {
   background: var(--t-accent12); border: 1px solid var(--t-border);
   display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--t-accent);
 }
-/* M3 icon wrap uses v-sheet so override */
+/* Material 3 icon surface */
 .pub-card-m3 .pub-link-icon-wrap {
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px; color: #fff;
-  background: transparent !important;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 16px;
+  color: var(--m3-on-primary);
+  background: var(--m3-primary);
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.10);
+  font-size: 18px;
 }
 [data-theme="glass"] .pub-link-icon-wrap {
   background: rgba(255,255,255,0.06);
@@ -1339,9 +1644,73 @@ function faceitStatsList(block: Block) {
   width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center; font-size: 20px;
 }
-/* v-sheet ico override */
-:deep(.v-sheet.pub-w-ico-bg) {
-  display: flex; align-items: center; justify-content: center; font-size: 20px;
+.pub-card-m3 .pub-m3-service-icon {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 16px;
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.10);
+}
+.pub-card-m3 .pub-avatar-m3 {
+  width: 82px;
+  height: 82px;
+  border-radius: 28px 28px 22px 28px;
+  background:
+    linear-gradient(145deg, var(--m3-primary), color-mix(in srgb, var(--m3-primary) 58%, var(--m3-tertiary)));
+  color: var(--m3-on-primary);
+  box-shadow:
+    0 12px 32px color-mix(in srgb, var(--t-accent) 28%, transparent),
+    0 0 0 6px rgba(255,255,255,0.58);
+  font-size: 30px;
+  margin-bottom: 0;
+}
+.pub-card-m3 .pub-link-m3 {
+  min-height: 58px;
+  padding: 10px 12px;
+  border-radius: 22px;
+  transition:
+    transform 260ms var(--m3-spring),
+    border-color 260ms var(--m3-spring),
+    background 260ms var(--m3-spring),
+    box-shadow 260ms var(--m3-spring);
+}
+.pub-card-m3 .pub-block-m3 {
+  padding: 16px;
+  border-radius: 24px;
+}
+.pub-card-m3 .pub-text-m3 {
+  color: var(--t-muted);
+  border-left-color: var(--m3-primary);
+  background: color-mix(in srgb, var(--m3-primary-container) 34%, transparent);
+  border-radius: 0 18px 18px 0;
+  padding-block: 4px;
+}
+.pub-card-m3 .pub-divider {
+  margin: 12px 0;
+}
+.pub-card-m3 > .pub-m3-divider {
+  margin: 0;
+}
+.pub-card-m3 .pub-group-title,
+.pub-card-m3 .pub-sub-label {
+  letter-spacing: 0;
+}
+.pub-card-m3 .pub-np-disc {
+  color: var(--m3-on-tertiary-container);
+  background: var(--m3-tertiary-container);
+  border-color: rgba(143,76,56,0.18);
+}
+.pub-card-m3 .pub-m3-repo,
+.pub-card-m3 .pub-m3-stat {
+  background: var(--m3-surface-container);
+  border-color: rgba(73,69,79,0.12);
+}
+.pub-card-m3 .pub-faceit-lvl {
+  box-shadow: 0 5px 16px rgba(0,0,0,0.18);
+}
+.pub-card-m3 .pub-footer-logo {
+  opacity: 0.58;
+  mix-blend-mode: normal;
 }
 .pub-w-name { font-size: 14px; font-weight: 700; line-height: 1.2; }
 .pub-w-id { font-size: 12px; color: var(--t-muted); margin-top: 1px; }
@@ -1349,7 +1718,7 @@ function faceitStatsList(block: Block) {
 [data-theme="glass"] .pub-divider {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
 }
-.pub-sub-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--t-dim); margin-bottom: 8px; }
+.pub-sub-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0; color: var(--t-dim); margin-bottom: 8px; }
 
 .pub-badge-green {
   font-size: 11px; font-weight: 600; color: #4ade80;
@@ -1385,7 +1754,7 @@ function faceitStatsList(block: Block) {
   animation: npSpin 6s linear infinite;
 }
 @keyframes npSpin { to { transform: rotate(360deg); } }
-.pub-np-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #e5343a; margin-bottom: 2px; }
+.pub-np-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0; color: #e5343a; margin-bottom: 2px; }
 .pub-np-track { font-size: 14px; font-weight: 700; line-height: 1.2; }
 .pub-np-artist { font-size: 12px; color: var(--t-muted); margin-top: 2px; }
 
@@ -1433,9 +1802,8 @@ function faceitStatsList(block: Block) {
 
 /* ── Faceit ─────────────────────────────────────────────────────────────────── */
 .pub-faceit-lvl {
-  width: 32px; height: 32px; border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 15px; font-weight: 900; color: #fff;
+  width: 38px;
+  height: 38px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 .pub-faceit-stats {
@@ -1446,7 +1814,7 @@ function faceitStatsList(block: Block) {
   border-radius: 8px; padding: 10px 8px; text-align: center;
 }
 .pub-fstat-v { font-size: 16px; font-weight: 800; line-height: 1; }
-.pub-fstat-l { font-size: 10px; color: var(--t-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.8px; }
+.pub-fstat-l { font-size: 10px; color: var(--t-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0; }
 
 /* ── Footer ─────────────────────────────────────────────────────────────────── */
 .pub-footer {
@@ -1484,5 +1852,56 @@ function faceitStatsList(block: Block) {
   .pub-card { border-radius: calc(var(--t-radius) * 0.7); max-height: calc(96vh - 24px); }
   .pub-header { padding: 20px 14px 12px; }
   .pub-blocks { padding: 8px 10px 12px; }
+  [data-theme="material3"].pub-page { padding: 10px; }
+  .pub-card-m3 {
+    max-height: calc(100svh - 20px);
+    border-radius: 28px;
+  }
+  .pub-m3-hero {
+    padding: 18px 16px 14px;
+    gap: 12px;
+  }
+  .pub-m3-hero-row {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .pub-card-m3 .pub-avatar-m3 {
+    width: 68px;
+    height: 68px;
+    border-radius: 24px 24px 18px 24px;
+    font-size: 25px;
+  }
+  .pub-card-m3 .pub-name {
+    font-size: 20px;
+  }
+  .pub-card-m3 .pub-bio {
+    font-size: 12px;
+  }
+  .pub-card-m3 .pub-blocks {
+    padding: 10px;
+  }
+  .pub-link-m3 {
+    min-height: 54px;
+    border-radius: 20px;
+  }
+  .pub-faceit-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pub-card-m3 *,
+  .pub-card-m3 *::before,
+  .pub-card-m3 *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .pub-card-m3:hover .pub-avatar-m3,
+  .pub-link-m3:hover,
+  .pub-block-m3:hover {
+    transform: none;
+  }
 }
 </style>

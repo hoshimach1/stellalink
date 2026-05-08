@@ -4,7 +4,26 @@
       "Bash(npx nuxi@latest init frontend --package-manager npm --no-install)",
       "Bash(nvm install:*)",
       "Bash(nvm use:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(wc -l /c/Users/mrcre/stellalink/assets/css/*.css)",
+      "WebFetch(domain:dozzle.dev)",
+      "Bash(timeout 5 npx @playwright/mcp@latest --help)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_snapshot",
+      "WebFetch(domain:github.com)",
+      "Bash(npm pack:*)",
+      "Bash(gh api:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/srdavo/liquid-glass/main/glass-element.js\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/srdavo/liquid-glass/main/displacement-utils.js\" -o /c/Users/mrcre/stellalink/frontend/public/glass/displacement-utils.js)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/srdavo/liquid-glass/main/glass-element.js\" -o /c/Users/mrcre/stellalink/frontend/public/glass/glass-element.js)",
+      "Bash(wc -l /c/Users/mrcre/stellalink/frontend/public/glass/*.js)",
+      "Bash(npm run:*)",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_resize"
     ]
   }
 }

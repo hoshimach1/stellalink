@@ -23,6 +23,7 @@ from app.schemas.auth import (
     UserResponse,
     VerifyEmailRequest,
 )
+from app.services.admin_settings import apply_public_auth_settings, get_smtp_delivery_config
 from app.services.auth import (
     clear_failed_login_attempts,
     consume_email_verification_token,
@@ -59,6 +60,8 @@ async def register(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    await apply_public_auth_settings(db)
+
     if await get_user_by_email(db, body.email):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
@@ -78,7 +81,7 @@ async def register(
     )
 
     verify_token = await create_email_verification_token(user.id, user.email)
-    await send_email_verification_email(user.email, verify_token)
+    await send_email_verification_email(user.email, verify_token, await get_smtp_delivery_config(db))
 
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
@@ -166,8 +169,13 @@ async def request_email_verification(
     if current_user.email_verified:
         return RequestEmailVerificationResponse(detail="Email is already verified")
 
+    await apply_public_auth_settings(db)
     token = await create_email_verification_token(current_user.id, current_user.email)
-    await send_email_verification_email(current_user.email, token)
+    await send_email_verification_email(
+        current_user.email,
+        token,
+        await get_smtp_delivery_config(db),
+    )
 
     response = RequestEmailVerificationResponse()
     if settings.AUTH_DEBUG_TOKENS:
@@ -210,8 +218,9 @@ async def forgot_password(
     if not user:
         return response
 
+    await apply_public_auth_settings(db)
     token = await create_password_reset_token(user.id, user.email)
-    await send_password_reset_email(user.email, token)
+    await send_password_reset_email(user.email, token, await get_smtp_delivery_config(db))
 
     if settings.AUTH_DEBUG_TOKENS:
         response.reset_token = token

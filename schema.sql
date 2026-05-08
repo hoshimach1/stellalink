@@ -103,6 +103,12 @@ CREATE TABLE user_sessions (
 CREATE INDEX idx_sessions_user ON user_sessions (user_id);
 CREATE INDEX idx_sessions_expires ON user_sessions (expires_at);
 
+CREATE TABLE app_settings (
+    key              VARCHAR(100) PRIMARY KEY,
+    value            JSONB NOT NULL DEFAULT '{}',
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ============================================================================
 -- 2. ОРГАНИЗАЦИИ / КОМАНДЫ
 -- ============================================================================

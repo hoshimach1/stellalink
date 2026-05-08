@@ -1,7 +1,5 @@
 <template>
   <main class="auth-page">
-    <NuxtLink class="auth-top-right-link" to="/auth/login">Вход</NuxtLink>
-
     <section class="auth-card">
       <NuxtLink class="auth-brand" to="/">
         <img src="/images/logos/logo.png" alt="Stellalink">
@@ -9,10 +7,10 @@
       </NuxtLink>
 
       <h1 class="auth-headline">Новый пароль</h1>
-      <p class="auth-subtitle">Придумайте новый пароль для вашего аккаунта.</p>
+      <p class="auth-subtitle">Придумайте новый пароль для своего аккаунта и подтвердите его.</p>
 
-      <div v-if="error" class="auth-alert auth-alert-error">{{ error }}</div>
-      <div v-if="success" class="auth-alert auth-alert-success">{{ success }}</div>
+      <div v-if="error" class="auth-alert auth-alert-error" role="alert">{{ error }}</div>
+      <div v-if="success" class="auth-alert auth-alert-success" role="status">{{ success }}</div>
 
       <form class="auth-form" @submit.prevent="submit">
         <div class="auth-field">
@@ -34,7 +32,7 @@
         </div>
 
         <div class="auth-field">
-          <label>Подтверждение пароля</label>
+          <label>Повторите пароль</label>
           <input
             v-model="confirmPassword"
             class="auth-input"
@@ -56,6 +54,7 @@
 </template>
 
 <script setup lang="ts">
+import { extractAuthError } from '~/utils/auth-feedback'
 import { useAuthStore } from '~/stores/auth'
 
 definePageMeta({ layout: 'auth', middleware: 'guest' })
@@ -77,24 +76,9 @@ const loading = ref(false)
 const error = ref('')
 const success = ref('')
 
-function extractError(err: unknown): string {
-  if (!err || typeof err !== 'object') return 'Не удалось сбросить пароль'
-  const e = err as {
-    data?: { detail?: unknown }
-    message?: string
-  }
-  const detail = e.data?.detail
-  if (typeof detail === 'string') return detail
-  if (Array.isArray(detail) && detail.length > 0) {
-    const first = detail[0] as { msg?: string }
-    if (first?.msg) return first.msg
-  }
-  return e.message ?? 'Не удалось сбросить пароль'
-}
-
 onMounted(() => {
   if (!token.value) {
-    error.value = 'Токен сброса не найден в ссылке'
+    error.value = 'Ссылка для сброса пароля неполная или уже недействительна.'
   }
 })
 
@@ -104,19 +88,19 @@ async function submit() {
   success.value = ''
   try {
     if (!token.value) {
-      throw new Error('Токен сброса не найден')
+      throw new Error('Ссылка для сброса пароля недействительна.')
     }
     if (password.value !== confirmPassword.value) {
       throw new Error('Пароли не совпадают')
     }
 
     await auth.resetPassword(token.value, password.value)
-    success.value = 'Пароль обновлён. Перенаправляем на страницу входа...'
+    success.value = 'Пароль обновлён. Сейчас перенаправим вас на страницу входа.'
     setTimeout(() => {
       void navigateTo({ path: '/auth/login', query: { reset: '1' } })
     }, 900)
   } catch (err) {
-    error.value = extractError(err)
+    error.value = extractAuthError(err, 'Не удалось сохранить новый пароль.')
   } finally {
     loading.value = false
   }

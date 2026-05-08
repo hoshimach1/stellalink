@@ -5,12 +5,20 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.database import engine
+from app.models.settings import AppSetting
 from app.redis import close_redis, get_redis
-from app.routers import auth, profile
+from app.routers import admin, auth, profile
+
+
+async def ensure_runtime_tables() -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(lambda sync_conn: AppSetting.__table__.create(sync_conn, checkfirst=True))
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await ensure_runtime_tables()
     await get_redis()   # warm up connection
     yield
     await close_redis()
@@ -27,6 +35,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(admin.router)
 app.include_router(profile.router)
 
 _uploads = Path(__file__).parent.parent / "uploads"

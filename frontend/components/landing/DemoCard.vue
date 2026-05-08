@@ -52,7 +52,8 @@
         </md-outlined-card>
 
         <md-outlined-card class="demo-card demo-metrics">
-          <div class="widget-label"><span class="widget-icon" style="background:#ff5500;"><i class="ri-trophy-fill" /></span>Faceit / CS2</div>
+          <div class="widget-label"><span class="widget-icon faceit-widget-icon"><FaceitLogo /></span>Faceit / CS2</div>
+          <FaceitSkillLevel class="demo-faceit-level" :level="8" />
           <div class="demo-metric-grid">
             <div class="demo-metric-item"><span>1847</span><small>ELO</small></div>
             <div class="demo-metric-item"><span>1.24</span><small>K/D</small></div>

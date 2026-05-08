@@ -33,6 +33,8 @@ artifacts/*
 # Uploads (user files – never commit)
 backend/uploads/avatars/*
 !backend/uploads/avatars/.gitkeep
+backups/*
+frontend/backups/*
 
 # OS
 .DS_Store

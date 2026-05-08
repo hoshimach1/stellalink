@@ -1,247 +1,490 @@
 <template>
-  <div class="bf-wrap">
-
-    <!-- ── Links ──────────────────────────────────────────────────────────────── -->
+  <div class="block-form">
     <template v-if="type === 'links'">
-      <div v-for="(group, gi) in (config.groups as Group[])" :key="gi" class="bf-group">
-        <div class="bf-group-header">
-          <input v-model="group.title" class="bf-input" placeholder="Название группы (необязательно)">
-          <button class="bf-icon-btn bf-del" @click="(config.groups as Group[]).splice(gi, 1)">
+      <section v-for="(group, groupIndex) in linkGroups()" :key="groupIndex" class="bf-section">
+        <div class="bf-section-head">
+          <div>
+            <strong>Группа {{ groupIndex + 1 }}</strong>
+            <span>Заголовок можно оставить пустым.</span>
+          </div>
+          <button class="bf-icon danger" type="button" title="Удалить группу" @click="removeLinkGroup(groupIndex)">
             <i class="ri-delete-bin-line" />
           </button>
         </div>
-        <div class="bf-links">
-          <div v-for="(link, li) in group.links" :key="li" class="bf-link-block">
-            <div class="bf-link-row">
-              <input v-model="link.label" class="bf-input" placeholder="Telegram">
-              <input v-model="link.url" class="bf-input bf-url" placeholder="https://...">
-              <button class="bf-icon-btn bf-del" @click="group.links.splice(li, 1)">
+
+        <label class="bf-field">
+          <span>Заголовок группы</span>
+          <input v-model="group.title" type="text" placeholder="Соцсети">
+        </label>
+
+        <div class="bf-stack">
+          <article v-for="(link, linkIndex) in group.links" :key="linkIndex" class="bf-link">
+            <div class="bf-link-head">
+              <strong>Ссылка {{ linkIndex + 1 }}</strong>
+              <button class="bf-icon danger" type="button" title="Удалить ссылку" @click="group.links.splice(linkIndex, 1)">
                 <i class="ri-close-line" />
               </button>
             </div>
-            <div class="bf-icon-chips">
-              <button
-                v-for="ic in POPULAR_ICONS"
-                :key="ic"
-                class="bf-ic"
-                :class="{ active: link.icon === ic }"
-                type="button"
-                :title="ic"
-                @click="link.icon = link.icon === ic ? '' : ic"
-              >
-                <i :class="`ri-${ic}-fill`" />
-              </button>
+
+            <div class="bf-grid">
+              <label class="bf-field">
+                <span>Название</span>
+                <input v-model="link.label" type="text" placeholder="Telegram">
+              </label>
+              <label class="bf-field">
+                <span>URL</span>
+                <input v-model="link.url" type="url" placeholder="https://t.me/username">
+              </label>
             </div>
-            <div class="bf-link-icon-row">
-              <span v-if="link.icon" class="bf-icon-preview"><i :class="`ri-${link.icon}-fill`" /></span>
-              <input v-model="link.icon" class="bf-input bf-icon-input" placeholder="Или введи иконку: github, vk...">
-            </div>
-          </div>
+
+            <label class="bf-field">
+              <span>Иконка</span>
+              <div class="bf-icons">
+                <button
+                  v-for="icon in POPULAR_ICONS"
+                  :key="icon"
+                  class="bf-icon-choice"
+                  :class="{ active: link.icon === icon }"
+                  type="button"
+                  :title="icon"
+                  @click="link.icon = link.icon === icon ? '' : icon"
+                >
+                  <i :class="`ri-${icon}-fill`" />
+                </button>
+              </div>
+              <div class="bf-inline">
+                <span v-if="link.icon" class="bf-icon-preview"><i :class="`ri-${link.icon}-fill`" /></span>
+                <input v-model="link.icon" type="text" placeholder="github, vk, telegram">
+              </div>
+            </label>
+          </article>
         </div>
-        <button class="bf-add-link" @click="group.links.push({ label: '', url: '', icon: '' })">
-          + Добавить ссылку
+
+        <button class="bf-secondary" type="button" @click="addLink(groupIndex)">
+          <i class="ri-add-line" />
+          <span>Добавить ссылку</span>
         </button>
-      </div>
-      <button class="bf-add-group" @click="(config.groups as Group[]).push({ title: '', links: [] })">
-        + Добавить группу
+      </section>
+
+      <button class="bf-secondary wide" type="button" @click="addLinkGroup">
+        <i class="ri-folder-add-line" />
+        <span>Добавить группу</span>
       </button>
     </template>
 
-    <!-- ── Text ───────────────────────────────────────────────────────────────── -->
     <template v-else-if="type === 'text'">
-      <div class="bf-field">
-        <label>Содержимое</label>
-        <textarea v-model="config.content" class="bf-textarea" rows="8" placeholder="Напиши что-нибудь..." />
-      </div>
+      <label class="bf-field">
+        <span>Текст блока</span>
+        <textarea v-model="config.content" rows="8" placeholder="Коротко о себе, проекте, правилах или расписании." />
+      </label>
     </template>
 
-    <!-- ── Steam ──────────────────────────────────────────────────────────────── -->
     <template v-else-if="type === 'widget_steam'">
-      <div class="bf-field">
-        <label>Steam ID</label>
-        <input v-model="config.steam_id" class="bf-input" placeholder="76561198...">
-        <div class="bf-hint">Найди свой Steam ID на <strong>steamid.io</strong> или в настройках профиля Steam</div>
-      </div>
+      <label class="bf-field">
+        <span>Steam ID</span>
+        <input v-model="config.steam_id" type="text" placeholder="76561198...">
+      </label>
       <label class="bf-check">
         <input v-model="config.show_recent_games" type="checkbox">
-        Показывать последние игры
+        <span>Показывать недавние игры</span>
       </label>
     </template>
 
-    <!-- ── Last.fm ────────────────────────────────────────────────────────────── -->
     <template v-else-if="type === 'widget_lastfm'">
-      <div class="bf-field">
-        <label>Никнейм Last.fm</label>
-        <input v-model="config.username" class="bf-input" placeholder="username">
-        <div class="bf-hint">Твой никнейм на last.fm/user/<strong>username</strong></div>
-      </div>
+      <label class="bf-field">
+        <span>Ник Last.fm</span>
+        <input v-model="config.username" type="text" placeholder="username">
+      </label>
       <label class="bf-check">
         <input v-model="config.show_now_playing" type="checkbox">
-        Показывать «сейчас играет»
+        <span>Показывать текущий трек</span>
       </label>
     </template>
 
-    <!-- ── GitHub ─────────────────────────────────────────────────────────────── -->
     <template v-else-if="type === 'widget_github'">
-      <div class="bf-field">
-        <label>GitHub username</label>
-        <input v-model="config.username" class="bf-input" placeholder="octocat">
-        <div class="bf-hint">Твой никнейм на github.com/<strong>username</strong></div>
-      </div>
+      <label class="bf-field">
+        <span>GitHub username</span>
+        <input v-model="config.username" type="text" placeholder="octocat">
+      </label>
       <label class="bf-check">
         <input v-model="config.show_contributions" type="checkbox">
-        Показывать граф contributions
+        <span>Показывать активность</span>
       </label>
       <label class="bf-check">
         <input v-model="config.show_pinned_repos" type="checkbox">
-        Показывать закреплённые репозитории
+        <span>Показывать закрепленные репозитории</span>
       </label>
     </template>
 
-    <!-- ── FACEIT ─────────────────────────────────────────────────────────────── -->
     <template v-else-if="type === 'widget_faceit'">
+      <label class="bf-field">
+        <span>Ник FACEIT</span>
+        <input v-model="config.nickname" type="text" placeholder="nickname">
+      </label>
       <div class="bf-field">
-        <label>FACEIT никнейм</label>
-        <input v-model="config.nickname" class="bf-input" placeholder="nickname">
-        <div class="bf-hint">Твой никнейм на faceit.com/en/players/<strong>nickname</strong></div>
-      </div>
-      <div class="bf-field">
-        <label>Игра</label>
-        <div class="bf-game-select">
-          <button
-            class="bf-game-btn"
-            :class="{ active: !config.game || config.game === 'cs2' }"
-            type="button"
-            @click="config.game = 'cs2'"
-          >CS2</button>
-          <button
-            class="bf-game-btn"
-            :class="{ active: config.game === 'csgo' }"
-            type="button"
-            @click="config.game = 'csgo'"
-          >CS:GO</button>
-        </div>
-      </div>
-    </template>
-
-    <!-- ── PC Config ──────────────────────────────────────────────────────────── -->
-    <template v-else-if="type === 'pc_config'">
-      <div class="bf-field">
-        <label>Название конфига</label>
-        <input v-model="config.title" class="bf-input" placeholder="My Rig">
-      </div>
-      <div class="bf-field">
-        <label>Компоненты</label>
-        <div class="bf-group">
-          <div v-for="(comp, ci) in (config.components as Component[])" :key="ci" class="bf-comp-row">
-            <input v-model="comp.category" class="bf-input bf-cat" placeholder="CPU">
-            <input v-model="comp.name" class="bf-input" placeholder="AMD Ryzen 5 7500F">
-            <button class="bf-icon-btn bf-del" @click="(config.components as Component[]).splice(ci, 1)">
-              <i class="ri-close-line" />
-            </button>
-          </div>
-          <button class="bf-add-link" @click="(config.components as Component[]).push({ category: '', name: '' })">
-            + Добавить компонент
+        <span>Игра</span>
+        <div class="bf-segments" role="group" aria-label="Игра FACEIT">
+          <button class="bf-segment" :class="{ active: !config.game || config.game === 'cs2' }" type="button" @click="config.game = 'cs2'">
+            CS2
+          </button>
+          <button class="bf-segment" :class="{ active: config.game === 'csgo' }" type="button" @click="config.game = 'csgo'">
+            CS:GO
           </button>
         </div>
-        <div class="bf-hint">CPU, GPU, RAM, SSD, Case, Cooler, PSU, MB...</div>
       </div>
     </template>
 
+    <template v-else-if="type === 'pc_config'">
+      <label class="bf-field">
+        <span>Название конфига</span>
+        <input v-model="config.title" type="text" placeholder="Основной сетап">
+      </label>
+
+      <section class="bf-section">
+        <div class="bf-section-head">
+          <div>
+            <strong>Компоненты</strong>
+            <span>CPU, GPU, RAM, монитор и другие части сетапа.</span>
+          </div>
+        </div>
+
+        <div class="bf-stack">
+          <div v-for="(component, index) in pcComponents()" :key="index" class="bf-grid bf-component">
+            <label class="bf-field">
+              <span>Категория</span>
+              <input v-model="component.category" type="text" placeholder="CPU">
+            </label>
+            <label class="bf-field">
+              <span>Значение</span>
+              <div class="bf-inline">
+                <input v-model="component.name" type="text" placeholder="AMD Ryzen 5 7500F">
+                <button class="bf-icon danger" type="button" title="Удалить компонент" @click="pcComponents().splice(index, 1)">
+                  <i class="ri-close-line" />
+                </button>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <button class="bf-secondary" type="button" @click="addComponent">
+          <i class="ri-add-line" />
+          <span>Добавить компонент</span>
+        </button>
+      </section>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-interface Link { label: string; url: string; icon: string }
-interface Group { title: string; links: Link[] }
-interface Component { category: string; name: string }
+interface Link {
+  label: string
+  url: string
+  icon: string
+}
 
-defineProps<{ type: string; config: Record<string, unknown> }>()
+interface Group {
+  title: string
+  links: Link[]
+}
+
+interface Component {
+  category: string
+  name: string
+}
+
+const props = defineProps<{ type: string; config: Record<string, unknown> }>()
+
+const type = props.type
+const config = props.config
 
 const POPULAR_ICONS = [
-  'telegram', 'vk', 'github', 'twitter-x', 'instagram',
-  'youtube', 'discord', 'twitch', 'tiktok', 'linkedin',
-  'spotify', 'steam', 'reddit', 'behance', 'dribbble',
+  'telegram',
+  'vk',
+  'github',
+  'twitter-x',
+  'instagram',
+  'youtube',
+  'discord',
+  'twitch',
+  'tiktok',
+  'linkedin',
+  'spotify',
+  'steam',
+  'reddit',
+  'behance',
+  'dribbble',
 ]
+
+function linkGroups(): Group[] {
+  if (!Array.isArray(config.groups)) {
+    config.groups = [{ title: '', links: [] }]
+  }
+  return config.groups as Group[]
+}
+
+function addLinkGroup() {
+  linkGroups().push({ title: '', links: [] })
+}
+
+function removeLinkGroup(index: number) {
+  linkGroups().splice(index, 1)
+  if (!linkGroups().length) addLinkGroup()
+}
+
+function addLink(index: number) {
+  const group = linkGroups()[index]
+  if (!group) return
+  if (!Array.isArray(group.links)) group.links = []
+  group.links.push({ label: '', url: '', icon: '' })
+}
+
+function pcComponents(): Component[] {
+  if (!Array.isArray(config.components)) {
+    config.components = []
+  }
+  return config.components as Component[]
+}
+
+function addComponent() {
+  pcComponents().push({ category: '', name: '' })
+}
 </script>
 
 <style scoped>
-.bf-wrap { display: flex; flex-direction: column; gap: 14px; }
-.bf-field { display: flex; flex-direction: column; gap: 5px; }
-.bf-field label { font-size: 11px; font-weight: 700; color: #71717a; text-transform: uppercase; letter-spacing: 0.8px; }
-.bf-hint { font-size: 11px; color: #52525b; line-height: 1.4; }
-.bf-hint strong { color: #71717a; }
-
-.bf-input {
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 7px; padding: 7px 10px; color: #ececef;
-  font-size: 13px; font-family: 'Onest', sans-serif; outline: none; width: 100%;
-  transition: border-color 0.2s;
+.block-form {
+  display: grid;
+  gap: 12px;
 }
-.bf-input:focus { border-color: rgba(255,255,255,0.20); }
-.bf-textarea {
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 7px; padding: 9px 10px; color: #ececef;
-  font-size: 13px; font-family: 'Onest', sans-serif; outline: none; resize: vertical; width: 100%;
-  transition: border-color 0.2s;
+
+.bf-section,
+.bf-link {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dash-surface-soft, #f2f4f8) 68%, transparent);
 }
-.bf-textarea:focus { border-color: rgba(255,255,255,0.20); }
 
-.bf-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #a1a1aa; cursor: pointer; }
-.bf-check input[type="checkbox"] { accent-color: #fafafa; width: 14px; height: 14px; cursor: pointer; }
-
-.bf-group {
-  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 9px; padding: 10px; display: flex; flex-direction: column; gap: 8px;
+.bf-section {
+  padding: 12px;
 }
-.bf-group-header { display: flex; gap: 7px; }
-.bf-links { display: flex; flex-direction: column; gap: 8px; }
-.bf-link-row { display: flex; gap: 5px; align-items: center; }
-.bf-url { flex: 1; }
-.bf-icon-btn { background: none; border: none; cursor: pointer; font-size: 15px; display: flex; align-items: center; padding: 3px; flex-shrink: 0; }
-.bf-del { color: #3f3f46; transition: color 0.2s; }
-.bf-del:hover { color: #ff7070; }
 
-.bf-link-block { display: flex; flex-direction: column; gap: 6px; }
-.bf-icon-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.bf-ic {
-  width: 28px; height: 28px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.03); color: #71717a;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+.bf-link {
+  padding: 12px;
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 88%, transparent);
 }
-.bf-ic:hover { background: rgba(255,255,255,0.08); color: #d4d4d8; border-color: rgba(255,255,255,0.14); }
-.bf-ic.active { background: rgba(255,255,255,0.12); color: #fafafa; border-color: rgba(255,255,255,0.25); }
 
-.bf-link-icon-row { display: flex; align-items: center; gap: 6px; }
-.bf-icon-preview { font-size: 16px; color: #a1a1aa; flex-shrink: 0; width: 20px; text-align: center; }
-.bf-icon-input { font-size: 12px; color: #a1a1aa; }
-
-.bf-add-link {
-  background: none; border: none; color: #d4d4d8;
-  font-size: 12px; font-family: 'Onest', sans-serif; cursor: pointer;
-  text-align: left; padding: 2px 0;
+.bf-section-head,
+.bf-link-head,
+.bf-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
-.bf-add-group {
-  background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.12);
-  border-radius: 7px; padding: 8px; color: #a1a1aa;
-  font-size: 12px; font-family: 'Onest', sans-serif; cursor: pointer; width: 100%;
-  transition: background 0.2s;
-}
-.bf-add-group:hover { background: rgba(255,255,255,0.06); }
 
-/* Faceit game select */
-.bf-game-select { display: flex; gap: 6px; }
-.bf-game-btn {
-  flex: 1; padding: 8px; border-radius: 7px;
-  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
-  color: #71717a; font-size: 13px; font-weight: 600; font-family: 'Onest', sans-serif;
-  cursor: pointer; transition: all 0.15s;
+.bf-section-head,
+.bf-link-head {
+  justify-content: space-between;
 }
-.bf-game-btn:hover { border-color: rgba(255,255,255,0.14); color: #a1a1aa; }
-.bf-game-btn.active { background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.20); color: #fafafa; }
 
-/* PC Config */
-.bf-comp-row { display: flex; gap: 5px; align-items: center; }
-.bf-cat { max-width: 72px; }
+.bf-section-head strong,
+.bf-link-head strong {
+  display: block;
+  color: var(--dash-text-1, #10182b);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.bf-section-head span {
+  display: block;
+  margin-top: 2px;
+  color: var(--dash-text-3, #66789c);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.bf-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.bf-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bf-field {
+  display: grid;
+  gap: 6px;
+}
+
+.bf-field > span {
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.bf-field input,
+.bf-field textarea {
+  width: 100%;
+  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border-radius: 8px;
+  background: var(--dash-surface-strong, #fff);
+  color: var(--dash-text-1, #10182b);
+  font: inherit;
+  outline: none;
+  transition: border-color 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.bf-field input {
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.bf-field textarea {
+  min-height: 124px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.bf-field input:focus,
+.bf-field textarea:focus {
+  border-color: var(--dash-accent, #345EA8);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent, #345EA8) 16%, transparent);
+}
+
+.bf-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bf-icon,
+.bf-icon-choice,
+.bf-secondary,
+.bf-segment {
+  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  background: var(--dash-surface-strong, #fff);
+  color: var(--dash-text-2, #475778);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 180ms cubic-bezier(0.2, 0, 0, 1),
+    background 180ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 180ms cubic-bezier(0.2, 0, 0, 1),
+    color 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.bf-icon,
+.bf-icon-choice {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  font-size: 18px;
+}
+
+.bf-icon-preview {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dash-accent, #345EA8) 12%, transparent);
+  color: var(--dash-accent, #345EA8);
+  font-size: 18px;
+}
+
+.bf-icon-choice.active,
+.bf-segment.active {
+  border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 38%, var(--dash-outline, #d4dbe8));
+  background: color-mix(in srgb, var(--dash-accent, #345EA8) 12%, var(--dash-surface-strong, #fff));
+  color: var(--dash-accent, #345EA8);
+}
+
+.bf-secondary {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.bf-secondary.wide {
+  width: 100%;
+}
+
+.bf-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border-radius: 8px;
+  background: var(--dash-surface-strong, #fff);
+  color: var(--dash-text-1, #10182b);
+  font-size: 14px;
+}
+
+.bf-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--dash-accent, #345EA8);
+}
+
+.bf-segments {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bf-segment {
+  min-height: 42px;
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.bf-component .bf-inline {
+  align-items: stretch;
+}
+
+.bf-inline input {
+  min-width: 0;
+}
+
+.danger:hover {
+  border-color: color-mix(in srgb, var(--dash-red, #B3323A) 34%, var(--dash-outline, #d4dbe8));
+  background: var(--dash-red-soft, #FFE5E7);
+  color: var(--dash-red, #B3323A);
+}
+
+@media (hover: hover) {
+  .bf-icon:hover,
+  .bf-icon-choice:hover,
+  .bf-secondary:hover,
+  .bf-segment:hover {
+    transform: translateY(-1px);
+  }
+}
+
+@media (max-width: 640px) {
+  .bf-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bf-inline {
+    align-items: stretch;
+  }
+}
 </style>

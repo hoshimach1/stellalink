@@ -30,7 +30,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NUXT_PUBLIC_API_BASE: http://144.31.66.170:8081
+      NUXT_PUBLIC_API_BASE: /api
+      NUXT_API_PROXY_TARGET: http://api:8000
     depends_on:
       - api
 

@@ -5,6 +5,7 @@ from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import INET, UUID
 from sqlalchemy.orm import relationship
 
+from app.config import settings
 from app.database import Base
 
 
@@ -22,6 +23,10 @@ class User(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+
+    @property
+    def is_admin(self) -> bool:
+        return self.email.strip().lower() in settings.admin_email_set()
 
 
 class UserSession(Base):

@@ -6,12 +6,16 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     SECRET_KEY: str
     FRONTEND_BASE_URL: str = "http://localhost:3000"
+    ADMIN_EMAILS: str | None = None
 
+    SMTP_ENABLED: bool = True
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587
     SMTP_USERNAME: str | None = None
     SMTP_PASSWORD: str | None = None
+    SMTP_USE_SSL: bool = False
     SMTP_USE_TLS: bool = True
+    SMTP_TIMEOUT_SECONDS: int = 15
     SMTP_FROM: str = "no-reply@stellalink.app"
     SMTP_FROM_NAME: str = "Stellalink"
 
@@ -28,6 +32,15 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
+    def admin_email_set(self) -> set[str]:
+        if not self.ADMIN_EMAILS:
+            return set()
+        return {
+            email.strip().lower()
+            for email in self.ADMIN_EMAILS.split(",")
+            if email.strip()
+        }
 
 
 settings = Settings()

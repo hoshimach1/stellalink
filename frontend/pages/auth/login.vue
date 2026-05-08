@@ -1,7 +1,5 @@
 <template>
   <main class="auth-page">
-    <NuxtLink class="auth-top-right-link" to="/auth/register">Регистрация</NuxtLink>
-
     <section class="auth-card">
       <NuxtLink class="auth-brand" to="/">
         <img src="/images/logos/logo.png" alt="Stellalink">
@@ -9,15 +7,22 @@
       </NuxtLink>
 
       <h1 class="auth-headline">Войти</h1>
-      <p class="auth-subtitle">Восстановим сессию автоматически через refresh token, если access устарел.</p>
+      <p class="auth-subtitle">Войдите, чтобы управлять своим профилем, ссылками и настройками.</p>
 
-      <div v-if="notice" class="auth-alert auth-alert-success">{{ notice }}</div>
-      <div v-if="error" class="auth-alert auth-alert-error">{{ error }}</div>
+      <div v-if="notice" class="auth-alert auth-alert-success" role="status">{{ notice }}</div>
+      <div v-if="error" class="auth-alert auth-alert-error" role="alert">{{ error }}</div>
 
       <form class="auth-form" @submit.prevent="submit">
         <div class="auth-field">
           <label>Email</label>
-          <input v-model="email" class="auth-input" type="email" autocomplete="email" required placeholder="you@example.com">
+          <input
+            v-model="email"
+            class="auth-input"
+            type="email"
+            autocomplete="email"
+            required
+            placeholder="you@example.com"
+          >
         </div>
 
         <div class="auth-field">
@@ -39,7 +44,7 @@
 
         <div class="auth-row">
           <NuxtLink class="auth-link" to="/auth/forgot-password">Забыли пароль?</NuxtLink>
-          <NuxtLink class="auth-link" to="/auth/register">Нет аккаунта?</NuxtLink>
+          <NuxtLink class="auth-link" to="/auth/register">Создать аккаунт</NuxtLink>
         </div>
 
         <button class="auth-btn auth-btn-primary" type="submit" :disabled="loading">
@@ -52,6 +57,7 @@
 </template>
 
 <script setup lang="ts">
+import { extractAuthError } from '~/utils/auth-feedback'
 import { useAuthStore } from '~/stores/auth'
 
 definePageMeta({ layout: 'auth', middleware: 'guest' })
@@ -80,21 +86,6 @@ const redirectPath = computed(() => {
   return '/dashboard'
 })
 
-function extractError(err: unknown): string {
-  if (!err || typeof err !== 'object') return 'Не удалось выполнить вход'
-  const e = err as {
-    data?: { detail?: unknown }
-    message?: string
-  }
-  const detail = e.data?.detail
-  if (typeof detail === 'string') return detail
-  if (Array.isArray(detail) && detail.length > 0) {
-    const first = detail[0] as { msg?: string }
-    if (first?.msg) return first.msg
-  }
-  return e.message ?? 'Не удалось выполнить вход'
-}
-
 async function submit() {
   loading.value = true
   error.value = ''
@@ -102,7 +93,7 @@ async function submit() {
     await auth.login(email.value, password.value)
     await navigateTo(redirectPath.value)
   } catch (err) {
-    error.value = extractError(err)
+    error.value = extractAuthError(err, 'Не удалось выполнить вход.')
   } finally {
     loading.value = false
   }

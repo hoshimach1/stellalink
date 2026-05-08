@@ -1,17 +1,19 @@
 <template>
   <Teleport to="body">
     <div class="be-overlay" @click.self="$emit('close')">
-      <div class="be-modal">
+      <div class="be-modal" role="dialog" aria-modal="true" :aria-label="`${label} - редактор`">
         <div class="be-header">
-          <span class="be-title">{{ label }} — редактор</span>
-          <button class="be-close" @click="$emit('close')"><i class="ri-close-line" /></button>
+          <span class="be-title">{{ label }} - редактор</span>
+          <button class="be-close" type="button" aria-label="Закрыть" @click="$emit('close')">
+            <i class="ri-close-line" />
+          </button>
         </div>
         <div class="be-body">
           <DashboardBlockForm :type="block.block_type" :config="localConfig" />
         </div>
         <div class="be-footer">
-          <button class="be-cancel" @click="$emit('close')">Отмена</button>
-          <button class="be-save" @click="save">Сохранить</button>
+          <button class="be-cancel" type="button" @click="$emit('close')">Отмена</button>
+          <button class="be-save" type="button" @click="save">Сохранить</button>
         </div>
       </div>
     </div>
@@ -20,15 +22,12 @@
 
 <script setup lang="ts">
 import type { Block } from '~/stores/profile'
+import { blockLabel } from '~/utils/dashboard-studio'
 
 const props = defineProps<{ block: Block }>()
 const emit = defineEmits<{ save: [{ config: Record<string, unknown> }]; close: [] }>()
 
-const labels: Record<string, string> = {
-  links: 'Ссылки', text: 'Текст', widget_steam: 'Steam',
-  widget_lastfm: 'Last.fm', widget_github: 'GitHub', pc_config: 'ПК конфиг',
-}
-const label = computed(() => labels[props.block.block_type] ?? props.block.block_type)
+const label = computed(() => blockLabel(props.block.block_type))
 const localConfig = reactive(JSON.parse(JSON.stringify(props.block.config)))
 
 function save() {
@@ -38,40 +37,91 @@ function save() {
 
 <style scoped>
 .be-overlay {
-  position: fixed; inset: 0; z-index: 200;
-  background: rgba(0,0,0,0.72); backdrop-filter: blur(6px);
-  display: flex; align-items: center; justify-content: center; padding: 20px;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(8, 12, 20, 0.72);
+  backdrop-filter: blur(10px);
 }
+
 .be-modal {
-  background: #0f0f12; border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 18px; width: 100%; max-width: 520px;
-  max-height: 80vh; display: flex; flex-direction: column;
-  box-shadow: 0 40px 100px rgba(0,0,0,0.7);
+  width: min(100%, 560px);
+  max-height: min(84vh, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--dash-outline, rgba(203, 213, 225, 0.18));
+  border-radius: 8px;
+  background: var(--dash-surface-strong, #fff);
+  color: var(--dash-text-1, #10182b);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.34);
 }
-.be-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;
-}
-.be-title { font-size: 14px; font-weight: 700; }
-.be-close {
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 7px; width: 30px; height: 30px;
-  display: flex; align-items: center; justify-content: center;
-  color: #71717a; cursor: pointer; font-size: 17px;
-}
-.be-body { padding: 20px; overflow-y: auto; flex: 1; }
+
+.be-header,
 .be-footer {
-  display: flex; justify-content: flex-end; gap: 10px;
-  padding: 14px 20px; border-top: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-color: var(--dash-outline, rgba(203, 213, 225, 0.18));
 }
-.be-cancel {
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px; padding: 8px 18px; color: #71717a;
-  font-size: 13px; font-family: 'Onest', sans-serif; cursor: pointer;
+
+.be-header {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--dash-outline, rgba(203, 213, 225, 0.18));
 }
+
+.be-footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--dash-outline, rgba(203, 213, 225, 0.18));
+}
+
+.be-title {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.be-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.be-close,
+.be-cancel,
 .be-save {
-  background: #fafafa; border: none;
-  border-radius: 8px; padding: 8px 22px; color: #09090b;
-  font-size: 13px; font-weight: 700; font-family: 'Onest', sans-serif; cursor: pointer;
+  border: 1px solid var(--dash-outline, rgba(203, 213, 225, 0.18));
+  border-radius: 999px;
+  background: var(--dash-surface-strong, #fff);
+  color: var(--dash-text-1, #10182b);
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.be-close {
+  width: 38px;
+  height: 38px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  font-size: 18px;
+}
+
+.be-cancel,
+.be-save {
+  min-height: 40px;
+  padding: 0 16px;
+}
+
+.be-save {
+  border-color: transparent;
+  background: var(--dash-accent, #345EA8);
+  color: #fff;
 }
 </style>
