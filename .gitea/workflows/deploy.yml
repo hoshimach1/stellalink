@@ -37,6 +37,9 @@ jobs:
 
           printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/deploy_key"
           chmod 600 "$HOME/.ssh/deploy_key"
+          ssh-keygen -y -f "$HOME/.ssh/deploy_key" > "$HOME/.ssh/deploy_key.pub"
+          echo "Deploy key fingerprint:"
+          ssh-keygen -lf "$HOME/.ssh/deploy_key.pub"
 
           if [ -n "${DEPLOY_SSH_KNOWN_HOSTS:-}" ]; then
             printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
@@ -44,6 +47,18 @@ jobs:
             ssh-keyscan -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_HOST" > "$HOME/.ssh/known_hosts"
           fi
           chmod 644 "$HOME/.ssh/known_hosts"
+
+          cat > "$HOME/.ssh/config" <<EOF
+          Host deploy-target
+            HostName $DEPLOY_SSH_HOST
+            Port $DEPLOY_SSH_PORT
+            IdentityFile $HOME/.ssh/deploy_key
+            IdentitiesOnly yes
+            BatchMode yes
+            StrictHostKeyChecking yes
+            UserKnownHostsFile $HOME/.ssh/known_hosts
+          EOF
+          chmod 600 "$HOME/.ssh/config"
 
       - name: Verify deploy target
         env:
@@ -58,8 +73,7 @@ jobs:
           DEPLOY_SSH_PORT="${DEPLOY_SSH_PORT:-22}"
           LOCAL_HOSTNAME="$(hostname)"
           REMOTE_HOSTNAME="$(
-            ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
-              'hostname'
+            ssh "$DEPLOY_SSH_USER@deploy-target" 'hostname'
           )"
 
           echo "Runner hostname: $LOCAL_HOSTNAME"
@@ -87,7 +101,7 @@ jobs:
 
           DEPLOY_SSH_PORT="${DEPLOY_SSH_PORT:-22}"
 
-          ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
+          ssh "$DEPLOY_SSH_USER@deploy-target" \
             "DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_REPO_URL='$DEPLOY_REPO_URL' DEPLOY_REF='$DEPLOY_REF' DEPLOY_SHA='$DEPLOY_SHA' sh -s" <<'REMOTE'
           set -eu
 
@@ -130,8 +144,7 @@ jobs:
           trap 'rm -f "$ENV_FILE"' EXIT
           printf '%s\n' "$BACKEND_ENV" > "$ENV_FILE"
 
-          scp -i "$HOME/.ssh/deploy_key" -P "$DEPLOY_SSH_PORT" "$ENV_FILE" \
-            "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST:$DEPLOY_PATH/backend/.env"
+          scp "$ENV_FILE" "$DEPLOY_SSH_USER@deploy-target:$DEPLOY_PATH/backend/.env"
 
       - name: Build and restart on deploy server
         env:
@@ -147,7 +160,7 @@ jobs:
 
           DEPLOY_SSH_PORT="${DEPLOY_SSH_PORT:-22}"
 
-          ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
+          ssh "$DEPLOY_SSH_USER@deploy-target" \
             "DEPLOY_PATH='$DEPLOY_PATH' sh -s" <<'REMOTE'
           set -eu
           cd "$DEPLOY_PATH/backend"
