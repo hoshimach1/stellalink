@@ -37,7 +37,10 @@ jobs:
 
           printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/deploy_key"
           chmod 600 "$HOME/.ssh/deploy_key"
-          ssh-keygen -y -f "$HOME/.ssh/deploy_key" > "$HOME/.ssh/deploy_key.pub"
+          if ! ssh-keygen -y -P "" -f "$HOME/.ssh/deploy_key" > "$HOME/.ssh/deploy_key.pub"; then
+            echo "::error::DEPLOY_SSH_PRIVATE_KEY must be an unencrypted private key. Generate a deploy key without passphrase and update the secret."
+            exit 1
+          fi
           echo "Deploy key fingerprint:"
           ssh-keygen -lf "$HOME/.ssh/deploy_key.pub"
 
