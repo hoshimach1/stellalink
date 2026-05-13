@@ -9,28 +9,128 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Docker CLI
+      - name: Ensure SSH client
         run: |
-          if ! command -v docker &>/dev/null; then
-            curl -fsSL https://get.docker.com | sh
+          set -e
+          if ! command -v ssh >/dev/null 2>&1 || ! command -v scp >/dev/null 2>&1; then
+            SUDO=""
+            if command -v sudo >/dev/null 2>&1 && [ "$(id -u)" -ne 0 ]; then SUDO="sudo"; fi
+            $SUDO apt-get update -qq
+            $SUDO apt-get install -y -qq openssh-client
           fi
 
-      - name: Create .env
-        working-directory: backend
-        run: |
-          echo "${{ secrets.BACKEND_ENV }}" > .env
-          echo "--- .env lines: $(wc -l < .env) ---"
-
-      - name: Build & restart
-        working-directory: backend
+      - name: Configure SSH key
         env:
-          DOCKER_BUILDKIT: 1
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
         run: |
+          set -eu
+          : "${DEPLOY_SSH_HOST:?Set DEPLOY_SSH_HOST secret}"
+          : "${DEPLOY_SSH_PRIVATE_KEY:?Set DEPLOY_SSH_PRIVATE_KEY secret}"
+
+          DEPLOY_SSH_PORT="${DEPLOY_SSH_PORT:-22}"
+
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
+
+          if [ -n "${DEPLOY_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          else
+            ssh-keyscan -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_HOST" > "$HOME/.ssh/known_hosts"
+          fi
+          chmod 644 "$HOME/.ssh/known_hosts"
+
+      - name: Update code on deploy server
+        env:
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_REPO_URL: ${{ secrets.DEPLOY_REPO_URL }}
+          DEPLOY_REF: ${{ github.ref_name }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          set -eu
+          : "${DEPLOY_SSH_HOST:?Set DEPLOY_SSH_HOST secret}"
+          : "${DEPLOY_SSH_USER:?Set DEPLOY_SSH_USER secret}"
+          : "${DEPLOY_PATH:?Set DEPLOY_PATH secret}"
+
+          DEPLOY_SSH_PORT="${DEPLOY_SSH_PORT:-22}"
+
+          ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_REPO_URL='$DEPLOY_REPO_URL' DEPLOY_REF='$DEPLOY_REF' DEPLOY_SHA='$DEPLOY_SHA' sh -s" <<'REMOTE'
+          set -eu
+
+          if [ ! -d "$DEPLOY_PATH/.git" ]; then
+            : "${DEPLOY_REPO_URL:?Set DEPLOY_REPO_URL secret for the first deploy}"
+            if [ -d "$DEPLOY_PATH" ] && [ "$(find "$DEPLOY_PATH" -mindepth 1 -maxdepth 1 | head -n 1)" ]; then
+              echo "Deploy path exists and is not an empty git repository: $DEPLOY_PATH" >&2
+              exit 1
+            fi
+            mkdir -p "$DEPLOY_PATH"
+            git clone "$DEPLOY_REPO_URL" "$DEPLOY_PATH"
+          fi
+
+          cd "$DEPLOY_PATH"
+          if [ -n "${DEPLOY_REPO_URL:-}" ]; then
+            git remote set-url origin "$DEPLOY_REPO_URL"
+          fi
+
+          git fetch --prune origin "$DEPLOY_REF"
+          git checkout -B "$DEPLOY_REF" "origin/$DEPLOY_REF"
+          git reset --hard "$DEPLOY_SHA"
+          REMOTE
+
+      - name: Upload backend .env
+        env:
+          BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -eu
+          : "${BACKEND_ENV:?Set BACKEND_ENV secret}"
+          : "${DEPLOY_SSH_HOST:?Set DEPLOY_SSH_HOST secret}"
+          : "${DEPLOY_SSH_USER:?Set DEPLOY_SSH_USER secret}"
+          : "${DEPLOY_PATH:?Set DEPLOY_PATH secret}"
+
+          DEPLOY_SSH_PORT="${DEPLOY_SSH_PORT:-22}"
+          ENV_FILE="$(mktemp)"
+          trap 'rm -f "$ENV_FILE"' EXIT
+          printf '%s\n' "$BACKEND_ENV" > "$ENV_FILE"
+
+          scp -i "$HOME/.ssh/deploy_key" -P "$DEPLOY_SSH_PORT" "$ENV_FILE" \
+            "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST:$DEPLOY_PATH/backend/.env"
+
+      - name: Build and restart on deploy server
+        env:
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -eu
+          : "${DEPLOY_SSH_HOST:?Set DEPLOY_SSH_HOST secret}"
+          : "${DEPLOY_SSH_USER:?Set DEPLOY_SSH_USER secret}"
+          : "${DEPLOY_PATH:?Set DEPLOY_PATH secret}"
+
+          DEPLOY_SSH_PORT="${DEPLOY_SSH_PORT:-22}"
+
+          ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' sh -s" <<'REMOTE'
+          set -eu
+          cd "$DEPLOY_PATH/backend"
+
           docker compose up -d db redis
-          until docker compose exec -T db pg_isready -U stellalink 2>/dev/null; do sleep 1; done
+          until docker compose exec -T db pg_isready -U stellalink >/dev/null 2>&1; do sleep 1; done
           docker compose exec -T db psql -U stellalink -d stellalink < ../schema.sql
-          docker compose build --parallel api frontend
+          DOCKER_BUILDKIT=1 docker compose build --parallel api frontend
           docker compose up -d --no-deps --force-recreate api frontend dozzle
           docker image prune -f
+          REMOTE
