@@ -107,6 +107,8 @@ jobs:
           ssh "$DEPLOY_SSH_USER@deploy-target" \
             "DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_REPO_URL='$DEPLOY_REPO_URL' DEPLOY_REF='$DEPLOY_REF' DEPLOY_SHA='$DEPLOY_SHA' sh -s" <<'REMOTE'
           set -eu
+          export GIT_TERMINAL_PROMPT=0
+          export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
 
           if [ ! -d "$DEPLOY_PATH/.git" ]; then
             : "${DEPLOY_REPO_URL:?Set DEPLOY_REPO_URL secret for the first deploy}"
