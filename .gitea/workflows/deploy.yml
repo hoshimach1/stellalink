@@ -45,6 +45,31 @@ jobs:
           fi
           chmod 644 "$HOME/.ssh/known_hosts"
 
+      - name: Verify deploy target
+        env:
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+        run: |
+          set -eu
+          : "${DEPLOY_SSH_HOST:?Set DEPLOY_SSH_HOST secret}"
+          : "${DEPLOY_SSH_USER:?Set DEPLOY_SSH_USER secret}"
+
+          DEPLOY_SSH_PORT="${DEPLOY_SSH_PORT:-22}"
+          LOCAL_HOSTNAME="$(hostname)"
+          REMOTE_HOSTNAME="$(
+            ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
+              'hostname'
+          )"
+
+          echo "Runner hostname: $LOCAL_HOSTNAME"
+          echo "Deploy hostname: $REMOTE_HOSTNAME"
+
+          if [ "$LOCAL_HOSTNAME" = "$REMOTE_HOSTNAME" ]; then
+            echo "::error::DEPLOY_SSH_HOST points to the same machine as the Gitea runner. Set DEPLOY_SSH_HOST to the promo/deploy server."
+            exit 1
+          fi
+
       - name: Update code on deploy server
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
