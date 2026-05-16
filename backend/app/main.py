@@ -7,8 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.database import Base
 from app.database import engine
-from app.models.settings import AppSetting
+from app import models  # noqa: F401 - import all models before metadata bootstrap
 from app.redis import close_redis, get_redis
 from app.routers import admin, auth, profile
 
@@ -19,7 +20,7 @@ async def ensure_runtime_tables() -> None:
     for attempt in range(30):
         try:
             async with engine.begin() as conn:
-                await conn.run_sync(lambda sync_conn: AppSetting.__table__.create(sync_conn, checkfirst=True))
+                await conn.run_sync(Base.metadata.create_all)
             return
         except OSError:
             if attempt == 29:
