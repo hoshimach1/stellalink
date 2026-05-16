@@ -91,7 +91,12 @@ deploy_production:
     - export DEPLOY_SSH_PORT="${DEPLOY_SSH_PORT:-22}"
     - mkdir -p "$HOME/.ssh"
     - chmod 700 "$HOME/.ssh"
-    - printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/deploy_key"
+    - |
+      if [ -f "$DEPLOY_SSH_PRIVATE_KEY" ]; then
+        cp "$DEPLOY_SSH_PRIVATE_KEY" "$HOME/.ssh/deploy_key"
+      else
+        printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/deploy_key"
+      fi
     - chmod 600 "$HOME/.ssh/deploy_key"
     - ssh-keygen -y -P "" -f "$HOME/.ssh/deploy_key" >/dev/null
     - |
@@ -133,7 +138,12 @@ deploy_production:
         --exclude 'backend/__pycache__/' \
         --exclude 'backend/.pytest_cache/' \
         ./ deploy-target:"$DEPLOY_PATH"/
-    - printf '%s\n' "$BACKEND_ENV" | ssh deploy-target "cat > '$DEPLOY_PATH/backend/.env'"
+    - |
+      if [ -f "$BACKEND_ENV" ]; then
+        scp "$BACKEND_ENV" deploy-target:"$DEPLOY_PATH/backend/.env"
+      else
+        printf '%s\n' "$BACKEND_ENV" | ssh deploy-target "cat > '$DEPLOY_PATH/backend/.env'"
+      fi
     - |
       ssh deploy-target "DEPLOY_PATH='$DEPLOY_PATH' sh -s" <<'REMOTE'
       set -eu
