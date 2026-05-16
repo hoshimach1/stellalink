@@ -163,6 +163,28 @@ jobs:
             export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
           fi
 
+          run_git() {
+            if command -v timeout >/dev/null 2>&1; then
+              timeout 90 git "$@"
+            else
+              git "$@"
+            fi
+          }
+
+          if [ -n "${DEPLOY_REPO_URL:-}" ]; then
+            case "$DEPLOY_REPO_URL" in
+              git@*|ssh://*) ;;
+              *)
+                echo "DEPLOY_REPO_URL must be an SSH URL for DEPLOY_REPO_SSH_PRIVATE_KEY to work." >&2
+                echo "Use git@host:owner/repo.git or ssh://git@host/owner/repo.git." >&2
+                exit 1
+                ;;
+            esac
+
+            echo "Checking repository access from deploy server..."
+            run_git ls-remote --heads "$DEPLOY_REPO_URL" "$DEPLOY_REF" >/dev/null
+          fi
+
           if [ ! -d "$DEPLOY_PATH/.git" ]; then
             : "${DEPLOY_REPO_URL:?Set DEPLOY_REPO_URL secret for the first deploy}"
             if [ -d "$DEPLOY_PATH" ] && [ "$(find "$DEPLOY_PATH" -mindepth 1 -maxdepth 1 | head -n 1)" ]; then
@@ -170,7 +192,7 @@ jobs:
               exit 1
             fi
             mkdir -p "$DEPLOY_PATH"
-            git clone "$DEPLOY_REPO_URL" "$DEPLOY_PATH"
+            run_git clone "$DEPLOY_REPO_URL" "$DEPLOY_PATH"
           fi
 
           cd "$DEPLOY_PATH"
@@ -178,7 +200,7 @@ jobs:
             git remote set-url origin "$DEPLOY_REPO_URL"
           fi
 
-          git fetch --prune origin "$DEPLOY_REF"
+          run_git fetch --prune origin "$DEPLOY_REF"
           git checkout -B "$DEPLOY_REF" "origin/$DEPLOY_REF"
           git reset --hard "$DEPLOY_SHA"
           REMOTE
