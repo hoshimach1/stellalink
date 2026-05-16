@@ -1,0 +1,148 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  GIT_DEPTH: "0"
+  NPM_CONFIG_AUDIT: "false"
+  NPM_CONFIG_FUND: "false"
+  NUXT_TELEMETRY_DISABLED: "1"
+
+backend_lint_and_test:
+  stage: test
+  image: python:3.12-slim
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+    - name: redis:7-alpine
+      alias: redis
+  variables:
+    POSTGRES_USER: stellalink
+    POSTGRES_PASSWORD: password
+    POSTGRES_DB: stellalink_test
+    DATABASE_URL: postgresql+asyncpg://stellalink:password@postgres:5432/stellalink_test
+    REDIS_URL: redis://redis:6379/0
+    SECRET_KEY: ci-test-secret-key-not-for-production
+  before_script:
+    - cd backend
+    - python --version
+    - python -m pip install --upgrade pip
+    - python -m pip install -r requirements-dev.txt
+  script:
+    - python -m ruff check app/
+    - |
+      python - <<'PY'
+      import pathlib
+      import time
+
+      import psycopg2
+
+      conn = None
+      for attempt in range(30):
+          try:
+              conn = psycopg2.connect(
+                  "postgresql://stellalink:password@postgres:5432/stellalink_test"
+              )
+              break
+          except psycopg2.OperationalError:
+              if attempt == 29:
+                  raise
+              time.sleep(1)
+
+      conn.autocommit = True
+      cur = conn.cursor()
+      cur.execute(pathlib.Path("../schema.sql").read_text())
+      conn.close()
+      print("schema applied")
+      PY
+    - python -m pytest tests/ -v --tb=short
+
+frontend_build:
+  stage: build
+  image: node:20-alpine
+  rules:
+    - changes:
+        - frontend/**/*
+        - .gitlab-ci.yml
+    - when: never
+  before_script:
+    - cd frontend
+    - node --version
+    - npm --version
+  script:
+    - npm ci --no-audit --no-fund --prefer-offline
+    - npm run build
+
+deploy_production:
+  stage: deploy
+  image: alpine:3.20
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  environment:
+    name: production
+  before_script:
+    - apk add --no-cache openssh-client rsync tar
+    - test -n "$DEPLOY_SSH_HOST"
+    - test -n "$DEPLOY_SSH_USER"
+    - test -n "$DEPLOY_SSH_PRIVATE_KEY"
+    - test -n "$DEPLOY_PATH"
+    - test -n "$BACKEND_ENV"
+    - export DEPLOY_SSH_PORT="${DEPLOY_SSH_PORT:-22}"
+    - mkdir -p "$HOME/.ssh"
+    - chmod 700 "$HOME/.ssh"
+    - printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/deploy_key"
+    - chmod 600 "$HOME/.ssh/deploy_key"
+    - ssh-keygen -y -P "" -f "$HOME/.ssh/deploy_key" >/dev/null
+    - |
+      if [ -n "${DEPLOY_SSH_KNOWN_HOSTS:-}" ]; then
+        printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+      else
+        ssh-keyscan -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_HOST" > "$HOME/.ssh/known_hosts"
+      fi
+    - chmod 644 "$HOME/.ssh/known_hosts"
+    - |
+      cat > "$HOME/.ssh/config" <<EOF
+      Host deploy-target
+        HostName $DEPLOY_SSH_HOST
+        Port $DEPLOY_SSH_PORT
+        User $DEPLOY_SSH_USER
+        IdentityFile $HOME/.ssh/deploy_key
+        IdentitiesOnly yes
+        BatchMode yes
+        StrictHostKeyChecking yes
+        UserKnownHostsFile $HOME/.ssh/known_hosts
+      EOF
+    - chmod 600 "$HOME/.ssh/config"
+  script:
+    - ssh deploy-target 'hostname'
+    - ssh deploy-target "mkdir -p '$DEPLOY_PATH'"
+    - |
+      rsync -az --delete \
+        --exclude '.git/' \
+        --exclude '.gitea/' \
+        --exclude '.idea/' \
+        --exclude '.playwright-mcp/' \
+        --exclude '.tmp/' \
+        --exclude 'artifacts/' \
+        --exclude 'backups/' \
+        --exclude 'frontend/node_modules/' \
+        --exclude 'frontend/.nuxt/' \
+        --exclude 'frontend/.output/' \
+        --exclude 'backend/.env' \
+        --exclude 'backend/__pycache__/' \
+        --exclude 'backend/.pytest_cache/' \
+        ./ deploy-target:"$DEPLOY_PATH"/
+    - printf '%s\n' "$BACKEND_ENV" | ssh deploy-target "cat > '$DEPLOY_PATH/backend/.env'"
+    - |
+      ssh deploy-target "DEPLOY_PATH='$DEPLOY_PATH' sh -s" <<'REMOTE'
+      set -eu
+      cd "$DEPLOY_PATH/backend"
+
+      docker compose up -d db redis
+      until docker compose exec -T db pg_isready -U stellalink >/dev/null 2>&1; do sleep 1; done
+      docker compose exec -T db psql -U stellalink -d stellalink < ../schema.sql
+      DOCKER_BUILDKIT=1 docker compose build --parallel api frontend
+      docker compose up -d --no-deps --force-recreate api frontend dozzle
+      docker image prune -f
+      REMOTE
