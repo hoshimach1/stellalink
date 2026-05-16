@@ -152,11 +152,29 @@ deploy_production:
         --exclude 'backend/.pytest_cache/' \
         ./ deploy-target:"$DEPLOY_PATH"/
     - |
+      BACKEND_ENV_FILE=""
       if [ -f "$BACKEND_ENV" ]; then
-        scp "$BACKEND_ENV" deploy-target:"$DEPLOY_PATH/backend/.env"
+        BACKEND_ENV_FILE="$BACKEND_ENV"
       else
-        printf '%s\n' "$BACKEND_ENV" | ssh deploy-target "cat > '$DEPLOY_PATH/backend/.env'"
+        BACKEND_ENV_FILE="$(mktemp)"
+        printf '%s\n' "$BACKEND_ENV" > "$BACKEND_ENV_FILE"
       fi
+
+      INVALID_ENV_LINE="$(
+        awk '
+          /^[[:space:]]*$/ { next }
+          /^[[:space:]]*#/ { next }
+          /^[A-Za-z_][A-Za-z0-9_]*=/ { next }
+          { print NR; exit }
+        ' "$BACKEND_ENV_FILE"
+      )"
+      if [ -n "$INVALID_ENV_LINE" ]; then
+        echo "BACKEND_ENV must contain .env contents in KEY=value format, not a path like ./backend/.env." >&2
+        echo "Invalid BACKEND_ENV line: $INVALID_ENV_LINE" >&2
+        exit 1
+      fi
+
+      scp "$BACKEND_ENV_FILE" deploy-target:"$DEPLOY_PATH/backend/.env"
     - |
       ssh deploy-target "DEPLOY_PATH='$DEPLOY_PATH' sh -s" <<'REMOTE'
       set -eu
