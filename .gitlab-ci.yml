@@ -98,6 +98,7 @@ deploy_production:
         printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/deploy_key"
       fi
     - sed -i 's/\r$//' "$HOME/.ssh/deploy_key"
+    - printf '\n' >> "$HOME/.ssh/deploy_key"
     - |
       if ! head -n 1 "$HOME/.ssh/deploy_key" | grep -Eq '^-----BEGIN (OPENSSH|RSA|EC|DSA) PRIVATE KEY-----$'; then
         echo "DEPLOY_SSH_PRIVATE_KEY must contain a private OpenSSH key, not a .pub key, not a .ppk file, and not escaped \\n text." >&2
