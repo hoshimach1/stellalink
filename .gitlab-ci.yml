@@ -97,8 +97,20 @@ deploy_production:
       else
         printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/deploy_key"
       fi
+    - sed -i 's/\r$//' "$HOME/.ssh/deploy_key"
+    - |
+      if ! head -n 1 "$HOME/.ssh/deploy_key" | grep -Eq '^-----BEGIN (OPENSSH|RSA|EC|DSA) PRIVATE KEY-----$'; then
+        echo "DEPLOY_SSH_PRIVATE_KEY must contain a private OpenSSH key, not a .pub key, not a .ppk file, and not escaped \\n text." >&2
+        echo "Expected first line: -----BEGIN OPENSSH PRIVATE KEY-----" >&2
+        exit 1
+      fi
     - chmod 600 "$HOME/.ssh/deploy_key"
-    - ssh-keygen -y -P "" -f "$HOME/.ssh/deploy_key" >/dev/null
+    - |
+      if ! ssh-keygen -y -P "" -f "$HOME/.ssh/deploy_key" >/dev/null; then
+        echo "DEPLOY_SSH_PRIVATE_KEY is not readable by OpenSSH or has a passphrase." >&2
+        echo "Generate an unencrypted key with: ssh-keygen -t ed25519 -f deploy_gitlab_key -N \"\"" >&2
+        exit 1
+      fi
     - |
       if [ -n "${DEPLOY_SSH_KNOWN_HOSTS:-}" ]; then
         printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
