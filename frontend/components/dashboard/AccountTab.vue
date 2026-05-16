@@ -338,7 +338,9 @@ async function changePassword() {
   position: relative;
   display: grid;
   place-items: center;
-  overflow: hidden;
+  --avatar-camera-offset: -5px;
+  --avatar-camera-size: 34px;
+  overflow: visible;
   background: linear-gradient(135deg, var(--dash-accent, #345EA8), #F59E0B);
   color: #fff;
   font-weight: 900;
@@ -355,22 +357,32 @@ async function changePassword() {
 .account-avatar img {
   width: 100%;
   height: 100%;
+  display: block;
   object-fit: cover;
+  border-radius: inherit;
 }
 
 .avatar-camera {
   position: absolute;
-  right: 6px;
-  bottom: 6px;
-  width: 34px;
-  height: 34px;
+  right: var(--avatar-camera-offset);
+  bottom: var(--avatar-camera-offset);
+  z-index: 1;
+  width: var(--avatar-camera-size);
+  height: var(--avatar-camera-size);
   display: grid;
   place-items: center;
+  border: 3px solid var(--dash-surface-strong, #fff);
   border-radius: 50%;
   background: color-mix(in srgb, var(--dash-accent, #345EA8) 84%, white);
   color: #fff;
   cursor: pointer;
+  line-height: 1;
   box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+.avatar-camera i {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .account-copy {
@@ -736,17 +748,12 @@ async function changePassword() {
 }
 
 .account-avatar {
+  --avatar-camera-offset: -4px;
+  --avatar-camera-size: 32px;
   width: 76px;
   height: 76px;
   border-radius: 8px;
   font-size: 30px;
-}
-
-.avatar-camera {
-  right: 4px;
-  bottom: 4px;
-  width: 32px;
-  height: 32px;
 }
 
 .account-copy h2 {

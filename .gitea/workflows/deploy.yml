@@ -94,6 +94,7 @@ jobs:
           DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_REPO_URL: ${{ secrets.DEPLOY_REPO_URL }}
+          DEPLOY_REPO_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_REPO_SSH_PRIVATE_KEY }}
           DEPLOY_REF: ${{ github.ref_name }}
           DEPLOY_SHA: ${{ github.sha }}
         run: |
@@ -103,12 +104,64 @@ jobs:
           : "${DEPLOY_PATH:?Set DEPLOY_PATH secret}"
 
           DEPLOY_SSH_PORT="${DEPLOY_SSH_PORT:-22}"
+          REPO_KEY_FILE=""
+          REMOTE_REPO_KEY=""
+
+          cleanup_repo_key() {
+            if [ -n "$REPO_KEY_FILE" ]; then
+              rm -f "$REPO_KEY_FILE"
+            fi
+            if [ -n "$REMOTE_REPO_KEY" ]; then
+              ssh "$DEPLOY_SSH_USER@deploy-target" "rm -f '$REMOTE_REPO_KEY'" >/dev/null 2>&1 || true
+            fi
+          }
+          trap cleanup_repo_key EXIT
+
+          if [ -n "${DEPLOY_REPO_SSH_PRIVATE_KEY:-}" ]; then
+            REPO_KEY_FILE="$(mktemp)"
+            printf '%s\n' "$DEPLOY_REPO_SSH_PRIVATE_KEY" > "$REPO_KEY_FILE"
+            chmod 600 "$REPO_KEY_FILE"
+            if ! ssh-keygen -y -P "" -f "$REPO_KEY_FILE" >/dev/null; then
+              echo "::error::DEPLOY_REPO_SSH_PRIVATE_KEY must be an unencrypted private key."
+              exit 1
+            fi
+
+            REMOTE_REPO_KEY="$(
+              ssh "$DEPLOY_SSH_USER@deploy-target" 'umask 077; mktemp "${TMPDIR:-/tmp}/deploy_repo_key.XXXXXX"'
+            )"
+            scp "$REPO_KEY_FILE" "$DEPLOY_SSH_USER@deploy-target:$REMOTE_REPO_KEY"
+            ssh "$DEPLOY_SSH_USER@deploy-target" "chmod 600 '$REMOTE_REPO_KEY'"
+          fi
+
+          encode() {
+            printf '%s' "$1" | base64 | tr -d '\n'
+          }
+
+          DEPLOY_PATH_B64="$(encode "$DEPLOY_PATH")"
+          DEPLOY_REPO_URL_B64="$(encode "${DEPLOY_REPO_URL:-}")"
+          DEPLOY_REF_B64="$(encode "$DEPLOY_REF")"
+          DEPLOY_SHA_B64="$(encode "$DEPLOY_SHA")"
+          REMOTE_REPO_KEY_B64="$(encode "$REMOTE_REPO_KEY")"
 
           ssh "$DEPLOY_SSH_USER@deploy-target" \
-            "DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_REPO_URL='$DEPLOY_REPO_URL' DEPLOY_REF='$DEPLOY_REF' DEPLOY_SHA='$DEPLOY_SHA' sh -s" <<'REMOTE'
+            "DEPLOY_PATH_B64='$DEPLOY_PATH_B64' DEPLOY_REPO_URL_B64='$DEPLOY_REPO_URL_B64' DEPLOY_REF_B64='$DEPLOY_REF_B64' DEPLOY_SHA_B64='$DEPLOY_SHA_B64' REMOTE_REPO_KEY_B64='$REMOTE_REPO_KEY_B64' sh -s" <<'REMOTE'
           set -eu
+          decode() {
+            printf '%s' "$1" | base64 -d
+          }
+
+          DEPLOY_PATH="$(decode "$DEPLOY_PATH_B64")"
+          DEPLOY_REPO_URL="$(decode "$DEPLOY_REPO_URL_B64")"
+          DEPLOY_REF="$(decode "$DEPLOY_REF_B64")"
+          DEPLOY_SHA="$(decode "$DEPLOY_SHA_B64")"
+          REMOTE_REPO_KEY="$(decode "$REMOTE_REPO_KEY_B64")"
+
           export GIT_TERMINAL_PROMPT=0
-          export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+          if [ -n "$REMOTE_REPO_KEY" ]; then
+            export GIT_SSH_COMMAND="ssh -i $REMOTE_REPO_KEY -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+          else
+            export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+          fi
 
           if [ ! -d "$DEPLOY_PATH/.git" ]; then
             : "${DEPLOY_REPO_URL:?Set DEPLOY_REPO_URL secret for the first deploy}"
