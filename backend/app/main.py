@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -10,10 +12,20 @@ from app.models.settings import AppSetting
 from app.redis import close_redis, get_redis
 from app.routers import admin, auth, profile
 
+logger = logging.getLogger(__name__)
+
 
 async def ensure_runtime_tables() -> None:
-    async with engine.begin() as conn:
-        await conn.run_sync(lambda sync_conn: AppSetting.__table__.create(sync_conn, checkfirst=True))
+    for attempt in range(30):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(lambda sync_conn: AppSetting.__table__.create(sync_conn, checkfirst=True))
+            return
+        except OSError:
+            if attempt == 29:
+                raise
+            logger.warning("Database is not ready yet, retrying startup check...")
+            await asyncio.sleep(1)
 
 
 @asynccontextmanager
