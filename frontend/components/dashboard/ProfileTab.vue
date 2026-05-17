@@ -15,14 +15,8 @@
     </Transition>
 
     <section class="studio-preview-pane" aria-label="Живое превью профиля">
-      <div class="studio-workspace-head">
-        <div class="studio-workspace-copy">
-          <p class="studio-kicker">Живой конструктор</p>
-          <h1>Соберите профиль и сразу смотрите результат.</h1>
-          <p>Перетаскивайте блоки прямо в превью, настраивайте детали в инспекторе и публикуйте только готовую версию.</p>
-        </div>
-
-        <div class="studio-workspace-stats" aria-label="Сводка профиля">
+      <div class="studio-preview-bar">
+        <div class="studio-status" aria-label="Сводка профиля">
           <span class="status-pill" :class="{ published: profile.isPublished }">
             <i :class="profile.isPublished ? 'ri-broadcast-line' : 'ri-draft-line'" />
             {{ profile.isPublished ? 'Опубликован' : 'Черновик' }}
@@ -31,11 +25,6 @@
             <i class="ri-stack-line" />
             {{ visibleBlocksCount }} / {{ blocks.length }} видно
           </span>
-        </div>
-      </div>
-
-      <div class="studio-preview-bar">
-        <div class="studio-status">
           <span class="url-pill">{{ publicUrlLabel }}</span>
         </div>
 
@@ -70,11 +59,10 @@
           </div>
 
           <div class="public-copy">
-            <p class="eyebrow">Публичная карточка</p>
             <h2>{{ profile.profile.display_name || 'Без имени' }}</h2>
             <span>{{ publicUrlLabel }}</span>
             <p v-if="profile.profile.bio" class="bio">{{ profile.profile.bio }}</p>
-            <p v-else class="bio muted">Добавьте пару строк о себе в инспекторе справа.</p>
+            <p v-else class="bio muted">Био пока не заполнено.</p>
             <div v-if="profile.profile.tags.length" class="tag-row">
               <span v-for="tag in profile.profile.tags" :key="tag">{{ tag }}</span>
             </div>
@@ -249,14 +237,6 @@
     </section>
 
     <aside class="studio-inspector" aria-label="Инспектор профиля">
-      <div class="studio-inspector-head">
-        <span class="section-icon"><i class="ri-equalizer-3-line" /></span>
-        <div>
-          <strong>Инспектор</strong>
-          <small>{{ editingBlockId ? 'Настройка выбранного блока' : panel === 'blocks' ? 'Порядок и библиотека блоков' : 'Профиль и внешний вид' }}</small>
-        </div>
-      </div>
-
       <div class="inspector-tabs">
         <button class="inspector-tab" :class="{ active: panel === 'profile' && !editingBlockId }" type="button" @click="openPanel('profile')">
           <i class="ri-user-settings-line" />
@@ -268,183 +248,183 @@
         </button>
       </div>
 
-      <Transition name="inspector-pane" mode="out-in">
-        <section v-if="panel === 'profile' && !editingBlockId" key="profile" class="inspector-section">
-          <div class="section-head">
-            <span class="section-icon"><i class="ri-user-smile-line" /></span>
-            <div>
-              <h3>Профиль</h3>
-              <p>Имя, адрес, био и визуальный тон.</p>
-            </div>
-          </div>
-
-          <div class="form-grid">
-            <label class="studio-field">
-              <span>Имя или ник</span>
-              <input v-model="editName" type="text" placeholder="Alex K." autocomplete="off">
-            </label>
-
-            <label class="studio-field">
-              <span>Адрес страницы</span>
-              <div class="slug-input">
-                <span>{{ requestHost }}/</span>
-                <input v-model="editSlug" type="text" placeholder="username" autocomplete="off">
+      <div class="inspector-body">
+        <Transition name="inspector-pane" mode="out-in">
+          <section v-if="panel === 'profile' && !editingBlockId" key="profile" class="inspector-section">
+            <div class="section-head compact">
+              <span class="section-icon"><i class="ri-user-smile-line" /></span>
+              <div>
+                <h3>Профиль</h3>
               </div>
-            </label>
-
-            <label class="studio-field wide">
-              <span>Био</span>
-              <textarea v-model="editBio" rows="4" placeholder="Коротко о себе" />
-            </label>
-
-            <label class="studio-field wide">
-              <span>Теги</span>
-              <input v-model="editTagsRaw" type="text" placeholder="design, games, music">
-            </label>
-          </div>
-
-          <div class="form-actions">
-            <button class="ghost-btn" type="button" :disabled="!profileHasChanges" @click="initProfileForm">Сбросить</button>
-            <button class="filled-btn" type="button" :disabled="headerSaving || !profileHasChanges" @click="saveProfile">
-              <span v-if="headerSaving" class="studio-spinner" />
-              <span v-else>Сохранить</span>
-            </button>
-          </div>
-
-          <div class="divider" />
-
-          <div class="section-subhead">
-            <strong>Тема</strong>
-          </div>
-          <div class="theme-grid">
-            <button
-              v-for="theme in THEME_LIBRARY"
-              :key="theme.id"
-              class="theme-option"
-              :class="{ active: currentTheme === theme.id }"
-              type="button"
-              @click="setTheme(theme.id)"
-            >
-              <span class="theme-swatch" :class="`theme-${theme.id}`" :style="{ '--profile-accent': currentAccent }" />
-              <span>
-                <strong>{{ theme.label }}</strong>
-                <small>{{ theme.sub }}</small>
-              </span>
-            </button>
-          </div>
-
-          <div class="section-subhead">
-            <strong>Акцент</strong>
-          </div>
-          <div class="accent-row">
-            <button
-              v-for="color in ACCENT_COLORS"
-              :key="color.value"
-              class="accent-dot"
-              :class="{ active: currentAccent === color.value }"
-              :style="{ background: color.value }"
-              :title="color.label"
-              type="button"
-              @click="setAccent(color.value)"
-            />
-            <label class="accent-dot custom" title="Свой цвет">
-              <i class="ri-add-line" />
-              <input type="color" :value="currentAccent" hidden @input="setAccent(($event.target as HTMLInputElement).value)">
-            </label>
-          </div>
-        </section>
-
-        <section v-else-if="panel === 'blocks' && !editingBlockId" key="blocks" class="inspector-section">
-          <div class="section-head">
-            <span class="section-icon"><i class="ri-stack-line" /></span>
-            <div>
-              <h3>Блоки</h3>
-              <p>Порядок, видимость и новые секции профиля.</p>
             </div>
-          </div>
 
-          <div v-if="blocks.length" class="mini-block-list">
-            <ClientOnly>
-              <VueDraggable
-                v-model="draggableBlocks"
-                class="mini-drag"
-                handle=".mini-handle"
-                :animation="220"
-                ghost-class="mini-ghost"
-                @end="onDragEnd"
+            <div class="form-grid">
+              <label class="studio-field">
+                <span>Имя или ник</span>
+                <input v-model="editName" type="text" placeholder="Alex K." autocomplete="off">
+              </label>
+
+              <label class="studio-field">
+                <span>Адрес страницы</span>
+                <div class="slug-input">
+                  <span>{{ requestHost }}/</span>
+                  <input v-model="editSlug" type="text" placeholder="username" autocomplete="off">
+                </div>
+              </label>
+
+              <label class="studio-field wide">
+                <span>Био</span>
+                <textarea v-model="editBio" rows="4" placeholder="Коротко о себе" />
+              </label>
+
+              <label class="studio-field wide">
+                <span>Теги</span>
+                <input v-model="editTagsRaw" type="text" placeholder="design, games, music">
+              </label>
+            </div>
+
+            <div class="form-actions">
+              <button class="ghost-btn" type="button" :disabled="!profileHasChanges" @click="initProfileForm">Сбросить</button>
+              <button class="filled-btn" type="button" :disabled="headerSaving || !profileHasChanges" @click="saveProfile">
+                <span v-if="headerSaving" class="studio-spinner" />
+                <span v-else>Сохранить</span>
+              </button>
+            </div>
+
+            <div class="divider" />
+
+            <div class="section-subhead">
+              <strong>Тема</strong>
+            </div>
+            <div class="theme-grid">
+              <button
+                v-for="theme in THEME_LIBRARY"
+                :key="theme.id"
+                class="theme-option"
+                :class="{ active: currentTheme === theme.id }"
+                type="button"
+                @click="setTheme(theme.id)"
               >
-                <button
-                  v-for="block in draggableBlocks"
-                  :key="block.id"
-                  class="mini-block"
-                  :class="{ hidden: !block.is_visible }"
-                  type="button"
-                  @click="openBlockEditor(block)"
-                >
-                  <span class="mini-handle" title="Перетащить" @click.stop><i class="ri-draggable" /></span>
-                  <span class="mini-icon">
-                    <FaceitLogo v-if="block.block_type === 'widget_faceit'" class="faceit-logo" />
-                    <i v-else :class="blockIcon(block.block_type)" />
-                  </span>
-                  <span class="mini-label">{{ blockLabel(block.block_type) }}</span>
-                  <span class="mini-actions">
-                    <button class="tiny-action" :class="{ active: block.is_visible }" type="button" title="Видимость" @click.stop="toggleVisible(block)">
-                      <i :class="block.is_visible ? 'ri-eye-line' : 'ri-eye-off-line'" />
-                    </button>
-                    <button class="tiny-action danger" type="button" title="Удалить" @click.stop="deleteBlock(block.id)">
-                      <i class="ri-delete-bin-line" />
-                    </button>
-                  </span>
-                </button>
-              </VueDraggable>
-            </ClientOnly>
-          </div>
-
-          <p v-else class="muted-panel">Профиль пока пуст.</p>
-
-          <div class="section-subhead">
-            <strong>Добавить</strong>
-          </div>
-          <div class="library-grid">
-            <button v-for="item in BLOCK_LIBRARY" :key="item.type" class="library-item" type="button" @click="addBlock(item.type)">
-              <span class="library-item-icon">
-                <FaceitLogo v-if="item.type === 'widget_faceit'" class="faceit-logo" />
-                <i v-else :class="item.icon" />
-              </span>
-              <span>
-                <strong>{{ item.label }}</strong>
-                <small>{{ item.description }}</small>
-              </span>
-            </button>
-          </div>
-        </section>
-
-        <section v-else-if="activeBlock" :key="`edit-${activeBlock.id}`" class="inspector-section">
-          <div class="section-head">
-            <button class="back-btn" type="button" title="Назад" @click="closeBlockEditor">
-              <i class="ri-arrow-left-line" />
-            </button>
-            <span class="section-icon">
-              <FaceitLogo v-if="activeBlock.block_type === 'widget_faceit'" class="faceit-logo" />
-              <i v-else :class="blockIcon(activeBlock.block_type)" />
-            </span>
-            <div>
-              <h3>{{ blockLabel(activeBlock.block_type) }}</h3>
-              <p>{{ blockDescription(activeBlock.block_type) }}</p>
+                <span class="theme-swatch" :class="`theme-${theme.id}`" :style="{ '--profile-accent': currentAccent }" />
+                <span>
+                  <strong>{{ theme.label }}</strong>
+                  <small>{{ theme.sub }}</small>
+                </span>
+              </button>
             </div>
-          </div>
 
-          <DashboardBlockForm :type="activeBlock.block_type" :config="blockDraft" />
+            <div class="section-subhead">
+              <strong>Акцент</strong>
+            </div>
+            <div class="accent-row">
+              <button
+                v-for="color in ACCENT_COLORS"
+                :key="color.value"
+                class="accent-dot"
+                :class="{ active: currentAccent === color.value }"
+                :style="{ background: color.value }"
+                :title="color.label"
+                type="button"
+                @click="setAccent(color.value)"
+              />
+              <label class="accent-dot custom" title="Свой цвет">
+                <i class="ri-add-line" />
+                <input type="color" :value="currentAccent" hidden @input="setAccent(($event.target as HTMLInputElement).value)">
+              </label>
+            </div>
+          </section>
 
-          <div class="form-actions sticky">
-            <button class="ghost-btn" type="button" @click="closeBlockEditor">Отмена</button>
-            <button class="filled-btn" type="button" :disabled="blockSaving" @click="saveBlock">
-              <span v-if="blockSaving" class="studio-spinner" />
-              <span v-else>Сохранить блок</span>
-            </button>
-          </div>
-        </section>
-      </Transition>
+          <section v-else-if="panel === 'blocks' && !editingBlockId" key="blocks" class="inspector-section">
+            <div class="section-head compact">
+              <span class="section-icon"><i class="ri-stack-line" /></span>
+              <div>
+                <h3>Блоки</h3>
+              </div>
+            </div>
+
+            <div v-if="blocks.length" class="mini-block-list">
+              <ClientOnly>
+                <VueDraggable
+                  v-model="draggableBlocks"
+                  class="mini-drag"
+                  handle=".mini-handle"
+                  :animation="220"
+                  ghost-class="mini-ghost"
+                  @end="onDragEnd"
+                >
+                  <button
+                    v-for="block in draggableBlocks"
+                    :key="block.id"
+                    class="mini-block"
+                    :class="{ hidden: !block.is_visible }"
+                    type="button"
+                    @click="openBlockEditor(block)"
+                  >
+                    <span class="mini-handle" title="Перетащить" @click.stop><i class="ri-draggable" /></span>
+                    <span class="mini-icon">
+                      <FaceitLogo v-if="block.block_type === 'widget_faceit'" class="faceit-logo" />
+                      <i v-else :class="blockIcon(block.block_type)" />
+                    </span>
+                    <span class="mini-label">{{ blockLabel(block.block_type) }}</span>
+                    <span class="mini-actions">
+                      <button class="tiny-action" :class="{ active: block.is_visible }" type="button" title="Видимость" @click.stop="toggleVisible(block)">
+                        <i :class="block.is_visible ? 'ri-eye-line' : 'ri-eye-off-line'" />
+                      </button>
+                      <button class="tiny-action danger" type="button" title="Удалить" @click.stop="deleteBlock(block.id)">
+                        <i class="ri-delete-bin-line" />
+                      </button>
+                    </span>
+                  </button>
+                </VueDraggable>
+              </ClientOnly>
+            </div>
+
+            <p v-else class="muted-panel">Профиль пока пуст.</p>
+
+            <div class="section-subhead">
+              <strong>Добавить</strong>
+            </div>
+            <div class="library-grid">
+              <button v-for="item in BLOCK_LIBRARY" :key="item.type" class="library-item" type="button" @click="addBlock(item.type)">
+                <span class="library-item-icon">
+                  <FaceitLogo v-if="item.type === 'widget_faceit'" class="faceit-logo" />
+                  <i v-else :class="item.icon" />
+                </span>
+                <span>
+                  <strong>{{ item.label }}</strong>
+                  <small>{{ item.description }}</small>
+                </span>
+              </button>
+            </div>
+          </section>
+
+          <section v-else-if="activeBlock" :key="`edit-${activeBlock.id}`" class="inspector-section">
+            <div class="section-head">
+              <button class="back-btn" type="button" title="Назад" @click="closeBlockEditor">
+                <i class="ri-arrow-left-line" />
+              </button>
+              <span class="section-icon">
+                <FaceitLogo v-if="activeBlock.block_type === 'widget_faceit'" class="faceit-logo" />
+                <i v-else :class="blockIcon(activeBlock.block_type)" />
+              </span>
+              <div>
+                <h3>{{ blockLabel(activeBlock.block_type) }}</h3>
+                <p>{{ blockDescription(activeBlock.block_type) }}</p>
+              </div>
+            </div>
+
+            <DashboardBlockForm :type="activeBlock.block_type" :config="blockDraft" />
+
+            <div class="form-actions sticky">
+              <button class="ghost-btn" type="button" @click="closeBlockEditor">Отмена</button>
+              <button class="filled-btn" type="button" :disabled="blockSaving" @click="saveBlock">
+                <span v-if="blockSaving" class="studio-spinner" />
+                <span v-else>Сохранить блок</span>
+              </button>
+            </div>
+          </section>
+        </Transition>
+      </div>
     </aside>
   </div>
 </template>
@@ -2134,79 +2114,38 @@ onBeforeUnmount(() => {
   --m3-radius-xl: 34px;
   --m3-ease: cubic-bezier(0.2, 0, 0, 1);
   --m3-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  grid-template-columns: minmax(520px, 1fr) minmax(360px, 420px);
-  gap: clamp(16px, 2vw, 24px);
+  grid-template-columns: minmax(520px, 1fr) minmax(340px, 392px);
+  gap: clamp(12px, 1.5vw, 18px);
+  align-items: stretch;
+  height: calc(100dvh - 146px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .studio-preview-pane {
   display: grid;
   align-content: start;
-  gap: 16px;
-  min-height: calc(100vh - 134px);
-  padding: clamp(14px, 1.8vw, 24px);
-  border-radius: var(--m3-radius-xl);
+  gap: 12px;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: clamp(10px, 1.2vw, 16px);
+  border-radius: 28px;
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--dash-accent, #345EA8) 10%, transparent), transparent 46%),
+    linear-gradient(135deg, color-mix(in srgb, var(--dash-accent, #345EA8) 6%, transparent), transparent 42%),
     linear-gradient(180deg, color-mix(in srgb, var(--dash-surface-strong, #fff) 86%, transparent), color-mix(in srgb, var(--dash-surface-soft, #F2F4F8) 74%, transparent));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 22px 56px color-mix(in srgb, var(--dash-text-1, #10182b) 9%, transparent);
-}
-
-.studio-workspace-head {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 4px 4px 2px;
-}
-
-.studio-workspace-copy {
-  min-width: 0;
-  max-width: 720px;
-}
-
-.studio-kicker {
-  margin: 0 0 6px;
-  color: var(--dash-accent-strong, #173F86);
-  font-size: 12px;
-  font-weight: 950;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.studio-workspace-copy h1 {
-  margin: 0;
-  color: var(--dash-text-1, #111827);
-  font-size: clamp(28px, 3.1vw, 48px);
-  line-height: 0.98;
-  font-weight: 950;
-  text-wrap: balance;
-}
-
-.studio-workspace-copy p {
-  max-width: 650px;
-  margin: 10px 0 0;
-  color: var(--dash-text-2, #4B5C76);
-  font-size: 15px;
-  line-height: 1.55;
-  text-wrap: pretty;
-}
-
-.studio-workspace-stats {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-  flex: 0 0 auto;
+    0 16px 42px color-mix(in srgb, var(--dash-text-1, #10182b) 7%, transparent);
 }
 
 .count-pill {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 38px;
-  padding: 0 13px;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 11px;
   border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
   border-radius: 999px;
   background: color-mix(in srgb, var(--dash-surface-strong, #fff) 78%, transparent);
@@ -2217,28 +2156,34 @@ onBeforeUnmount(() => {
 }
 
 .studio-preview-bar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  padding: 8px;
+  gap: 10px;
+  padding: 7px;
   border: 1px solid color-mix(in srgb, var(--dash-outline, rgba(82, 103, 138, 0.18)) 82%, transparent);
-  border-radius: var(--m3-radius-lg);
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 82%, transparent);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 88%, transparent);
   box-shadow: none;
   backdrop-filter: blur(18px) saturate(140%);
 }
 
 .studio-status {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
   min-width: 0;
 }
 
 .url-pill {
   min-width: 0;
   max-width: 100%;
-  min-height: 42px;
-  padding-inline: 14px;
+  min-height: 36px;
+  padding-inline: 12px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--dash-accent-soft, #E7EEFF) 56%, var(--dash-surface-strong, #fff));
   color: var(--dash-accent-strong, #173F86);
@@ -2253,12 +2198,12 @@ onBeforeUnmount(() => {
 .studio-quick-actions .icon-action {
   width: auto;
   min-width: 0;
-  min-height: 48px;
-  gap: 8px;
-  padding: 0 13px;
+  min-height: 42px;
+  gap: 7px;
+  padding: 0 12px;
   border-radius: 999px;
   color: var(--dash-text-2, #475778);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -2270,17 +2215,17 @@ onBeforeUnmount(() => {
 }
 
 .public-card {
-  width: min(100%, 780px);
-  gap: 14px;
-  padding: clamp(16px, 2vw, 24px);
-  border-radius: 30px;
+  width: min(100%, 720px);
+  gap: 12px;
+  padding: clamp(14px, 1.5vw, 20px);
+  border-radius: 24px;
   box-shadow:
-    0 24px 58px color-mix(in srgb, var(--dash-text-1, #10182b) 18%, transparent),
+    0 18px 46px color-mix(in srgb, var(--dash-text-1, #10182b) 14%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .public-avatar {
-  border-radius: 26px;
+  border-radius: 22px;
 }
 
 .public-block {
@@ -2298,11 +2243,11 @@ onBeforeUnmount(() => {
 }
 
 .block-toolbar {
-  padding: 14px;
+  padding: 12px;
 }
 
 .block-preview {
-  padding: 14px;
+  padding: 12px;
 }
 
 .link-row,
@@ -2316,9 +2261,9 @@ onBeforeUnmount(() => {
 .section-icon,
 .mini-icon,
 .library-item-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 16px;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
 }
 
 .tiny-action,
@@ -2331,9 +2276,13 @@ onBeforeUnmount(() => {
 
 .studio-inspector {
   top: 92px;
-  max-height: calc(100vh - 110px);
-  overflow: auto;
-  border-radius: var(--m3-radius-xl);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  border-radius: 28px;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--dash-surface-strong, #fff) 96%, transparent), color-mix(in srgb, var(--dash-surface-soft, #F2F4F8) 70%, transparent));
   box-shadow:
@@ -2341,42 +2290,18 @@ onBeforeUnmount(() => {
     inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
-.studio-inspector-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 16px 12px;
-}
-
-.studio-inspector-head strong,
-.studio-inspector-head small {
-  display: block;
-}
-
-.studio-inspector-head strong {
-  color: var(--dash-text-1, #10182b);
-  font-size: 18px;
-  font-weight: 950;
-}
-
-.studio-inspector-head small {
-  margin-top: 2px;
-  color: var(--dash-text-2, #475778);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
 .inspector-tabs {
+  flex: 0 0 auto;
   gap: 6px;
-  margin: 0 12px;
-  padding: 6px;
+  margin: 10px 10px 0;
+  padding: 5px;
   border: 0;
   border-radius: 999px;
   background: color-mix(in srgb, var(--dash-surface-soft, #F2F4F8) 78%, transparent);
 }
 
 .inspector-tab {
-  min-height: 48px;
+  min-height: 42px;
   border-radius: 999px;
 }
 
@@ -2387,13 +2312,25 @@ onBeforeUnmount(() => {
 }
 
 .inspector-section {
-  gap: 18px;
-  padding: 16px;
+  gap: 14px;
+  padding: 14px;
+}
+
+.inspector-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .section-head h3 {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 950;
+}
+
+.section-head.compact {
+  align-items: center;
 }
 
 .studio-field input,
@@ -2407,7 +2344,7 @@ onBeforeUnmount(() => {
 .library-item,
 .mini-block,
 .muted-panel {
-  border-radius: 22px;
+  border-radius: 18px;
 }
 
 .theme-option,
@@ -2427,12 +2364,12 @@ onBeforeUnmount(() => {
 }
 
 .theme-swatch {
-  border-radius: 18px;
+  border-radius: 14px;
 }
 
 .filled-btn,
 .ghost-btn {
-  min-height: 48px;
+  min-height: 44px;
 }
 
 .studio-notice {
@@ -2444,12 +2381,20 @@ onBeforeUnmount(() => {
 @media (max-width: 1180px) {
   .studio-shell {
     grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+
+  .studio-preview-pane {
+    height: auto;
+    overflow: visible;
   }
 
   .studio-inspector {
     position: static;
     order: -1;
-    max-height: none;
+    height: auto;
+    max-height: min(72dvh, 720px);
   }
 }
 
@@ -2460,6 +2405,7 @@ onBeforeUnmount(() => {
 
   .studio-preview-pane {
     min-height: auto;
+    height: auto;
     padding: 10px;
     border: 0;
     border-radius: 0;
@@ -2467,44 +2413,31 @@ onBeforeUnmount(() => {
     box-shadow: none;
   }
 
-  .studio-workspace-head {
-    align-items: stretch;
-    flex-direction: column;
-    padding: 0 2px;
-  }
-
-  .studio-workspace-copy h1 {
-    font-size: clamp(27px, 9vw, 36px);
-  }
-
-  .studio-workspace-stats {
-    justify-content: flex-start;
-  }
-
   .studio-preview-bar {
     grid-template-columns: 1fr;
-    border-radius: 24px;
+    border-radius: 20px;
   }
 
   .studio-quick-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .studio-quick-actions .icon-action {
     justify-content: center;
+    padding-inline: 8px;
   }
 
   .public-card {
-    border-radius: 26px;
-    padding: 16px;
+    border-radius: 22px;
+    padding: 14px;
   }
 
   .studio-inspector {
-    border-radius: 26px;
+    max-height: min(70dvh, 620px);
+    border-radius: 22px;
   }
 
-  .inspector-section,
-  .studio-inspector-head {
+  .inspector-section {
     padding-inline: 14px;
   }
 }
