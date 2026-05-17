@@ -87,7 +87,6 @@ const DEFAULT_CONFIGS: Record<string, Record<string, unknown>> = {
   links: { groups: [{ title: '', links: [] }] },
   text: { content: '', format: 'markdown' },
   widget_steam: {
-    steam_id: '',
     use_connected_account: true,
     show_recent_games: true,
     show_profile_stats: true,
@@ -95,7 +94,7 @@ const DEFAULT_CONFIGS: Record<string, Record<string, unknown>> = {
   },
   widget_lastfm: { username: '', show_now_playing: true },
   widget_github: { username: '', show_contributions: true, show_pinned_repos: true },
-  widget_faceit: { nickname: '', game: 'cs2' },
+  widget_faceit: { game: 'cs2' },
   pc_config: { title: 'My Rig', components: [] },
 }
 

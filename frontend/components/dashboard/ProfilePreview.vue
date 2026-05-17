@@ -29,7 +29,7 @@
 
         <section v-else-if="block.block_type === 'widget_steam'" class="preview-block">
           <p class="preview-title">Steam</p>
-          <strong>{{ (block.config.steam_id as string) || 'ID не указан' }}</strong>
+          <strong>{{ steamDisplayName(block.config) }}</strong>
         </section>
 
         <section v-else-if="block.block_type === 'widget_lastfm'" class="preview-block">
@@ -86,6 +86,11 @@ function asGroups(config: Record<string, unknown>): Group[] {
 
 function asComponents(config: Record<string, unknown>): ComponentItem[] {
   return Array.isArray(config.components) ? config.components as ComponentItem[] : []
+}
+
+function steamDisplayName(config: Record<string, unknown>): string {
+  const steamProfile = config.steam_profile as Record<string, unknown> | undefined
+  return String(config.steam_display_name || steamProfile?.personaname || 'Steam не привязан')
 }
 </script>
 

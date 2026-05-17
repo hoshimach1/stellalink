@@ -39,6 +39,47 @@ def _account_metadata(account) -> dict:
     return account.account_metadata
 
 
+def _display_name_from_metadata(account, metadata: dict, provider: str) -> str | None:
+    if account and account.display_name:
+        return account.display_name
+    if provider == "steam":
+        steam_profile = metadata.get("steam_profile")
+        if isinstance(steam_profile, dict):
+            return steam_profile.get("personaname")
+    if provider == "faceit":
+        return metadata.get("nickname") or metadata.get("game_player_name")
+    return None
+
+
+def _sanitize_block_config(block_type: str, config: dict | None) -> dict:
+    clean = dict(config or {})
+    synced_keys = {
+        "widget_steam": (
+            "steam_id",
+            "steam_display_name",
+            "connected_account_id",
+            "steam_profile",
+            "steam_recent_games",
+            "steam_profile_stats",
+            "steam_inventory_highlight",
+            "steam_sync_error",
+            "steam_last_synced_at",
+            "faceit_profile",
+        ),
+        "widget_faceit": (
+            "nickname",
+            "faceit_display_name",
+            "connected_account_id",
+            "faceit_profile",
+            "faceit_sync_error",
+            "faceit_last_synced_at",
+        ),
+    }
+    for key in synced_keys.get(block_type, ()):
+        clean.pop(key, None)
+    return clean
+
+
 def _enriched_block_config(profile, block) -> dict:
     config = dict(block.config or {})
     steam_account = _account_by_provider(profile, "steam")
@@ -46,10 +87,13 @@ def _enriched_block_config(profile, block) -> dict:
     steam_metadata = _account_metadata(steam_account)
     faceit_metadata = _account_metadata(faceit_account)
 
-    if block.block_type == "widget_steam" and steam_account:
-        if not config.get("steam_id"):
+    if block.block_type == "widget_steam":
+        if steam_account:
             config["steam_id"] = steam_account.provider_uid
-        if str(config.get("steam_id") or "") == steam_account.provider_uid:
+            config["steam_display_name"] = (
+                _display_name_from_metadata(steam_account, steam_metadata, "steam")
+                or steam_account.provider_uid
+            )
             config["connected_account_id"] = str(steam_account.id)
             config["steam_profile"] = steam_metadata.get("steam_profile")
             config["steam_recent_games"] = steam_metadata.get("recent_games") or []
@@ -66,22 +110,58 @@ def _enriched_block_config(profile, block) -> dict:
             config["faceit_profile"] = faceit_metadata or steam_metadata.get(
                 "faceit_profile"
             )
+        else:
+            for key in (
+                "steam_id",
+                "steam_display_name",
+                "connected_account_id",
+                "steam_profile",
+                "steam_recent_games",
+                "steam_profile_stats",
+                "steam_inventory_highlight",
+                "steam_sync_error",
+                "steam_last_synced_at",
+                "faceit_profile",
+            ):
+                config.pop(key, None)
 
-    if block.block_type == "widget_faceit" and faceit_account:
-        if not config.get("nickname"):
-            config["nickname"] = faceit_account.display_name or faceit_metadata.get(
-                "nickname"
+    if block.block_type == "widget_faceit":
+        if faceit_account:
+            display_name = _display_name_from_metadata(
+                faceit_account, faceit_metadata, "faceit"
             )
-        config["connected_account_id"] = str(faceit_account.id)
-        config["faceit_profile"] = faceit_metadata
-        config["faceit_sync_error"] = faceit_account.sync_error
-        config["faceit_last_synced_at"] = (
-            faceit_account.last_synced_at.isoformat()
-            if faceit_account.last_synced_at
-            else None
-        )
+            config["nickname"] = display_name
+            config["faceit_display_name"] = display_name
+            config["connected_account_id"] = str(faceit_account.id)
+            config["faceit_profile"] = faceit_metadata
+            config["faceit_sync_error"] = faceit_account.sync_error
+            config["faceit_last_synced_at"] = (
+                faceit_account.last_synced_at.isoformat()
+                if faceit_account.last_synced_at
+                else None
+            )
+        else:
+            for key in (
+                "nickname",
+                "faceit_display_name",
+                "connected_account_id",
+                "faceit_profile",
+                "faceit_sync_error",
+                "faceit_last_synced_at",
+            ):
+                config.pop(key, None)
 
     return config
+
+
+def _block_to_response(profile, block) -> BlockResponse:
+    return BlockResponse(
+        id=block.id,
+        block_type=block.block_type,
+        sort_order=block.sort_order,
+        is_visible=block.is_visible,
+        config=_enriched_block_config(profile, block),
+    )
 
 
 def _to_response(profile) -> ProfileResponse:
@@ -93,16 +173,7 @@ def _to_response(profile) -> ProfileResponse:
         display_name=trans.display_name if trans else "",
         bio=trans.bio if trans else None,
         tags=trans.tags if trans else [],
-        blocks=[
-            BlockResponse(
-                id=b.id,
-                block_type=b.block_type,
-                sort_order=b.sort_order,
-                is_visible=b.is_visible,
-                config=_enriched_block_config(profile, b),
-            )
-            for b in profile.blocks
-        ],
+        blocks=[_block_to_response(profile, b) for b in profile.blocks],
         theme_preset=profile.theme_preset,
         accent_color=profile.accent_color,
         avatar_url=profile.user.avatar_url if profile.user else None,
@@ -184,7 +255,13 @@ async def create_block(
     profile = await svc.get_profile_by_user(db, current_user.id)
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
-    return await svc.create_block(db, profile.id, body.block_type, body.config)
+    block = await svc.create_block(
+        db,
+        profile.id,
+        body.block_type,
+        _sanitize_block_config(body.block_type, body.config),
+    )
+    return _block_to_response(profile, block)
 
 
 @router.patch("/profiles/me/blocks/{block_id}", response_model=BlockResponse)
@@ -200,9 +277,15 @@ async def update_block(
     block = next((b for b in profile.blocks if b.id == block_id), None)
     if not block:
         raise HTTPException(status_code=404, detail="Block not found")
-    return await svc.update_block(
-        db, block, config=body.config, is_visible=body.is_visible
+    next_config = (
+        _sanitize_block_config(block.block_type, body.config)
+        if body.config is not None
+        else None
     )
+    block = await svc.update_block(
+        db, block, config=next_config, is_visible=body.is_visible
+    )
+    return _block_to_response(profile, block)
 
 
 @router.delete("/profiles/me/blocks/{block_id}", status_code=204)

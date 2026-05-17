@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class ConnectedAccountResponse(BaseModel):
@@ -29,12 +29,3 @@ class IntegrationsResponse(BaseModel):
 
 class SteamOpenIdStartResponse(BaseModel):
     auth_url: str
-
-
-class SteamConnectRequest(BaseModel):
-    steam_id: str = Field(..., min_length=1, max_length=160)
-
-    @field_validator("steam_id")
-    @classmethod
-    def clean_steam_id(cls, value: str) -> str:
-        return value.strip()

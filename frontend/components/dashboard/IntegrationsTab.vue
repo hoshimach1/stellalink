@@ -46,23 +46,13 @@
           <p>{{ service.description }}</p>
         </div>
 
-        <form v-if="service.type === 'widget_steam'" class="steam-connect" @submit.prevent="saveSteamConnection">
+        <div v-if="service.type === 'widget_steam'" class="steam-connect">
           <button class="steam-login" type="button" :disabled="steamOauthBusy" @click="startSteamLogin">
             <span v-if="steamOauthBusy" class="integration-spinner" />
             <i v-else class="ri-steam-fill" />
             <span>Войти через Steam</span>
           </button>
-          <div class="steam-divider"><span>или вручную</span></div>
-          <label class="steam-field">
-            <span>SteamID64 или ссылка на профиль</span>
-            <input v-model="steamInput" type="text" placeholder="76561198... или https://steamcommunity.com/id/name">
-          </label>
-          <div class="steam-actions">
-            <button class="service-action primary" type="submit" :disabled="steamBusy || !steamInput.trim()">
-              <span v-if="steamBusy" class="integration-spinner" />
-              <i v-else class="ri-link-m" />
-              <span>{{ steamAccount ? 'Обновить привязку' : 'Привязать Steam' }}</span>
-            </button>
+          <div v-if="steamAccount" class="steam-actions">
             <button v-if="steamAccount" class="service-action" type="button" :disabled="steamBusy" @click="syncSteamConnection">
               <i class="ri-refresh-line" />
               <span>Синхронизировать</span>
@@ -72,7 +62,7 @@
               <span>Отключить</span>
             </button>
           </div>
-        </form>
+        </div>
 
         <div v-else-if="service.type === 'widget_faceit' && faceitAccount" class="faceit-summary">
           <span>Уровень {{ faceitSkillLevel || '—' }}</span>
@@ -136,7 +126,6 @@ const integrations = ref<IntegrationsResponse | null>(null)
 const loading = ref(false)
 const steamBusy = ref(false)
 const steamOauthBusy = ref(false)
-const steamInput = ref('')
 const connectingType = ref<IntegrationType | null>(null)
 const connectNotice = ref('')
 const connectNoticeTone = ref<NoticeTone>('success')
@@ -147,7 +136,9 @@ const faceitSkillLevel = computed(() => faceitAccount.value?.metadata?.skill_lev
 const faceitElo = computed(() => faceitAccount.value?.metadata?.faceit_elo ?? null)
 const blockConnectedTypes = computed(() => new Set(profile.profile?.blocks.map(block => block.block_type) ?? []))
 const connectedTypes = computed(() => {
-  const set = new Set<string>(blockConnectedTypes.value)
+  const set = new Set<string>()
+  if (blockConnectedTypes.value.has('widget_github')) set.add('widget_github')
+  if (blockConnectedTypes.value.has('widget_lastfm')) set.add('widget_lastfm')
   if (steamAccount.value) set.add('widget_steam')
   if (faceitAccount.value) set.add('widget_faceit')
   return set
@@ -163,7 +154,7 @@ const serviceCards = computed(() =>
       const steamDescription = steamAccount.value
         ? `${steamAccount.value.display_name || steamAccount.value.provider_uid}: профиль, последние игры и Steam-статистика синхронизированы.`
         : apiReady?.steam_api_key_set
-          ? 'Привяжите SteamID64 или ссылку на профиль, чтобы подтянуть Steam и FACEIT-данные.'
+          ? 'Войдите через Steam, чтобы подтвердить владение аккаунтом и подтянуть Steam и FACEIT-данные.'
           : 'Администратору нужно добавить Steam Web API key, после этого профиль можно будет привязать.'
       const faceitDescription = faceitAccount.value
         ? `${faceitAccount.value.display_name || 'FACEIT'} найден по Steam: уровень, ELO и статистика доступны для блока.`
@@ -211,9 +202,6 @@ function readSteamRedirectResult() {
 
 function applyIntegrations(data: IntegrationsResponse) {
   integrations.value = data
-  if (steamAccount.value && !steamInput.value) {
-    steamInput.value = steamAccount.value.provider_uid
-  }
 }
 
 async function loadIntegrations() {
@@ -221,6 +209,9 @@ async function loadIntegrations() {
   try {
     const data = await auth.authorizedFetch<IntegrationsResponse>(`${config.public.apiBase}/integrations/me`)
     applyIntegrations(data)
+    if (steamAccount.value) {
+      await ensureSteamBlock()
+    }
   } catch (error) {
     connectNoticeTone.value = 'error'
     connectNotice.value = extractAuthError(error, 'Не удалось загрузить подключения.')
@@ -229,23 +220,40 @@ async function loadIntegrations() {
   }
 }
 
-async function ensureSteamBlock(account: ConnectedAccount) {
+async function ensureSteamBlock() {
   if (!profile.profile) return
   const existing = profile.profile?.blocks.find((block: Block) => block.block_type === 'widget_steam')
-  const nextConfig = {
-    ...(existing?.config ?? createDefaultBlockConfig('widget_steam')),
-    steam_id: (existing?.config?.steam_id as string) || account.provider_uid,
+  const currentConfig = existing ? sanitizedSteamBlockConfig(existing.config) : null
+  const nextConfig: Record<string, unknown> = {
+    ...(currentConfig ?? createDefaultBlockConfig('widget_steam')),
     use_connected_account: true,
-    show_recent_games: existing?.config?.show_recent_games ?? true,
-    show_profile_stats: existing?.config?.show_profile_stats ?? true,
-    show_inventory_highlight: existing?.config?.show_inventory_highlight ?? true,
+    show_recent_games: currentConfig?.show_recent_games ?? true,
+    show_profile_stats: currentConfig?.show_profile_stats ?? true,
+    show_inventory_highlight: currentConfig?.show_inventory_highlight ?? true,
   }
 
   if (existing) {
-    await profile.updateBlock(existing.id, { config: nextConfig })
+    if (JSON.stringify(currentConfig) !== JSON.stringify(nextConfig)) {
+      await profile.updateBlock(existing.id, { config: nextConfig })
+    }
   } else {
     await profile.createBlock('widget_steam', nextConfig)
   }
+}
+
+function sanitizedSteamBlockConfig(value: Record<string, unknown>) {
+  const clean = { ...value }
+  delete clean.steam_id
+  delete clean.steam_display_name
+  delete clean.connected_account_id
+  delete clean.steam_profile
+  delete clean.steam_recent_games
+  delete clean.steam_profile_stats
+  delete clean.steam_inventory_highlight
+  delete clean.steam_sync_error
+  delete clean.steam_last_synced_at
+  delete clean.faceit_profile
+  return clean
 }
 
 async function startSteamLogin() {
@@ -261,32 +269,6 @@ async function startSteamLogin() {
     connectNoticeTone.value = 'error'
     connectNotice.value = extractAuthError(error, 'Не удалось начать вход через Steam.')
     steamOauthBusy.value = false
-  }
-}
-
-async function saveSteamConnection() {
-  if (!steamInput.value.trim()) return
-  steamBusy.value = true
-  connectNotice.value = ''
-  try {
-    const data = await auth.authorizedFetch<IntegrationsResponse>(`${config.public.apiBase}/integrations/steam`, {
-      method: 'PUT',
-      body: { steam_id: steamInput.value.trim() },
-    })
-    applyIntegrations(data)
-    if (steamAccount.value) {
-      await ensureSteamBlock(steamAccount.value)
-    }
-    await profile.fetch()
-    connectNoticeTone.value = 'success'
-    connectNotice.value = faceitAccount.value
-      ? 'Steam привязан, FACEIT найден автоматически.'
-      : 'Steam привязан. FACEIT не найден или API-ключ FACEIT не настроен.'
-  } catch (error) {
-    connectNoticeTone.value = 'error'
-    connectNotice.value = extractAuthError(error, 'Не удалось привязать Steam.')
-  } finally {
-    steamBusy.value = false
   }
 }
 
@@ -314,7 +296,6 @@ async function disconnectSteamConnection() {
   connectNotice.value = ''
   try {
     await auth.authorizedFetch(`${config.public.apiBase}/integrations/steam`, { method: 'DELETE' })
-    steamInput.value = ''
     await loadIntegrations()
     await profile.fetch()
     connectNoticeTone.value = 'success'

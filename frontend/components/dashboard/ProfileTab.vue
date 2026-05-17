@@ -141,16 +141,22 @@
                   <div class="widget-head">
                     <div>
                       <p>Steam</p>
-                      <span>{{ (previewConfig(block).steam_id as string) || 'Steam ID не указан' }}</span>
+                      <span>{{ steamDisplayName(previewConfig(block)) }}</span>
                     </div>
                     <span class="soft-badge">Игры</span>
                   </div>
                   <div v-if="previewConfig(block).show_recent_games && steamGamesList(previewConfig(block)).length" class="widget-list">
                     <div v-for="game in steamGamesList(previewConfig(block))" :key="`${game.appid || game.name}`">
-                      <span>{{ game.name }}</span>
-                      <strong>{{ steamGameHours(game) }} ч</strong>
+                      <span class="widget-game-copy">
+                        <span>{{ game.name }}</span>
+                        <small v-if="steamGameMeta(game)">{{ steamGameMeta(game) }}</small>
+                      </span>
+                      <strong>{{ steamTotalHours(game) }} ч</strong>
                     </div>
                   </div>
+                  <p v-else-if="previewConfig(block).show_recent_games" class="empty-line">
+                    Последние игры появятся после синхронизации Steam.
+                  </p>
                   <div v-if="previewConfig(block).show_profile_stats && steamStatsList(previewConfig(block)).length" class="stat-grid">
                     <div v-for="stat in steamStatsList(previewConfig(block))" :key="stat.label">
                       <strong>{{ stat.value }}</strong><span>{{ stat.label }}</span>
@@ -199,19 +205,20 @@
                   <div class="widget-head">
                     <div>
                       <p>FACEIT</p>
-                      <span>{{ (previewConfig(block).nickname as string) || 'Ник не указан' }}</span>
+                      <span>{{ faceitDisplayName(previewConfig(block)) }}</span>
                     </div>
                     <FaceitSkillLevel
-                      v-if="previewConfig(block).nickname"
+                      v-if="faceitPreviewData(previewConfig(block))"
                       class="faceit-level"
-                      :level="faceitPreviewData(previewConfig(block)).level"
+                      :level="faceitPreviewData(previewConfig(block))?.level || 0"
                     />
                   </div>
-                  <div v-if="previewConfig(block).nickname" class="stat-grid">
-                    <div><strong>{{ faceitPreviewData(previewConfig(block)).elo }}</strong><span>ELO</span></div>
-                    <div><strong>{{ faceitPreviewData(previewConfig(block)).kd }}</strong><span>K/D</span></div>
-                    <div><strong>{{ faceitPreviewData(previewConfig(block)).winRate }}</strong><span>Win rate</span></div>
+                  <div v-if="faceitPreviewData(previewConfig(block))" class="stat-grid">
+                    <div><strong>{{ faceitPreviewData(previewConfig(block))?.elo }}</strong><span>ELO</span></div>
+                    <div><strong>{{ faceitPreviewData(previewConfig(block))?.kd }}</strong><span>K/D</span></div>
+                    <div><strong>{{ faceitPreviewData(previewConfig(block))?.winRate }}</strong><span>Win rate</span></div>
                   </div>
+                  <p v-else class="empty-line">FACEIT подтянется автоматически, если профиль найден по Steam.</p>
                 </template>
 
                 <template v-else-if="block.block_type === 'pc_config'">
@@ -482,6 +489,11 @@ interface SteamGame {
   name: string
   playtime_2weeks?: number
   playtime_forever?: number
+  playtime_recent_minutes?: number
+  playtime_total_minutes?: number
+  recent_hours?: number
+  total_hours?: number
+  last_played_at?: string | null
   hours?: number
 }
 
@@ -639,15 +651,47 @@ function asComponents(value: Record<string, unknown>): ComponentItem[] {
 
 function steamGamesList(value: Record<string, unknown>): SteamGame[] {
   const liveGames = Array.isArray(value.steam_recent_games) ? value.steam_recent_games as SteamGame[] : []
-  if (liveGames.length) return liveGames
-  return value.steam_id ? mock.steamGames(value.steam_id as string) : []
+  return liveGames
 }
 
-function steamGameHours(game: SteamGame): string {
-  const hours = typeof game.hours === 'number'
-    ? game.hours
-    : Math.round(((game.playtime_2weeks || game.playtime_forever || 0) / 60) * 10) / 10
+function steamDisplayName(value: Record<string, unknown>): string {
+  const steamProfile = value.steam_profile as Record<string, unknown> | undefined
+  return String(value.steam_display_name || steamProfile?.personaname || 'Steam не привязан')
+}
+
+function steamTotalHours(game: SteamGame): string {
+  const hours = typeof game.total_hours === 'number'
+    ? game.total_hours
+    : typeof game.hours === 'number'
+      ? game.hours
+      : Math.round(((game.playtime_total_minutes || game.playtime_forever || 0) / 60) * 10) / 10
   return hours.toLocaleString('ru')
+}
+
+function steamRecentHours(game: SteamGame): string {
+  const hours = typeof game.recent_hours === 'number'
+    ? game.recent_hours
+    : Math.round(((game.playtime_recent_minutes || game.playtime_2weeks || 0) / 60) * 10) / 10
+  return hours.toLocaleString('ru')
+}
+
+function steamGameMeta(game: SteamGame): string {
+  const meta: string[] = []
+  if ((game.playtime_recent_minutes || game.playtime_2weeks || game.recent_hours) && steamRecentHours(game) !== '0') {
+    meta.push(`${steamRecentHours(game)} ч за 2 недели`)
+  }
+  const lastPlayed = formatLastPlayed(game.last_played_at)
+  if (lastPlayed) {
+    meta.push(`последний запуск ${lastPlayed}`)
+  }
+  return meta.join(' · ')
+}
+
+function formatLastPlayed(value?: string | null): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString('ru', { day: 'numeric', month: 'short' })
 }
 
 function steamStatsList(value: Record<string, unknown>) {
@@ -679,7 +723,12 @@ function faceitPreviewData(value: Record<string, unknown>) {
       winRate: live.stats?.win_rate || '—',
     }
   }
-  return mock.faceitData((value.nickname as string) || '')
+  return null
+}
+
+function faceitDisplayName(value: Record<string, unknown>): string {
+  const live = value.faceit_profile as Record<string, any> | undefined
+  return String(value.faceit_display_name || value.nickname || live?.nickname || 'FACEIT не найден')
 }
 
 async function saveProfile() {
@@ -1292,6 +1341,18 @@ onBeforeUnmount(() => {
 
 .widget-list > div:last-child {
   border-bottom: 0;
+}
+
+.widget-game-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.widget-game-copy small {
+  color: var(--card-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .sound-bars {

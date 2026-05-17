@@ -123,6 +123,31 @@ def _steam_url(path: str, params: dict[str, Any]) -> str:
     return f"{STEAM_API_BASE}{path}?{query}"
 
 
+def _to_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _hours(minutes: Any) -> float:
+    return round((_to_int(minutes) / 60) * 10) / 10
+
+
+def _steam_app_header_url(app_id: Any) -> Optional[str]:
+    app_id_int = _to_int(app_id)
+    if app_id_int <= 0:
+        return None
+    return f"https://cdn.akamai.steamstatic.com/steam/apps/{app_id_int}/header.jpg"
+
+
+def _timestamp_to_iso(value: Any) -> Optional[str]:
+    timestamp = _to_int(value)
+    if timestamp <= 0:
+        return None
+    return datetime.fromtimestamp(timestamp, timezone.utc).isoformat()
+
+
 def _faceit_url(path: str, params: Optional[dict[str, Any]] = None) -> str:
     query = urllib.parse.urlencode(params or {})
     return f"{FACEIT_API_BASE}{path}{f'?{query}' if query else ''}"
@@ -279,28 +304,107 @@ async def fetch_steam_profile(api_key: str, steam_id: str) -> Optional[dict[str,
 async def fetch_recent_games(
     api_key: str, steam_id: str, count: int = 5
 ) -> list[dict[str, Any]]:
-    payload = await _fetch_json(
-        _steam_url(
-            "/IPlayerService/GetRecentlyPlayedGames/v1/",
-            {"key": api_key, "steamid": steam_id, "count": count, "format": "json"},
+    recent_payload, owned_result = await asyncio.gather(
+        _fetch_json(
+            _steam_url(
+                "/IPlayerService/GetRecentlyPlayedGames/v1/",
+                {
+                    "key": api_key,
+                    "steamid": steam_id,
+                    "count": count,
+                    "format": "json",
+                },
+            ),
+            "Steam",
         ),
-        "Steam",
+        fetch_owned_games(api_key, steam_id),
+        return_exceptions=True,
     )
-    games = (payload.get("response") or {}).get("games") or []
+    if isinstance(recent_payload, Exception):
+        raise recent_payload
+    owned_games = [] if isinstance(owned_result, Exception) else owned_result
+    games = (recent_payload.get("response") or {}).get("games") or []
+    owned_by_app_id = {
+        _to_int(game.get("appid")): game
+        for game in owned_games
+        if isinstance(game, dict)
+    }
     result = []
     for game in games:
         if not isinstance(game, dict):
             continue
+        app_id = _to_int(game.get("appid"))
+        owned = owned_by_app_id.get(app_id, {})
+        recent_minutes = _to_int(game.get("playtime_2weeks"))
+        total_minutes = _to_int(
+            owned.get("playtime_forever"), _to_int(game.get("playtime_forever"))
+        )
+        last_played_ts = _to_int(owned.get("rtime_last_played"))
         result.append(
             {
-                "appid": game.get("appid"),
+                "appid": app_id,
                 "name": game.get("name"),
-                "playtime_2weeks": int(game.get("playtime_2weeks") or 0),
-                "playtime_forever": int(game.get("playtime_forever") or 0),
+                "playtime_2weeks": recent_minutes,
+                "playtime_forever": total_minutes,
+                "playtime_recent_minutes": recent_minutes,
+                "playtime_total_minutes": total_minutes,
+                "recent_hours": _hours(recent_minutes),
+                "total_hours": _hours(total_minutes),
+                "last_played_ts": last_played_ts or None,
+                "last_played_at": _timestamp_to_iso(last_played_ts),
+                "img_icon_url": game.get("img_icon_url") or owned.get("img_icon_url"),
+                "header_image": _steam_app_header_url(app_id),
+                "source": "recent",
+            }
+        )
+    if result:
+        return result[:count]
+
+    fallback_games = sorted(
+        (game for game in owned_games if _to_int(game.get("rtime_last_played")) > 0),
+        key=lambda game: _to_int(game.get("rtime_last_played")),
+        reverse=True,
+    )
+    for game in fallback_games[:count]:
+        app_id = _to_int(game.get("appid"))
+        total_minutes = _to_int(game.get("playtime_forever"))
+        last_played_ts = _to_int(game.get("rtime_last_played"))
+        result.append(
+            {
+                "appid": app_id,
+                "name": game.get("name"),
+                "playtime_2weeks": _to_int(game.get("playtime_2weeks")),
+                "playtime_forever": total_minutes,
+                "playtime_recent_minutes": _to_int(game.get("playtime_2weeks")),
+                "playtime_total_minutes": total_minutes,
+                "recent_hours": _hours(game.get("playtime_2weeks")),
+                "total_hours": _hours(total_minutes),
+                "last_played_ts": last_played_ts,
+                "last_played_at": _timestamp_to_iso(last_played_ts),
                 "img_icon_url": game.get("img_icon_url"),
+                "header_image": _steam_app_header_url(app_id),
+                "source": "owned",
             }
         )
     return result
+
+
+async def fetch_owned_games(api_key: str, steam_id: str) -> list[dict[str, Any]]:
+    payload = await _fetch_json(
+        _steam_url(
+            "/IPlayerService/GetOwnedGames/v1/",
+            {
+                "key": api_key,
+                "steamid": steam_id,
+                "include_appinfo": "true",
+                "include_played_free_games": "true",
+                "format": "json",
+            },
+        ),
+        "Steam",
+    )
+    games = (payload.get("response") or {}).get("games") or []
+    return [game for game in games if isinstance(game, dict)]
 
 
 async def fetch_steam_level(api_key: str, steam_id: str) -> Optional[int]:

@@ -80,10 +80,11 @@
     </template>
 
     <template v-else-if="type === 'widget_steam'">
-      <label class="bf-field">
-        <span>Steam ID</span>
-        <input v-model="config.steam_id" type="text" placeholder="76561198...">
-      </label>
+      <div class="bf-readonly">
+        <span>Аккаунт Steam</span>
+        <strong>{{ steamDisplayName() }}</strong>
+        <small>{{ steamSubLabel() }}</small>
+      </div>
       <label class="bf-check">
         <input v-model="config.show_recent_games" type="checkbox">
         <span>Последние игры и часы</span>
@@ -128,10 +129,11 @@
     </template>
 
     <template v-else-if="type === 'widget_faceit'">
-      <label class="bf-field">
-        <span>Ник FACEIT</span>
-        <input v-model="config.nickname" type="text" placeholder="nickname">
-      </label>
+      <div class="bf-readonly">
+        <span>Аккаунт FACEIT</span>
+        <strong>{{ faceitDisplayName() }}</strong>
+        <small>{{ faceitSubLabel() }}</small>
+      </div>
       <div class="bf-field">
         <span>Игра</span>
         <div class="bf-segments" role="group" aria-label="Игра FACEIT">
@@ -258,6 +260,29 @@ function pcComponents(): Component[] {
 
 function addComponent() {
   pcComponents().push({ category: '', name: '' })
+}
+
+function steamDisplayName(): string {
+  const profile = config.steam_profile as Record<string, unknown> | undefined
+  return String(config.steam_display_name || profile?.personaname || 'Steam не привязан')
+}
+
+function steamSubLabel(): string {
+  return config.steam_id
+    ? 'Подключен через официальный вход Steam'
+    : 'Подключите Steam в разделе интеграций'
+}
+
+function faceitDisplayName(): string {
+  const profile = config.faceit_profile as Record<string, unknown> | undefined
+  return String(config.faceit_display_name || config.nickname || profile?.nickname || 'FACEIT не найден')
+}
+
+function faceitSubLabel(): string {
+  const profile = config.faceit_profile as Record<string, unknown> | undefined
+  const elo = profile?.faceit_elo ? `${profile.faceit_elo} ELO` : ''
+  const level = profile?.skill_level ? `уровень ${profile.skill_level}` : ''
+  return [level, elo].filter(Boolean).join(' · ') || 'FACEIT подтягивается автоматически через Steam'
 }
 </script>
 
@@ -464,6 +489,35 @@ function addComponent() {
   line-height: 1.45;
 }
 
+.bf-readonly {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border-radius: 8px;
+  background: var(--dash-surface-strong, #fff);
+}
+
+.bf-readonly span {
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.bf-readonly strong {
+  color: var(--dash-text-1, #10182b);
+  font-size: 15px;
+  font-weight: 950;
+  overflow-wrap: anywhere;
+}
+
+.bf-readonly small {
+  color: var(--dash-text-3, #66789c);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .bf-segments {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -518,7 +572,8 @@ function addComponent() {
 
 .bf-section,
 .bf-link,
-.bf-note {
+.bf-note,
+.bf-readonly {
   border-radius: 22px;
 }
 

@@ -7,13 +7,11 @@ from app.deps import get_current_user
 from app.models.user import User
 from app.schemas.integration import (
     IntegrationsResponse,
-    SteamConnectRequest,
     SteamOpenIdStartResponse,
 )
 from app.services.external_integrations import (
     ExternalApiError,
     connect_steam_openid_response,
-    connect_steam_account,
     create_steam_openid_auth_url,
     disconnect_steam_account,
     integrations_response,
@@ -52,19 +50,6 @@ async def steam_openid_callback(
         db, dict(request.query_params.multi_items())
     )
     return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
-
-
-@router.put("/steam", response_model=IntegrationsResponse)
-async def connect_steam(
-    body: SteamConnectRequest,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    try:
-        await connect_steam_account(db, current_user.id, body.steam_id)
-    except ExternalApiError as exc:
-        _raise_api_error(exc)
-    return await integrations_response(db, current_user.id)
 
 
 @router.post("/steam/sync", response_model=IntegrationsResponse)

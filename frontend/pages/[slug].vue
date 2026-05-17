@@ -96,7 +96,7 @@
                   </div>
                   <div>
                     <div class="pub-w-name">Steam</div>
-                    <div class="pub-w-id">{{ block.config.steam_id || '-' }}</div>
+                    <div class="pub-w-id">{{ steamDisplayName(block) }}</div>
                   </div>
                 </div>
                 <span class="pub-m3-status-pill">
@@ -108,8 +108,11 @@
                 <div class="pub-divider" />
                 <div class="pub-sub-label">Недавно в игре</div>
                 <div v-for="g in steamGamesList(block)" :key="`${g.appid || g.name}`" class="pub-steam-row">
-                  <span class="pub-steam-name">{{ g.name }}</span>
-                  <span class="pub-steam-h">{{ steamGameHours(g) }} ч</span>
+                  <span class="pub-steam-name">
+                    {{ g.name }}
+                    <small v-if="steamGameMeta(g)">{{ steamGameMeta(g) }}</small>
+                  </span>
+                  <span class="pub-steam-h">{{ steamTotalHours(g) }} ч</span>
                 </div>
               </template>
               <template v-if="block.config.show_profile_stats && steamStatsList(block).length">
@@ -224,16 +227,16 @@
                   </div>
                   <div>
                     <div class="pub-w-name">FACEIT · CS2</div>
-                    <div class="pub-w-id">{{ block.config.nickname || '-' }}</div>
+                    <div class="pub-w-id">{{ faceitDisplayName(block) }}</div>
                   </div>
                 </div>
                 <FaceitSkillLevel
-                  v-if="block.config.nickname"
+                  v-if="faceitDataForBlock(block)"
                   class="pub-faceit-lvl"
-                  :level="faceitDataForBlock(block).level"
+                  :level="faceitDataForBlock(block)?.level || 0"
                 />
               </div>
-              <template v-if="block.config.nickname">
+              <template v-if="faceitDataForBlock(block)">
                 <div class="pub-divider" />
                 <div class="pub-faceit-stats">
                   <div v-for="s in faceitStatsList(block)" :key="s.label" class="pub-faceit-stat pub-m3-stat">
@@ -328,7 +331,7 @@
                     <div class="pub-w-ico-bg" style="background:rgba(25,144,212,0.15);color:#66c0f4">🎮</div>
                     <div>
                       <div class="pub-w-name">Steam</div>
-                      <div class="pub-w-id">{{ block.config.steam_id || '—' }}</div>
+                      <div class="pub-w-id">{{ steamDisplayName(block) }}</div>
                     </div>
                   </div>
                   <span class="pub-badge-green">● Online</span>
@@ -337,8 +340,11 @@
                   <div class="pub-divider" />
                   <div class="pub-sub-label">Недавно в игре</div>
                   <div v-for="g in steamGamesList(block)" :key="`${g.appid || g.name}`" class="pub-steam-row">
-                    <span class="pub-steam-name">{{ g.name }}</span>
-                    <span class="pub-steam-h">{{ steamGameHours(g) }} ч</span>
+                    <span class="pub-steam-name">
+                      {{ g.name }}
+                      <small v-if="steamGameMeta(g)">{{ steamGameMeta(g) }}</small>
+                    </span>
+                    <span class="pub-steam-h">{{ steamTotalHours(g) }} ч</span>
                   </div>
                 </template>
                 <template v-if="block.config.show_profile_stats && steamStatsList(block).length">
@@ -451,16 +457,16 @@
                     </div>
                     <div>
                       <div class="pub-w-name">FACEIT · CS2</div>
-                      <div class="pub-w-id">{{ block.config.nickname || '—' }}</div>
+                      <div class="pub-w-id">{{ faceitDisplayName(block) }}</div>
                     </div>
                   </div>
                   <FaceitSkillLevel
-                    v-if="block.config.nickname"
+                    v-if="faceitDataForBlock(block)"
                     class="pub-faceit-lvl"
-                    :level="faceitDataForBlock(block).level"
+                    :level="faceitDataForBlock(block)?.level || 0"
                   />
                 </div>
-                <template v-if="block.config.nickname">
+                <template v-if="faceitDataForBlock(block)">
                   <div class="pub-divider" />
                   <div class="pub-faceit-stats">
                     <div v-for="s in faceitStatsList(block)" :key="s.label" class="pub-faceit-stat">
@@ -562,7 +568,7 @@
                     <div class="pub-w-ico-bg" style="background:rgba(25,144,212,0.15);color:#66c0f4">🎮</div>
                     <div>
                       <div class="pub-w-name">Steam</div>
-                      <div class="pub-w-id">{{ block.config.steam_id || '—' }}</div>
+                      <div class="pub-w-id">{{ steamDisplayName(block) }}</div>
                     </div>
                   </div>
                   <fluent-badge appearance="accent" class="pub-fluent-badge-online">Online</fluent-badge>
@@ -571,8 +577,11 @@
                   <div class="pub-divider" />
                   <div class="pub-sub-label">Недавно в игре</div>
                   <div v-for="g in steamGamesList(block)" :key="`${g.appid || g.name}`" class="pub-steam-row">
-                    <span class="pub-steam-name">{{ g.name }}</span>
-                    <span class="pub-steam-h">{{ steamGameHours(g) }} ч</span>
+                    <span class="pub-steam-name">
+                      {{ g.name }}
+                      <small v-if="steamGameMeta(g)">{{ steamGameMeta(g) }}</small>
+                    </span>
+                    <span class="pub-steam-h">{{ steamTotalHours(g) }} ч</span>
                   </div>
                 </template>
                 <template v-if="block.config.show_profile_stats && steamStatsList(block).length">
@@ -685,16 +694,16 @@
                     </div>
                     <div>
                       <div class="pub-w-name">FACEIT · CS2</div>
-                      <div class="pub-w-id">{{ block.config.nickname || '—' }}</div>
+                      <div class="pub-w-id">{{ faceitDisplayName(block) }}</div>
                     </div>
                   </div>
                   <FaceitSkillLevel
-                    v-if="block.config.nickname"
+                    v-if="faceitDataForBlock(block)"
                     class="pub-faceit-lvl"
-                    :level="faceitDataForBlock(block).level"
+                    :level="faceitDataForBlock(block)?.level || 0"
                   />
                 </div>
-                <template v-if="block.config.nickname">
+                <template v-if="faceitDataForBlock(block)">
                   <div class="pub-divider" />
                   <div class="pub-faceit-stats">
                     <div v-for="s in faceitStatsList(block)" :key="s.label" class="pub-faceit-stat">
@@ -744,6 +753,11 @@ interface SteamGame {
   name: string
   playtime_2weeks?: number
   playtime_forever?: number
+  playtime_recent_minutes?: number
+  playtime_total_minutes?: number
+  recent_hours?: number
+  total_hours?: number
+  last_played_at?: string | null
   hours?: number
 }
 
@@ -845,15 +859,47 @@ function normalizeUrl(url: string | undefined): string {
 
 function steamGamesList(block: Block): SteamGame[] {
   const liveGames = Array.isArray(block.config.steam_recent_games) ? block.config.steam_recent_games as SteamGame[] : []
-  if (liveGames.length) return liveGames
-  return block.config.steam_id ? mock.steamGames(block.config.steam_id as string) : []
+  return liveGames
 }
 
-function steamGameHours(game: SteamGame): string {
-  const hours = typeof game.hours === 'number'
-    ? game.hours
-    : Math.round(((game.playtime_2weeks || game.playtime_forever || 0) / 60) * 10) / 10
+function steamDisplayName(block: Block): string {
+  const steamProfile = block.config.steam_profile as Record<string, unknown> | undefined
+  return String(block.config.steam_display_name || steamProfile?.personaname || 'Steam не привязан')
+}
+
+function steamTotalHours(game: SteamGame): string {
+  const hours = typeof game.total_hours === 'number'
+    ? game.total_hours
+    : typeof game.hours === 'number'
+      ? game.hours
+      : Math.round(((game.playtime_total_minutes || game.playtime_forever || 0) / 60) * 10) / 10
   return hours.toLocaleString('ru')
+}
+
+function steamRecentHours(game: SteamGame): string {
+  const hours = typeof game.recent_hours === 'number'
+    ? game.recent_hours
+    : Math.round(((game.playtime_recent_minutes || game.playtime_2weeks || 0) / 60) * 10) / 10
+  return hours.toLocaleString('ru')
+}
+
+function steamGameMeta(game: SteamGame): string {
+  const meta: string[] = []
+  if ((game.playtime_recent_minutes || game.playtime_2weeks || game.recent_hours) && steamRecentHours(game) !== '0') {
+    meta.push(`${steamRecentHours(game)} ч за 2 недели`)
+  }
+  const lastPlayed = formatLastPlayed(game.last_played_at)
+  if (lastPlayed) {
+    meta.push(`последний запуск ${lastPlayed}`)
+  }
+  return meta.join(' · ')
+}
+
+function formatLastPlayed(value?: string | null): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString('ru', { day: 'numeric', month: 'short' })
 }
 
 function steamStatsList(block: Block) {
@@ -886,11 +932,17 @@ function faceitDataForBlock(block: Block) {
       matches: live.stats?.matches || '—',
     }
   }
-  return mock.faceitData(block.config.nickname as string)
+  return null
+}
+
+function faceitDisplayName(block: Block): string {
+  const live = block.config.faceit_profile as Record<string, any> | undefined
+  return String(block.config.faceit_display_name || block.config.nickname || live?.nickname || 'FACEIT не найден')
 }
 
 function faceitStatsList(block: Block) {
   const data = faceitDataForBlock(block)
+  if (!data) return []
   return [
     { value: data.elo, label: 'ELO' },
     { value: data.kd, label: 'K/D' },
@@ -1818,10 +1870,13 @@ function faceitStatsList(block: Block) {
 /* ── Steam ──────────────────────────────────────────────────────────────────── */
 .pub-steam-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 6px 0; border-bottom: 1px solid var(--t-border); font-size: 13px;
+  gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--t-border); font-size: 13px;
 }
 .pub-steam-row:last-child { border-bottom: none; }
-.pub-steam-name { color: var(--t-text); }
+.pub-steam-name {
+  min-width: 0; display: grid; gap: 2px; color: var(--t-text); overflow-wrap: anywhere;
+}
+.pub-steam-name small { color: var(--t-dim); font-size: 11px; line-height: 1.35; }
 .pub-steam-h { color: var(--t-muted); font-size: 12px; }
 
 /* ── Last.fm now playing ────────────────────────────────────────────────────── */
