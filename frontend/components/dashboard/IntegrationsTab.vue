@@ -19,6 +19,10 @@
       {{ connectNotice }}
     </div>
 
+    <div v-if="loading" class="integration-notice">
+      Загружаем подключения...
+    </div>
+
     <section class="service-grid" aria-label="Сервисы">
       <article
         v-for="service in serviceCards"
@@ -42,7 +46,35 @@
           <p>{{ service.description }}</p>
         </div>
 
+        <form v-if="service.type === 'widget_steam'" class="steam-connect" @submit.prevent="saveSteamConnection">
+          <label class="steam-field">
+            <span>SteamID64 или ссылка на профиль</span>
+            <input v-model="steamInput" type="text" placeholder="76561198... или https://steamcommunity.com/id/name">
+          </label>
+          <div class="steam-actions">
+            <button class="service-action primary" type="submit" :disabled="steamBusy || !steamInput.trim()">
+              <span v-if="steamBusy" class="integration-spinner" />
+              <i v-else class="ri-link-m" />
+              <span>{{ steamAccount ? 'Обновить привязку' : 'Привязать Steam' }}</span>
+            </button>
+            <button v-if="steamAccount" class="service-action" type="button" :disabled="steamBusy" @click="syncSteamConnection">
+              <i class="ri-refresh-line" />
+              <span>Синхронизировать</span>
+            </button>
+            <button v-if="steamAccount" class="service-action danger" type="button" :disabled="steamBusy" @click="disconnectSteamConnection">
+              <i class="ri-link-unlink-m" />
+              <span>Отключить</span>
+            </button>
+          </div>
+        </form>
+
+        <div v-else-if="service.type === 'widget_faceit' && faceitAccount" class="faceit-summary">
+          <span>Уровень {{ faceitSkillLevel || '—' }}</span>
+          <span>{{ faceitElo ? `${faceitElo} ELO` : 'ELO не получен' }}</span>
+        </div>
+
         <button
+          v-if="service.type !== 'widget_steam' && service.type !== 'widget_faceit'"
           class="service-action"
           :class="{ primary: service.canConnect, complete: service.connected }"
           type="button"
@@ -59,84 +91,202 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { BLOCK_LIBRARY, createDefaultBlockConfig } from '~/utils/dashboard-studio'
-import { useProfileStore } from '~/stores/profile'
+import { useProfileStore, type Block } from '~/stores/profile'
+import { useAuthStore } from '~/stores/auth'
 import { extractAuthError } from '~/utils/auth-feedback'
 
 const profile = useProfileStore()
+const auth = useAuthStore()
+const config = useRuntimeConfig()
 
 type IntegrationType = 'widget_steam' | 'widget_lastfm' | 'widget_github' | 'widget_faceit'
 type NoticeTone = 'success' | 'error'
+type ConnectedAccount = {
+  id: string
+  provider: string
+  provider_uid: string
+  display_name: string | null
+  is_active: boolean
+  last_synced_at: string | null
+  sync_error: string | null
+  metadata: Record<string, any>
+}
+type IntegrationsResponse = {
+  accounts: ConnectedAccount[]
+  capabilities: {
+    steam_api_key_set: boolean
+    faceit_api_key_set: boolean
+    steam_inventory_prices_supported: boolean
+  }
+}
 
 const integrationTypes = new Set<IntegrationType>(['widget_steam', 'widget_lastfm', 'widget_github', 'widget_faceit'])
 const integrationOrder: IntegrationType[] = ['widget_steam', 'widget_faceit', 'widget_github', 'widget_lastfm']
 const connectableTypes = new Set<IntegrationType>(['widget_lastfm', 'widget_github'])
-const connectedTypes = computed(() => new Set(profile.profile?.blocks.map(block => block.block_type) ?? []))
+const integrations = ref<IntegrationsResponse | null>(null)
+const loading = ref(false)
+const steamBusy = ref(false)
+const steamInput = ref('')
 const connectingType = ref<IntegrationType | null>(null)
 const connectNotice = ref('')
 const connectNoticeTone = ref<NoticeTone>('success')
-const showcaseIntegrations: Partial<Record<IntegrationType, {
-  actionIcon: string
-  actionLabel: string
-  connected?: boolean
-  description: string
-  statusIcon: string
-  statusLabel: string
-}>> = {
-  widget_steam: {
-    actionIcon: 'ri-checkbox-circle-line',
-    actionLabel: 'Подключено',
-    connected: true,
-    description: 'Steam привязан к аккаунту: профиль, статус и недавние игры готовы к показу.',
-    statusIcon: 'ri-checkbox-circle-line',
-    statusLabel: 'Подключён',
-  },
-  widget_faceit: {
-    actionIcon: 'ri-link-m',
-    actionLabel: 'Через Steam',
-    connected: true,
-    description: 'FACEIT настроен через Steam: CS2, уровень и ELO подтягиваются из игровой связки.',
-    statusIcon: 'ri-link-m',
-    statusLabel: 'Через Steam',
-  },
-  widget_lastfm: {
-    actionIcon: 'ri-plug-line',
-    actionLabel: 'Подключиться',
-    description: 'Подключите Last.fm, чтобы показывать текущий трек и музыкальную активность.',
-    statusIcon: 'ri-add-circle-line',
-    statusLabel: 'Доступно',
-  },
-  widget_github: {
-    actionIcon: 'ri-plug-line',
-    actionLabel: 'Подключиться',
-    description: 'Подключите GitHub, чтобы вывести активность и закреплённые репозитории.',
-    statusIcon: 'ri-add-circle-line',
-    statusLabel: 'Доступно',
-  },
-}
+
+const steamAccount = computed(() => integrations.value?.accounts.find(account => account.provider === 'steam' && account.is_active) ?? null)
+const faceitAccount = computed(() => integrations.value?.accounts.find(account => account.provider === 'faceit' && account.is_active) ?? null)
+const faceitSkillLevel = computed(() => faceitAccount.value?.metadata?.skill_level ?? faceitAccount.value?.metadata?.skill_level_label ?? null)
+const faceitElo = computed(() => faceitAccount.value?.metadata?.faceit_elo ?? null)
+const blockConnectedTypes = computed(() => new Set(profile.profile?.blocks.map(block => block.block_type) ?? []))
+const connectedTypes = computed(() => {
+  const set = new Set<string>(blockConnectedTypes.value)
+  if (steamAccount.value) set.add('widget_steam')
+  if (faceitAccount.value) set.add('widget_faceit')
+  return set
+})
 const serviceCards = computed(() =>
   BLOCK_LIBRARY
     .filter(item => integrationTypes.has(item.type as IntegrationType))
     .sort((a, b) => integrationOrder.indexOf(a.type as IntegrationType) - integrationOrder.indexOf(b.type as IntegrationType))
     .map((item) => {
       const type = item.type as IntegrationType
-      const showcase = showcaseIntegrations[type]
-      const connected = Boolean(showcase?.connected || connectedTypes.value.has(type))
+      const connected = connectedTypes.value.has(type)
+      const apiReady = integrations.value?.capabilities
+      const steamDescription = steamAccount.value
+        ? `${steamAccount.value.display_name || steamAccount.value.provider_uid}: профиль, последние игры и Steam-статистика синхронизированы.`
+        : apiReady?.steam_api_key_set
+          ? 'Привяжите SteamID64 или ссылку на профиль, чтобы подтянуть Steam и FACEIT-данные.'
+          : 'Администратору нужно добавить Steam Web API key, после этого профиль можно будет привязать.'
+      const faceitDescription = faceitAccount.value
+        ? `${faceitAccount.value.display_name || 'FACEIT'} найден по Steam: уровень, ELO и статистика доступны для блока.`
+        : apiReady?.faceit_api_key_set
+          ? 'После привязки Steam попробуем найти FACEIT-профиль по SteamID64.'
+          : 'Для автоподтягивания FACEIT администратору нужен FACEIT Data API key.'
+      const descriptions: Partial<Record<IntegrationType, string>> = {
+        widget_steam: steamDescription,
+        widget_faceit: faceitDescription,
+        widget_lastfm: 'Подключите Last.fm, чтобы показывать текущий трек и музыкальную активность.',
+        widget_github: 'Подключите GitHub, чтобы вывести активность и закреплённые репозитории.',
+      }
       return {
         ...item,
-        ...showcase,
-        actionIcon: connected ? (showcase?.actionIcon ?? 'ri-checkbox-circle-line') : (showcase?.actionIcon ?? 'ri-plug-line'),
-        actionLabel: connected ? (showcase?.connected ? showcase.actionLabel : 'Подключено') : (showcase?.actionLabel ?? 'Подключиться'),
+        actionIcon: connected ? 'ri-checkbox-circle-line' : 'ri-plug-line',
+        actionLabel: connected ? 'Подключено' : 'Подключиться',
         canConnect: connectableTypes.has(type) && !connected,
         connected,
-        description: showcase?.description ?? item.description,
-        statusIcon: connected ? (showcase?.statusIcon ?? 'ri-checkbox-circle-line') : (showcase?.statusIcon ?? 'ri-add-circle-line'),
-        statusLabel: connected ? (showcase?.statusLabel === 'Доступно' ? 'Подключён' : showcase?.statusLabel ?? 'Подключён') : (showcase?.statusLabel ?? 'Доступно'),
+        description: descriptions[type] ?? item.description,
+        statusIcon: connected ? 'ri-checkbox-circle-line' : type === 'widget_faceit' ? 'ri-link-m' : 'ri-add-circle-line',
+        statusLabel: connected ? (type === 'widget_faceit' ? 'Через Steam' : 'Подключён') : type === 'widget_faceit' ? 'Автопоиск' : 'Доступно',
       }
     }),
 )
 const connectedCount = computed(() => serviceCards.value.filter(service => service.connected).length)
+
+onMounted(() => {
+  void loadIntegrations()
+})
+
+function applyIntegrations(data: IntegrationsResponse) {
+  integrations.value = data
+  if (steamAccount.value && !steamInput.value) {
+    steamInput.value = steamAccount.value.provider_uid
+  }
+}
+
+async function loadIntegrations() {
+  loading.value = true
+  try {
+    const data = await auth.authorizedFetch<IntegrationsResponse>(`${config.public.apiBase}/integrations/me`)
+    applyIntegrations(data)
+  } catch (error) {
+    connectNoticeTone.value = 'error'
+    connectNotice.value = extractAuthError(error, 'Не удалось загрузить подключения.')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function ensureSteamBlock(account: ConnectedAccount) {
+  if (!profile.profile) return
+  const existing = profile.profile?.blocks.find((block: Block) => block.block_type === 'widget_steam')
+  const nextConfig = {
+    ...(existing?.config ?? createDefaultBlockConfig('widget_steam')),
+    steam_id: (existing?.config?.steam_id as string) || account.provider_uid,
+    use_connected_account: true,
+    show_recent_games: existing?.config?.show_recent_games ?? true,
+    show_profile_stats: existing?.config?.show_profile_stats ?? true,
+    show_inventory_highlight: existing?.config?.show_inventory_highlight ?? true,
+  }
+
+  if (existing) {
+    await profile.updateBlock(existing.id, { config: nextConfig })
+  } else {
+    await profile.createBlock('widget_steam', nextConfig)
+  }
+}
+
+async function saveSteamConnection() {
+  if (!steamInput.value.trim()) return
+  steamBusy.value = true
+  connectNotice.value = ''
+  try {
+    const data = await auth.authorizedFetch<IntegrationsResponse>(`${config.public.apiBase}/integrations/steam`, {
+      method: 'PUT',
+      body: { steam_id: steamInput.value.trim() },
+    })
+    applyIntegrations(data)
+    if (steamAccount.value) {
+      await ensureSteamBlock(steamAccount.value)
+    }
+    await profile.fetch()
+    connectNoticeTone.value = 'success'
+    connectNotice.value = faceitAccount.value
+      ? 'Steam привязан, FACEIT найден автоматически.'
+      : 'Steam привязан. FACEIT не найден или API-ключ FACEIT не настроен.'
+  } catch (error) {
+    connectNoticeTone.value = 'error'
+    connectNotice.value = extractAuthError(error, 'Не удалось привязать Steam.')
+  } finally {
+    steamBusy.value = false
+  }
+}
+
+async function syncSteamConnection() {
+  steamBusy.value = true
+  connectNotice.value = ''
+  try {
+    const data = await auth.authorizedFetch<IntegrationsResponse>(`${config.public.apiBase}/integrations/steam/sync`, {
+      method: 'POST',
+    })
+    applyIntegrations(data)
+    await profile.fetch()
+    connectNoticeTone.value = 'success'
+    connectNotice.value = 'Steam и FACEIT-данные синхронизированы.'
+  } catch (error) {
+    connectNoticeTone.value = 'error'
+    connectNotice.value = extractAuthError(error, 'Не удалось синхронизировать Steam.')
+  } finally {
+    steamBusy.value = false
+  }
+}
+
+async function disconnectSteamConnection() {
+  steamBusy.value = true
+  connectNotice.value = ''
+  try {
+    await auth.authorizedFetch(`${config.public.apiBase}/integrations/steam`, { method: 'DELETE' })
+    steamInput.value = ''
+    await loadIntegrations()
+    await profile.fetch()
+    connectNoticeTone.value = 'success'
+    connectNotice.value = 'Steam отключён от аккаунта.'
+  } catch (error) {
+    connectNoticeTone.value = 'error'
+    connectNotice.value = extractAuthError(error, 'Не удалось отключить Steam.')
+  } finally {
+    steamBusy.value = false
+  }
+}
 
 async function connectService(type: IntegrationType) {
   if (!connectableTypes.has(type) || connectedTypes.value.has(type)) return
@@ -328,6 +478,58 @@ async function connectService(type: IntegrationType) {
   line-height: 1.45;
 }
 
+.steam-connect {
+  display: grid;
+  gap: 10px;
+}
+
+.steam-field {
+  display: grid;
+  gap: 6px;
+}
+
+.steam-field span {
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.steam-field input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border-radius: 8px;
+  background: var(--dash-surface-strong, #fff);
+  color: var(--dash-text-1, #10182b);
+  font: inherit;
+  outline: none;
+  padding: 0 12px;
+}
+
+.steam-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.faceit-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.faceit-summary span {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--dash-surface-soft, #F2F4F8);
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .service-action {
   min-height: 42px;
   display: inline-flex;
@@ -359,6 +561,11 @@ async function connectService(type: IntegrationType) {
   border-color: color-mix(in srgb, var(--dash-green, #188A55) 28%, var(--dash-outline, #d4dbe8));
   background: var(--dash-green-soft, #E1F6EA);
   color: var(--dash-green, #188A55);
+}
+
+.service-action.danger {
+  border-color: color-mix(in srgb, var(--dash-red, #B3323A) 24%, var(--dash-outline, #d4dbe8));
+  color: var(--dash-red, #B3323A);
 }
 
 .service-action:disabled:not(.complete) {

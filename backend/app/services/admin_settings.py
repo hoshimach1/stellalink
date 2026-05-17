@@ -5,10 +5,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.settings import AppSetting
-from app.schemas.admin import SmtpSettingsResponse, SmtpSettingsUpdate
+from app.schemas.admin import (
+    ApiSettingsResponse,
+    ApiSettingsUpdate,
+    SmtpSettingsResponse,
+    SmtpSettingsUpdate,
+)
 from app.services.auth import EmailDeliveryConfig, get_default_email_delivery_config
 
 SMTP_SETTINGS_KEY = "smtp"
+API_SETTINGS_KEY = "external_api"
 
 
 def _clean_text(value: Optional[str]) -> Optional[str]:
@@ -37,6 +43,24 @@ def _base_smtp_data() -> dict[str, Any]:
     }
 
 
+def _base_api_data() -> dict[str, Any]:
+    return {
+        "steam_api_key": settings.STEAM_API_KEY,
+        "faceit_api_key": settings.FACEIT_API_KEY,
+        "steam_inventory_app_id": settings.STEAM_INVENTORY_APP_ID,
+        "steam_inventory_context_id": settings.STEAM_INVENTORY_CONTEXT_ID,
+    }
+
+
+def _secret_hint(value: Optional[str]) -> Optional[str]:
+    cleaned = _clean_text(value)
+    if not cleaned:
+        return None
+    if len(cleaned) <= 4:
+        return "****"
+    return f"****{cleaned[-4:]}"
+
+
 async def _get_setting(db: AsyncSession, key: str) -> Optional[AppSetting]:
     return await db.get(AppSetting, key)
 
@@ -59,6 +83,7 @@ async def get_smtp_response(db: AsyncSession) -> SmtpSettingsResponse:
         password_set=bool(_clean_text(data.get("password"))),
         use_ssl=bool(data.get("use_ssl")),
         use_tls=bool(data.get("use_tls")),
+        force_ipv4=bool(data.get("force_ipv4")),
         timeout_seconds=int(data.get("timeout_seconds") or 15),
         from_email=data.get("from_email") or settings.SMTP_FROM,
         from_name=data.get("from_name") or settings.SMTP_FROM_NAME,
@@ -66,6 +91,58 @@ async def get_smtp_response(db: AsyncSession) -> SmtpSettingsResponse:
         email_verification_ttl_seconds=int(data.get("email_verification_ttl_seconds") or 86400),
         password_reset_ttl_seconds=int(data.get("password_reset_ttl_seconds") or 3600),
     )
+
+
+async def get_api_settings_data(db: AsyncSession) -> dict[str, Any]:
+    data = _base_api_data()
+    setting = await _get_setting(db, API_SETTINGS_KEY)
+    if setting and isinstance(setting.value, dict):
+        data.update(setting.value)
+    return data
+
+
+async def get_api_settings_response(db: AsyncSession) -> ApiSettingsResponse:
+    data = await get_api_settings_data(db)
+    steam_api_key = _clean_text(data.get("steam_api_key"))
+    faceit_api_key = _clean_text(data.get("faceit_api_key"))
+    return ApiSettingsResponse(
+        steam_api_key_set=bool(steam_api_key),
+        steam_api_key_hint=_secret_hint(steam_api_key),
+        faceit_api_key_set=bool(faceit_api_key),
+        faceit_api_key_hint=_secret_hint(faceit_api_key),
+        steam_inventory_app_id=int(data.get("steam_inventory_app_id") or 730),
+        steam_inventory_context_id=str(data.get("steam_inventory_context_id") or "2"),
+        steam_inventory_price_source=(
+            "Steam Web API can expose inventory only with publisher Economy permissions; "
+            "regular Web API responses do not include market prices."
+        ),
+    )
+
+
+async def save_api_settings(db: AsyncSession, body: ApiSettingsUpdate) -> ApiSettingsResponse:
+    current = await get_api_settings_data(db)
+    payload = body.model_dump(mode="json")
+
+    if body.steam_api_key is None:
+        payload["steam_api_key"] = current.get("steam_api_key")
+    if body.faceit_api_key is None:
+        payload["faceit_api_key"] = current.get("faceit_api_key")
+
+    payload["steam_api_key"] = _clean_text(payload.get("steam_api_key"))
+    payload["faceit_api_key"] = _clean_text(payload.get("faceit_api_key"))
+    payload["steam_inventory_context_id"] = str(payload.get("steam_inventory_context_id") or "2").strip()
+
+    setting = await _get_setting(db, API_SETTINGS_KEY)
+    if not setting:
+        setting = AppSetting(key=API_SETTINGS_KEY, value=payload)
+        db.add(setting)
+    else:
+        setting.value = payload
+        setting.updated_at = datetime.utcnow()
+        db.add(setting)
+
+    await db.commit()
+    return await get_api_settings_response(db)
 
 
 async def save_smtp_settings(db: AsyncSession, body: SmtpSettingsUpdate) -> SmtpSettingsResponse:

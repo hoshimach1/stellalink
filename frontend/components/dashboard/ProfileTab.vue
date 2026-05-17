@@ -105,12 +105,20 @@
                     </div>
                     <span class="soft-badge">Игры</span>
                   </div>
-                  <div v-if="previewConfig(block).steam_id && previewConfig(block).show_recent_games" class="widget-list">
-                    <div v-for="game in mock.steamGames(previewConfig(block).steam_id as string)" :key="game.name">
+                  <div v-if="previewConfig(block).show_recent_games && steamGamesList(previewConfig(block)).length" class="widget-list">
+                    <div v-for="game in steamGamesList(previewConfig(block))" :key="`${game.appid || game.name}`">
                       <span>{{ game.name }}</span>
-                      <strong>{{ game.hours.toLocaleString('ru') }} ч</strong>
+                      <strong>{{ steamGameHours(game) }} ч</strong>
                     </div>
                   </div>
+                  <div v-if="previewConfig(block).show_profile_stats && steamStatsList(previewConfig(block)).length" class="stat-grid">
+                    <div v-for="stat in steamStatsList(previewConfig(block))" :key="stat.label">
+                      <strong>{{ stat.value }}</strong><span>{{ stat.label }}</span>
+                    </div>
+                  </div>
+                  <p v-if="previewConfig(block).show_inventory_highlight && inventoryStatus(previewConfig(block))" class="empty-line">
+                    {{ inventoryStatus(previewConfig(block))?.title }}: {{ inventoryStatus(previewConfig(block))?.reason }}
+                  </p>
                 </template>
 
                 <template v-else-if="block.block_type === 'widget_lastfm'">
@@ -156,13 +164,13 @@
                     <FaceitSkillLevel
                       v-if="previewConfig(block).nickname"
                       class="faceit-level"
-                      :level="mock.faceitData(previewConfig(block).nickname as string).level"
+                      :level="faceitPreviewData(previewConfig(block)).level"
                     />
                   </div>
                   <div v-if="previewConfig(block).nickname" class="stat-grid">
-                    <div><strong>{{ mock.faceitData(previewConfig(block).nickname as string).elo }}</strong><span>ELO</span></div>
-                    <div><strong>{{ mock.faceitData(previewConfig(block).nickname as string).kd }}</strong><span>K/D</span></div>
-                    <div><strong>{{ mock.faceitData(previewConfig(block).nickname as string).winRate }}%</strong><span>Win rate</span></div>
+                    <div><strong>{{ faceitPreviewData(previewConfig(block)).elo }}</strong><span>ELO</span></div>
+                    <div><strong>{{ faceitPreviewData(previewConfig(block)).kd }}</strong><span>K/D</span></div>
+                    <div><strong>{{ faceitPreviewData(previewConfig(block)).winRate }}</strong><span>Win rate</span></div>
                   </div>
                 </template>
 
@@ -443,6 +451,14 @@ interface ComponentItem {
   name: string
 }
 
+interface SteamGame {
+  appid?: number
+  name: string
+  playtime_2weeks?: number
+  playtime_forever?: number
+  hours?: number
+}
+
 type NoticeTone = 'success' | 'info' | 'error'
 type Panel = 'profile' | 'blocks'
 
@@ -592,6 +608,51 @@ function asGroups(value: Record<string, unknown>): Group[] {
 
 function asComponents(value: Record<string, unknown>): ComponentItem[] {
   return Array.isArray(value.components) ? value.components as ComponentItem[] : []
+}
+
+function steamGamesList(value: Record<string, unknown>): SteamGame[] {
+  const liveGames = Array.isArray(value.steam_recent_games) ? value.steam_recent_games as SteamGame[] : []
+  if (liveGames.length) return liveGames
+  return value.steam_id ? mock.steamGames(value.steam_id as string) : []
+}
+
+function steamGameHours(game: SteamGame): string {
+  const hours = typeof game.hours === 'number'
+    ? game.hours
+    : Math.round(((game.playtime_2weeks || game.playtime_forever || 0) / 60) * 10) / 10
+  return hours.toLocaleString('ru')
+}
+
+function steamStatsList(value: Record<string, unknown>) {
+  const stats = value.steam_profile_stats as Record<string, unknown> | undefined
+  if (!stats) return []
+  return [
+    { label: 'Level', value: stats.level },
+    { label: 'Badges', value: stats.badge_count },
+    { label: 'XP', value: stats.player_xp },
+  ].filter(item => item.value !== undefined && item.value !== null && item.value !== '')
+}
+
+function inventoryStatus(value: Record<string, unknown>) {
+  const item = value.steam_inventory_highlight as Record<string, unknown> | undefined
+  if (!item) return null
+  return {
+    title: String(item.title || 'Инвентарь'),
+    reason: String(item.reason || 'Источник цен не настроен.'),
+  }
+}
+
+function faceitPreviewData(value: Record<string, unknown>) {
+  const live = value.faceit_profile as Record<string, any> | undefined
+  if (live) {
+    return {
+      level: Number(live.skill_level || live.skill_level_label || 0),
+      elo: live.faceit_elo || '—',
+      kd: live.stats?.kd || '—',
+      winRate: live.stats?.win_rate || '—',
+    }
+  }
+  return mock.faceitData((value.nickname as string) || '')
 }
 
 async function saveProfile() {

@@ -6,14 +6,18 @@ from app.deps import get_current_admin_user
 from app.models.user import User
 from app.schemas.admin import (
     AdminActionResponse,
+    ApiSettingsResponse,
+    ApiSettingsUpdate,
     SmtpSettingsResponse,
     SmtpSettingsUpdate,
     SmtpTestRequest,
 )
 from app.services.admin_settings import (
     apply_public_auth_settings,
+    get_api_settings_response,
     get_smtp_delivery_config,
     get_smtp_response,
+    save_api_settings,
     save_smtp_settings,
 )
 from app.services.auth import send_auth_email
@@ -27,6 +31,23 @@ async def read_smtp_settings(
     _: User = Depends(get_current_admin_user),
 ):
     return await get_smtp_response(db)
+
+
+@router.get("/api-settings", response_model=ApiSettingsResponse)
+async def read_api_settings(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_admin_user),
+):
+    return await get_api_settings_response(db)
+
+
+@router.put("/api-settings", response_model=ApiSettingsResponse)
+async def update_api_settings(
+    body: ApiSettingsUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_admin_user),
+):
+    return await save_api_settings(db, body)
 
 
 @router.put("/smtp-settings", response_model=SmtpSettingsResponse)

@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     SMTP_FROM: str = "no-reply@stellalink.app"
     SMTP_FROM_NAME: str = "Stellalink"
 
+    STEAM_API_KEY: str | None = None
+    FACEIT_API_KEY: str | None = None
+    STEAM_INVENTORY_APP_ID: int = 730
+    STEAM_INVENTORY_CONTEXT_ID: str = "2"
+
     AUTH_DEBUG_TOKENS: bool = False
 
     LOGIN_MAX_ATTEMPTS: int = 5

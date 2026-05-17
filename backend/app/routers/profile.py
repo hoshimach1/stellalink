@@ -20,6 +20,53 @@ from app.services import profile as svc
 router = APIRouter(tags=["profiles"])
 
 
+def _account_by_provider(profile, provider: str):
+    user = profile.user if profile.user else None
+    accounts = getattr(user, "connected_accounts", []) if user else []
+    return next((account for account in accounts if account.provider == provider and account.is_active), None)
+
+
+def _account_metadata(account) -> dict:
+    if not account or not isinstance(account.account_metadata, dict):
+        return {}
+    return account.account_metadata
+
+
+def _enriched_block_config(profile, block) -> dict:
+    config = dict(block.config or {})
+    steam_account = _account_by_provider(profile, "steam")
+    faceit_account = _account_by_provider(profile, "faceit")
+    steam_metadata = _account_metadata(steam_account)
+    faceit_metadata = _account_metadata(faceit_account)
+
+    if block.block_type == "widget_steam" and steam_account:
+        if not config.get("steam_id"):
+            config["steam_id"] = steam_account.provider_uid
+        if str(config.get("steam_id") or "") == steam_account.provider_uid:
+            config["connected_account_id"] = str(steam_account.id)
+            config["steam_profile"] = steam_metadata.get("steam_profile")
+            config["steam_recent_games"] = steam_metadata.get("recent_games") or []
+            config["steam_profile_stats"] = steam_metadata.get("profile_stats") or {}
+            config["steam_inventory_highlight"] = steam_metadata.get("inventory_highlight")
+            config["steam_sync_error"] = steam_account.sync_error
+            config["steam_last_synced_at"] = (
+                steam_account.last_synced_at.isoformat() if steam_account.last_synced_at else None
+            )
+            config["faceit_profile"] = faceit_metadata or steam_metadata.get("faceit_profile")
+
+    if block.block_type == "widget_faceit" and faceit_account:
+        if not config.get("nickname"):
+            config["nickname"] = faceit_account.display_name or faceit_metadata.get("nickname")
+        config["connected_account_id"] = str(faceit_account.id)
+        config["faceit_profile"] = faceit_metadata
+        config["faceit_sync_error"] = faceit_account.sync_error
+        config["faceit_last_synced_at"] = (
+            faceit_account.last_synced_at.isoformat() if faceit_account.last_synced_at else None
+        )
+
+    return config
+
+
 def _to_response(profile) -> ProfileResponse:
     trans = next((t for t in profile.translations if t.locale == "ru"), None)
     return ProfileResponse(
@@ -29,7 +76,16 @@ def _to_response(profile) -> ProfileResponse:
         display_name=trans.display_name if trans else "",
         bio=trans.bio if trans else None,
         tags=trans.tags if trans else [],
-        blocks=[BlockResponse.model_validate(b) for b in profile.blocks],
+        blocks=[
+            BlockResponse(
+                id=b.id,
+                block_type=b.block_type,
+                sort_order=b.sort_order,
+                is_visible=b.is_visible,
+                config=_enriched_block_config(profile, b),
+            )
+            for b in profile.blocks
+        ],
         theme_preset=profile.theme_preset,
         accent_color=profile.accent_color,
         avatar_url=profile.user.avatar_url if profile.user else None,

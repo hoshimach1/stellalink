@@ -6,8 +6,8 @@
         <h2>Почта и auth-ссылки</h2>
         <span>SMTP, адрес фронтенда и время жизни ссылок подтверждения.</span>
       </div>
-      <button class="outline-btn" type="button" :disabled="loading" @click="loadSettings">
-        <span v-if="loading" class="admin-spinner dark" />
+      <button class="outline-btn" type="button" :disabled="loading || apiLoading" @click="loadAllSettings">
+        <span v-if="loading || apiLoading" class="admin-spinner dark" />
         <template v-else>
           <i class="ri-refresh-line" />
           <span>Обновить</span>
@@ -121,6 +121,54 @@
 
       <article class="admin-card">
         <div class="card-head">
+          <span class="card-icon"><i class="ri-key-2-line" /></span>
+          <div>
+            <h3>Steam и FACEIT API</h3>
+            <p>{{ apiStatus }}</p>
+          </div>
+        </div>
+
+        <form class="admin-form" @submit.prevent="saveApiSettings">
+          <label class="admin-field">
+            <span>Steam Web API key</span>
+            <input v-model="apiSteamKey" type="password" autocomplete="new-password" :placeholder="steamKeyPlaceholder">
+          </label>
+
+          <label class="admin-field">
+            <span>FACEIT Data API key</span>
+            <input v-model="apiFaceitKey" type="password" autocomplete="new-password" :placeholder="faceitKeyPlaceholder">
+          </label>
+
+          <div class="admin-row">
+            <label class="admin-field small">
+              <span>Inventory AppID</span>
+              <input v-model.number="apiForm.steam_inventory_app_id" type="number" min="1">
+            </label>
+
+            <label class="admin-field small">
+              <span>Context ID</span>
+              <input v-model="apiForm.steam_inventory_context_id" type="text" placeholder="2">
+            </label>
+          </div>
+
+          <div class="admin-note">
+            Steam не отдаёт цены предметов через обычный Web API. Для честного “самого дорогого предмета” нужен отдельный источник цен или publisher key с Economy permissions.
+          </div>
+
+          <div v-if="apiNotice" class="admin-note" :class="apiNoticeTone">{{ apiNotice }}</div>
+
+          <button class="outline-btn" type="submit" :disabled="apiSaving">
+            <span v-if="apiSaving" class="admin-spinner dark" />
+            <template v-else>
+              <i class="ri-save-3-line" />
+              <span>Сохранить ключи</span>
+            </template>
+          </button>
+        </form>
+      </article>
+
+      <article class="admin-card">
+        <div class="card-head">
           <span class="card-icon"><i class="ri-send-plane-line" /></span>
           <div>
             <h3>Тест</h3>
@@ -162,6 +210,7 @@ interface SmtpSettings {
   password_set: boolean
   use_ssl: boolean
   use_tls: boolean
+  force_ipv4: boolean
   timeout_seconds: number
   from_email: string
   from_name: string
@@ -170,19 +219,39 @@ interface SmtpSettings {
   password_reset_ttl_seconds: number
 }
 
+interface ApiSettings {
+  steam_api_key_set: boolean
+  steam_api_key_hint: string | null
+  faceit_api_key_set: boolean
+  faceit_api_key_hint: string | null
+  steam_inventory_app_id: number
+  steam_inventory_context_id: string
+  steam_inventory_price_source: string
+}
+
 const auth = useAuthStore()
 const config = useRuntimeConfig()
 
 const loading = ref(false)
 const saving = ref(false)
 const testing = ref(false)
+const apiLoading = ref(false)
+const apiSaving = ref(false)
 const passwordSet = ref(false)
+const steamKeySet = ref(false)
+const faceitKeySet = ref(false)
+const steamKeyHint = ref('(****)')
+const faceitKeyHint = ref('(****)')
 const smtpPassword = ref('')
+const apiSteamKey = ref('')
+const apiFaceitKey = ref('')
 const testEmail = ref('')
 const saveNotice = ref('')
 const testNotice = ref('')
+const apiNotice = ref('')
 const saveNoticeTone = ref<'success' | 'error'>('success')
 const testNoticeTone = ref<'success' | 'error'>('success')
+const apiNoticeTone = ref<'success' | 'error'>('success')
 
 const form = reactive({
   enabled: true,
@@ -199,6 +268,11 @@ const form = reactive({
   password_reset_ttl_seconds: 3600,
 })
 
+const apiForm = reactive({
+  steam_inventory_app_id: 730,
+  steam_inventory_context_id: '2',
+})
+
 const encryptionMode = computed({
   get() {
     if (form.use_ssl) return 'ssl'
@@ -212,14 +286,20 @@ const encryptionMode = computed({
 })
 
 const passwordPlaceholder = computed(() => passwordSet.value ? 'Пароль сохранен' : 'SMTP пароль')
+const steamKeyPlaceholder = computed(() => steamKeySet.value ? `Сохранен ${steamKeyHint.value}` : 'Введите ключ Steam')
+const faceitKeyPlaceholder = computed(() => faceitKeySet.value ? `Сохранен ${faceitKeyHint.value}` : 'Введите ключ FACEIT')
 const smtpStatus = computed(() => {
   if (!form.enabled) return 'Письма выключены, ссылки будут только в логах.'
   if (!form.host) return 'Host не задан, письма будут записываться в лог backend.'
   return `${form.host}:${form.port}`
 })
-
+const apiStatus = computed(() => {
+  if (steamKeySet.value && faceitKeySet.value) return 'Steam подключен, FACEIT будет подтягиваться по Steam ID.'
+  if (steamKeySet.value) return 'Steam подключен. Добавьте FACEIT key для автоподтягивания ELO и уровня.'
+  return 'Добавьте Steam key, чтобы валидировать Steam ID и получать профильные данные.'
+})
 onMounted(() => {
-  void loadSettings()
+  void loadAllSettings()
 })
 
 function applySettings(data: SmtpSettings) {
@@ -239,6 +319,21 @@ function applySettings(data: SmtpSettings) {
   smtpPassword.value = ''
 }
 
+function applyApiSettings(data: ApiSettings) {
+  steamKeySet.value = data.steam_api_key_set
+  faceitKeySet.value = data.faceit_api_key_set
+  apiForm.steam_inventory_app_id = data.steam_inventory_app_id
+  apiForm.steam_inventory_context_id = data.steam_inventory_context_id
+  apiSteamKey.value = ''
+  apiFaceitKey.value = ''
+  steamKeyHint.value = data.steam_api_key_hint ?? '(****)'
+  faceitKeyHint.value = data.faceit_api_key_hint ?? '(****)'
+}
+
+async function loadAllSettings() {
+  await Promise.all([loadSettings(), loadApiSettings()])
+}
+
 async function loadSettings() {
   loading.value = true
   saveNotice.value = ''
@@ -250,6 +345,50 @@ async function loadSettings() {
     saveNotice.value = extractAuthError(error, 'Не удалось загрузить настройки.')
   } finally {
     loading.value = false
+  }
+}
+
+async function loadApiSettings() {
+  apiLoading.value = true
+  apiNotice.value = ''
+  try {
+    const data = await auth.authorizedFetch<ApiSettings>(`${config.public.apiBase}/admin/api-settings`)
+    applyApiSettings(data)
+  } catch (error) {
+    apiNoticeTone.value = 'error'
+    apiNotice.value = extractAuthError(error, 'Не удалось загрузить API-настройки.')
+  } finally {
+    apiLoading.value = false
+  }
+}
+
+async function saveApiSettings() {
+  apiSaving.value = true
+  apiNotice.value = ''
+  try {
+    const body: Record<string, unknown> = {
+      steam_inventory_app_id: apiForm.steam_inventory_app_id,
+      steam_inventory_context_id: apiForm.steam_inventory_context_id.trim() || '2',
+    }
+    if (apiSteamKey.value.trim()) {
+      body.steam_api_key = apiSteamKey.value.trim()
+    }
+    if (apiFaceitKey.value.trim()) {
+      body.faceit_api_key = apiFaceitKey.value.trim()
+    }
+
+    const data = await auth.authorizedFetch<ApiSettings>(`${config.public.apiBase}/admin/api-settings`, {
+      method: 'PUT',
+      body,
+    })
+    applyApiSettings(data)
+    apiNoticeTone.value = 'success'
+    apiNotice.value = 'API-настройки сохранены.'
+  } catch (error) {
+    apiNoticeTone.value = 'error'
+    apiNotice.value = extractAuthError(error, 'Не удалось сохранить API-настройки.')
+  } finally {
+    apiSaving.value = false
   }
 }
 

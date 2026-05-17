@@ -1,0 +1,466 @@
+import asyncio
+import json
+import re
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import datetime, timezone
+from typing import Any, Optional
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.integration import ConnectedAccount
+from app.schemas.integration import (
+    ConnectedAccountResponse,
+    IntegrationCapabilities,
+    IntegrationsResponse,
+)
+from app.services.admin_settings import get_api_settings_data
+
+STEAM_ID64_RE = re.compile(r"^\d{17}$")
+STEAM_VANITY_RE = re.compile(r"^[A-Za-z0-9_-]{2,64}$")
+STEAM_API_BASE = "https://api.steampowered.com"
+FACEIT_API_BASE = "https://open.faceit.com/data/v4"
+FACEIT_GAME_ID = "cs2"
+
+
+class ExternalApiError(Exception):
+    def __init__(self, message: str, status_code: int = 502):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+def _clean_text(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    value = str(value).strip()
+    return value or None
+
+
+def _hinted_error(service: str, status_code: int, body: str = "") -> ExternalApiError:
+    if status_code == 401 or status_code == 403:
+        return ExternalApiError(f"{service}: API key was rejected.", status_code=502)
+    if status_code == 404:
+        return ExternalApiError(f"{service}: requested profile was not found.", status_code=404)
+    if status_code == 429:
+        return ExternalApiError(f"{service}: rate limit exceeded.", status_code=429)
+    details = body[:180].strip()
+    suffix = f" {details}" if details else ""
+    return ExternalApiError(f"{service}: upstream request failed with {status_code}.{suffix}", status_code=502)
+
+
+def _read_json(url: str, service: str, headers: Optional[dict[str, str]] = None, timeout: int = 12) -> dict[str, Any]:
+    request = urllib.request.Request(url, headers=headers or {})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 - fixed trusted API hosts
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise _hinted_error(service, exc.code, body) from exc
+    except urllib.error.URLError as exc:
+        raise ExternalApiError(f"{service}: network request failed.") from exc
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ExternalApiError(f"{service}: returned invalid JSON.") from exc
+    if not isinstance(parsed, dict):
+        raise ExternalApiError(f"{service}: returned an unexpected payload.")
+    return parsed
+
+
+async def _fetch_json(
+    url: str,
+    service: str,
+    headers: Optional[dict[str, str]] = None,
+    timeout: int = 12,
+) -> dict[str, Any]:
+    return await asyncio.to_thread(_read_json, url, service, headers, timeout)
+
+
+def _steam_url(path: str, params: dict[str, Any]) -> str:
+    query = urllib.parse.urlencode({k: v for k, v in params.items() if v is not None})
+    return f"{STEAM_API_BASE}{path}?{query}"
+
+
+def _faceit_url(path: str, params: Optional[dict[str, Any]] = None) -> str:
+    query = urllib.parse.urlencode(params or {})
+    return f"{FACEIT_API_BASE}{path}{f'?{query}' if query else ''}"
+
+
+def _extract_steam_identifier(raw: str) -> str:
+    value = raw.strip()
+    parsed = urllib.parse.urlparse(value if "://" in value else f"https://{value}")
+    if parsed.netloc and "steamcommunity.com" in parsed.netloc.lower():
+        parts = [part for part in parsed.path.split("/") if part]
+        if len(parts) >= 2 and parts[0].lower() in {"profiles", "id"}:
+            return parts[1]
+    return value.rstrip("/")
+
+
+async def resolve_steam_id(raw: str, api_key: Optional[str]) -> str:
+    candidate = _extract_steam_identifier(raw)
+    if STEAM_ID64_RE.match(candidate):
+        return candidate
+
+    if not STEAM_VANITY_RE.match(candidate):
+        raise ExternalApiError("Steam ID must be a SteamID64, vanity name, or steamcommunity.com URL.", 400)
+    if not api_key:
+        raise ExternalApiError("Steam API key is required to resolve a vanity Steam URL.", 400)
+
+    url = _steam_url(
+        "/ISteamUser/ResolveVanityURL/v1/",
+        {"key": api_key, "vanityurl": candidate},
+    )
+    payload = await _fetch_json(url, "Steam")
+    response = payload.get("response") if isinstance(payload.get("response"), dict) else {}
+    if response.get("success") != 1 or not response.get("steamid"):
+        raise ExternalApiError("Steam vanity URL was not found.", 404)
+    return str(response["steamid"])
+
+
+async def fetch_steam_profile(api_key: str, steam_id: str) -> Optional[dict[str, Any]]:
+    payload = await _fetch_json(
+        _steam_url(
+            "/ISteamUser/GetPlayerSummaries/v2/",
+            {"key": api_key, "steamids": steam_id},
+        ),
+        "Steam",
+    )
+    players = ((payload.get("response") or {}).get("players") or [])
+    return players[0] if players else None
+
+
+async def fetch_recent_games(api_key: str, steam_id: str, count: int = 5) -> list[dict[str, Any]]:
+    payload = await _fetch_json(
+        _steam_url(
+            "/IPlayerService/GetRecentlyPlayedGames/v1/",
+            {"key": api_key, "steamid": steam_id, "count": count, "format": "json"},
+        ),
+        "Steam",
+    )
+    games = ((payload.get("response") or {}).get("games") or [])
+    result = []
+    for game in games:
+        if not isinstance(game, dict):
+            continue
+        result.append(
+            {
+                "appid": game.get("appid"),
+                "name": game.get("name"),
+                "playtime_2weeks": int(game.get("playtime_2weeks") or 0),
+                "playtime_forever": int(game.get("playtime_forever") or 0),
+                "img_icon_url": game.get("img_icon_url"),
+            }
+        )
+    return result
+
+
+async def fetch_steam_level(api_key: str, steam_id: str) -> Optional[int]:
+    payload = await _fetch_json(
+        _steam_url(
+            "/IPlayerService/GetSteamLevel/v1/",
+            {"key": api_key, "steamid": steam_id, "format": "json"},
+        ),
+        "Steam",
+    )
+    level = (payload.get("response") or {}).get("player_level")
+    return int(level) if level is not None else None
+
+
+async def fetch_steam_badges(api_key: str, steam_id: str) -> dict[str, Any]:
+    payload = await _fetch_json(
+        _steam_url(
+            "/IPlayerService/GetBadges/v1/",
+            {"key": api_key, "steamid": steam_id, "format": "json"},
+        ),
+        "Steam",
+    )
+    response = payload.get("response") if isinstance(payload.get("response"), dict) else {}
+    badges = response.get("badges") if isinstance(response.get("badges"), list) else []
+    return {
+        "badge_count": len(badges),
+        "player_xp": response.get("player_xp"),
+        "player_level": response.get("player_level"),
+        "player_xp_needed_current_level": response.get("player_xp_needed_current_level"),
+        "player_xp_needed_to_level_up": response.get("player_xp_needed_to_level_up"),
+    }
+
+
+async def fetch_faceit_profile(api_key: str, steam_id: str, game_id: str = FACEIT_GAME_ID) -> Optional[dict[str, Any]]:
+    headers = {"Authorization": f"Bearer {api_key}"}
+    try:
+        player = await _fetch_json(
+            _faceit_url("/players", {"game": game_id, "game_player_id": steam_id}),
+            "FACEIT",
+            headers=headers,
+        )
+    except ExternalApiError as exc:
+        if exc.status_code == 404:
+            return None
+        raise
+
+    player_id = _clean_text(player.get("player_id"))
+    stats_payload: dict[str, Any] = {}
+    if player_id:
+        try:
+            stats_payload = await _fetch_json(
+                _faceit_url(f"/players/{player_id}/stats/{game_id}"),
+                "FACEIT",
+                headers=headers,
+            )
+        except ExternalApiError as exc:
+            stats_payload = {"sync_error": str(exc)}
+
+    return _summarize_faceit_player(player, stats_payload, game_id)
+
+
+def _summarize_faceit_player(player: dict[str, Any], stats_payload: dict[str, Any], game_id: str) -> dict[str, Any]:
+    games = player.get("games") if isinstance(player.get("games"), dict) else {}
+    game = games.get(game_id) if isinstance(games.get(game_id), dict) else {}
+    lifetime = stats_payload.get("lifetime") if isinstance(stats_payload.get("lifetime"), dict) else {}
+
+    return {
+        "available": True,
+        "source": "steam",
+        "game": game_id,
+        "player_id": player.get("player_id"),
+        "nickname": player.get("nickname"),
+        "avatar": player.get("avatar"),
+        "country": player.get("country"),
+        "faceit_url": player.get("faceit_url"),
+        "verified": player.get("verified"),
+        "steam_id_64": player.get("steam_id_64"),
+        "steam_nickname": player.get("steam_nickname"),
+        "skill_level": game.get("skill_level"),
+        "skill_level_label": game.get("skill_level_label"),
+        "faceit_elo": game.get("faceit_elo"),
+        "region": game.get("region"),
+        "game_player_name": game.get("game_player_name"),
+        "stats": {
+            "matches": lifetime.get("Matches"),
+            "wins": lifetime.get("Wins"),
+            "win_rate": lifetime.get("Win Rate %"),
+            "kd": lifetime.get("Average K/D Ratio") or lifetime.get("K/D Ratio"),
+            "headshots": lifetime.get("Average Headshots %") or lifetime.get("Total Headshots %"),
+            "recent_results": lifetime.get("Recent Results"),
+        },
+        "stats_error": stats_payload.get("sync_error"),
+    }
+
+
+def unavailable_inventory_highlight(app_id: int, context_id: str) -> dict[str, Any]:
+    return {
+        "available": False,
+        "app_id": app_id,
+        "context_id": context_id,
+        "title": "Market price is unavailable",
+        "reason": (
+            "Official Steam Web API inventory access requires a publisher key with Economy permissions, "
+            "and regular inventory responses do not include Community Market prices."
+        ),
+    }
+
+
+async def build_steam_metadata(db: AsyncSession, steam_id: str) -> tuple[dict[str, Any], Optional[str]]:
+    api_settings = await get_api_settings_data(db)
+    steam_key = _clean_text(api_settings.get("steam_api_key"))
+    faceit_key = _clean_text(api_settings.get("faceit_api_key"))
+    app_id = int(api_settings.get("steam_inventory_app_id") or 730)
+    context_id = str(api_settings.get("steam_inventory_context_id") or "2")
+    now = datetime.now(timezone.utc).isoformat()
+
+    metadata: dict[str, Any] = {
+        "steam_id": steam_id,
+        "synced_at": now,
+        "steam_profile": None,
+        "recent_games": [],
+        "profile_stats": {},
+        "inventory_highlight": unavailable_inventory_highlight(app_id, context_id),
+        "faceit_profile": None,
+        "errors": [],
+    }
+
+    if not steam_key:
+        metadata["errors"].append("Steam API key is not configured.")
+        return metadata, "Steam API key is not configured."
+
+    sync_errors: list[str] = []
+
+    try:
+        metadata["steam_profile"] = await fetch_steam_profile(steam_key, steam_id)
+    except ExternalApiError as exc:
+        sync_errors.append(str(exc))
+
+    try:
+        metadata["recent_games"] = await fetch_recent_games(steam_key, steam_id)
+    except ExternalApiError as exc:
+        sync_errors.append(str(exc))
+
+    try:
+        level = await fetch_steam_level(steam_key, steam_id)
+        badges = await fetch_steam_badges(steam_key, steam_id)
+        metadata["profile_stats"] = {
+            "level": level if level is not None else badges.get("player_level"),
+            **badges,
+        }
+    except ExternalApiError as exc:
+        sync_errors.append(str(exc))
+
+    if faceit_key:
+        try:
+            metadata["faceit_profile"] = await fetch_faceit_profile(faceit_key, steam_id)
+        except ExternalApiError as exc:
+            sync_errors.append(str(exc))
+    else:
+        metadata["faceit_note"] = "FACEIT API key is not configured."
+
+    metadata["errors"] = sync_errors
+    return metadata, "; ".join(sync_errors) or None
+
+
+async def list_connected_accounts(db: AsyncSession, user_id: UUID) -> list[ConnectedAccount]:
+    result = await db.execute(
+        select(ConnectedAccount)
+        .where(ConnectedAccount.user_id == user_id)
+        .order_by(ConnectedAccount.created_at)
+    )
+    return list(result.scalars().all())
+
+
+async def get_connected_account(db: AsyncSession, user_id: UUID, provider: str) -> Optional[ConnectedAccount]:
+    result = await db.execute(
+        select(ConnectedAccount)
+        .where(
+            ConnectedAccount.user_id == user_id,
+            ConnectedAccount.provider == provider,
+            ConnectedAccount.is_active.is_(True),
+        )
+        .order_by(ConnectedAccount.updated_at.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def upsert_single_provider_account(
+    db: AsyncSession,
+    user_id: UUID,
+    provider: str,
+    provider_uid: str,
+    display_name: Optional[str],
+    metadata: dict[str, Any],
+    sync_error: Optional[str],
+) -> ConnectedAccount:
+    result = await db.execute(
+        select(ConnectedAccount).where(
+            ConnectedAccount.user_id == user_id,
+            ConnectedAccount.provider == provider,
+        )
+    )
+    accounts = list(result.scalars().all())
+    account = accounts[0] if accounts else None
+
+    if account is None:
+        account = ConnectedAccount(
+            user_id=user_id,
+            provider=provider,
+            provider_uid=provider_uid,
+        )
+        db.add(account)
+
+    for duplicate in accounts[1:]:
+        await db.delete(duplicate)
+
+    now = datetime.now(timezone.utc)
+    account.provider_uid = provider_uid
+    account.display_name = display_name
+    account.account_metadata = metadata
+    account.is_active = True
+    account.last_synced_at = now
+    account.sync_error = sync_error
+    account.updated_at = now
+    db.add(account)
+    return account
+
+
+async def connect_steam_account(db: AsyncSession, user_id: UUID, raw_steam_id: str) -> ConnectedAccount:
+    api_settings = await get_api_settings_data(db)
+    steam_key = _clean_text(api_settings.get("steam_api_key"))
+    steam_id = await resolve_steam_id(raw_steam_id, steam_key)
+    metadata, sync_error = await build_steam_metadata(db, steam_id)
+    steam_profile = metadata.get("steam_profile") if isinstance(metadata.get("steam_profile"), dict) else {}
+    display_name = _clean_text(steam_profile.get("personaname")) or steam_id
+
+    account = await upsert_single_provider_account(
+        db,
+        user_id,
+        "steam",
+        steam_id,
+        display_name,
+        metadata,
+        sync_error,
+    )
+
+    faceit_profile = metadata.get("faceit_profile")
+    if isinstance(faceit_profile, dict) and faceit_profile.get("player_id"):
+        await upsert_single_provider_account(
+            db,
+            user_id,
+            "faceit",
+            str(faceit_profile["player_id"]),
+            _clean_text(faceit_profile.get("nickname")),
+            faceit_profile,
+            _clean_text(faceit_profile.get("stats_error")),
+        )
+
+    await db.commit()
+    await db.refresh(account)
+    return account
+
+
+async def sync_steam_account(db: AsyncSession, user_id: UUID) -> ConnectedAccount:
+    account = await get_connected_account(db, user_id, "steam")
+    if not account:
+        raise ExternalApiError("Steam account is not connected.", 404)
+    return await connect_steam_account(db, user_id, account.provider_uid)
+
+
+async def disconnect_steam_account(db: AsyncSession, user_id: UUID) -> None:
+    result = await db.execute(
+        select(ConnectedAccount).where(
+            ConnectedAccount.user_id == user_id,
+            ConnectedAccount.provider.in_(["steam", "faceit"]),
+        )
+    )
+    for account in result.scalars().all():
+        await db.delete(account)
+    await db.commit()
+
+
+def account_to_response(account: ConnectedAccount) -> ConnectedAccountResponse:
+    metadata = account.account_metadata if isinstance(account.account_metadata, dict) else {}
+    return ConnectedAccountResponse(
+        id=account.id,
+        provider=account.provider,
+        provider_uid=account.provider_uid,
+        display_name=account.display_name,
+        is_active=account.is_active,
+        last_synced_at=account.last_synced_at,
+        sync_error=account.sync_error,
+        metadata=metadata,
+    )
+
+
+async def integrations_response(db: AsyncSession, user_id: UUID) -> IntegrationsResponse:
+    accounts = await list_connected_accounts(db, user_id)
+    api_settings = await get_api_settings_data(db)
+    return IntegrationsResponse(
+        accounts=[account_to_response(account) for account in accounts],
+        capabilities=IntegrationCapabilities(
+            steam_api_key_set=bool(_clean_text(api_settings.get("steam_api_key"))),
+            faceit_api_key_set=bool(_clean_text(api_settings.get("faceit_api_key"))),
+            steam_inventory_prices_supported=False,
+        ),
+    )

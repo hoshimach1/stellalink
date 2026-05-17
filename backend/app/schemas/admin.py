@@ -53,5 +53,29 @@ class SmtpTestRequest(BaseModel):
     to_email: Optional[EmailStr] = None
 
 
+class ApiSettingsResponse(BaseModel):
+    steam_api_key_set: bool
+    steam_api_key_hint: Optional[str] = None
+    faceit_api_key_set: bool
+    faceit_api_key_hint: Optional[str] = None
+    steam_inventory_app_id: int
+    steam_inventory_context_id: str
+    steam_inventory_price_source: str
+
+
+class ApiSettingsUpdate(BaseModel):
+    steam_api_key: Optional[str] = None
+    faceit_api_key: Optional[str] = None
+    steam_inventory_app_id: int = Field(default=730, ge=1)
+    steam_inventory_context_id: str = Field(default="2", min_length=1, max_length=32)
+
+    @field_validator("steam_api_key", "faceit_api_key", "steam_inventory_context_id", mode="before")
+    @classmethod
+    def empty_api_string_to_none(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+
 class AdminActionResponse(BaseModel):
     detail: str

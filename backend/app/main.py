@@ -11,7 +11,7 @@ from app.database import Base
 from app.database import engine
 from app import models  # noqa: F401 - import all models before metadata bootstrap
 from app.redis import close_redis, get_redis
-from app.routers import admin, auth, profile
+from app.routers import admin, auth, integrations, profile
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(admin.router)
+app.include_router(integrations.router)
 app.include_router(profile.router)
 
 _uploads = Path(__file__).parent.parent / "uploads"

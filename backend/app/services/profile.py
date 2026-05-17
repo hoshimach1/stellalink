@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.profile import Profile, ProfileBlock, ProfileTranslation
+from app.models.user import User
 
 
 async def _load_profile(db: AsyncSession, where) -> Optional[Profile]:
@@ -15,7 +16,7 @@ async def _load_profile(db: AsyncSession, where) -> Optional[Profile]:
         .options(
             selectinload(Profile.translations),
             selectinload(Profile.blocks),
-            selectinload(Profile.user),
+            selectinload(Profile.user).selectinload(User.connected_accounts),
         )
         .where(where)
     )

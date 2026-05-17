@@ -86,8 +86,19 @@
       </label>
       <label class="bf-check">
         <input v-model="config.show_recent_games" type="checkbox">
-        <span>Показывать недавние игры</span>
+        <span>Последние игры и часы</span>
       </label>
+      <label class="bf-check">
+        <input v-model="config.show_profile_stats" type="checkbox">
+        <span>Статистика профиля Steam: уровень, значки, XP</span>
+      </label>
+      <label class="bf-check">
+        <input v-model="config.show_inventory_highlight" type="checkbox">
+        <span>Самый дорогой предмет инвентаря, если источник цен доступен</span>
+      </label>
+      <div class="bf-note">
+        Обычный Steam Web API не отдаёт рыночные цены предметов. Если цены недоступны, блок покажет честное предупреждение вместо выдуманной оценки.
+      </div>
     </template>
 
     <template v-else-if="type === 'widget_lastfm'">
@@ -441,6 +452,16 @@ function addComponent() {
   width: 18px;
   height: 18px;
   accent-color: var(--dash-accent, #345EA8);
+}
+
+.bf-note {
+  padding: 10px 12px;
+  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border-radius: 8px;
+  background: var(--dash-surface-soft, #F2F4F8);
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .bf-segments {

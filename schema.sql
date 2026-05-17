@@ -239,8 +239,10 @@ block_type = 'links':
 block_type = 'widget_steam':
 {
     "steam_id": "76561198...",
+    "use_connected_account": true,
     "show_recent_games": true,
-    "show_hours": true
+    "show_profile_stats": true,
+    "show_inventory_highlight": true
 }
 
 block_type = 'widget_github':

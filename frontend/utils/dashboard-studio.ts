@@ -30,7 +30,7 @@ export const BLOCK_LIBRARY: BlockCatalogItem[] = [
     type: 'widget_steam',
     icon: 'ri-steam-fill',
     label: 'Steam',
-    description: 'Steam ID и подборка последних игр в профиле.',
+    description: 'Последние игры, часы, уровень Steam и статус инвентаря.',
   },
   {
     type: 'widget_lastfm',
@@ -86,7 +86,13 @@ export const M3_PALETTES = [
 const DEFAULT_CONFIGS: Record<string, Record<string, unknown>> = {
   links: { groups: [{ title: '', links: [] }] },
   text: { content: '', format: 'markdown' },
-  widget_steam: { steam_id: '', show_recent_games: true },
+  widget_steam: {
+    steam_id: '',
+    use_connected_account: true,
+    show_recent_games: true,
+    show_profile_stats: true,
+    show_inventory_highlight: true,
+  },
   widget_lastfm: { username: '', show_now_playing: true },
   widget_github: { username: '', show_contributions: true, show_pinned_repos: true },
   widget_faceit: { nickname: '', game: 'cs2' },

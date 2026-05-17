@@ -104,14 +104,26 @@
                   Online
                 </span>
               </div>
-              <template v-if="block.config.show_recent_games && block.config.steam_id">
+              <template v-if="block.config.show_recent_games && steamGamesList(block).length">
                 <div class="pub-divider" />
                 <div class="pub-sub-label">Недавно в игре</div>
-                <div v-for="g in mock.steamGames(block.config.steam_id as string)" :key="g.name" class="pub-steam-row">
+                <div v-for="g in steamGamesList(block)" :key="`${g.appid || g.name}`" class="pub-steam-row">
                   <span class="pub-steam-name">{{ g.name }}</span>
-                  <span class="pub-steam-h">{{ g.hours.toLocaleString('ru') }} ч</span>
+                  <span class="pub-steam-h">{{ steamGameHours(g) }} ч</span>
                 </div>
               </template>
+              <template v-if="block.config.show_profile_stats && steamStatsList(block).length">
+                <div class="pub-divider" />
+                <div class="pub-faceit-stats">
+                  <div v-for="s in steamStatsList(block)" :key="s.label" class="pub-faceit-stat pub-m3-stat">
+                    <div class="pub-fstat-v">{{ s.value }}</div>
+                    <div class="pub-fstat-l">{{ s.label }}</div>
+                  </div>
+                </div>
+              </template>
+              <p v-if="block.config.show_inventory_highlight && inventoryStatus(block)" class="pub-sub-label">
+                {{ inventoryStatus(block)?.title }}: {{ inventoryStatus(block)?.reason }}
+              </p>
             </template>
 
             <template v-else-if="block.block_type === 'widget_lastfm'">
@@ -218,7 +230,7 @@
                 <FaceitSkillLevel
                   v-if="block.config.nickname"
                   class="pub-faceit-lvl"
-                  :level="mock.faceitData(block.config.nickname as string).level"
+                  :level="faceitDataForBlock(block).level"
                 />
               </div>
               <template v-if="block.config.nickname">
@@ -321,14 +333,26 @@
                   </div>
                   <span class="pub-badge-green">● Online</span>
                 </div>
-                <template v-if="block.config.show_recent_games && block.config.steam_id">
+                <template v-if="block.config.show_recent_games && steamGamesList(block).length">
                   <div class="pub-divider" />
                   <div class="pub-sub-label">Недавно в игре</div>
-                  <div v-for="g in mock.steamGames(block.config.steam_id as string)" :key="g.name" class="pub-steam-row">
+                  <div v-for="g in steamGamesList(block)" :key="`${g.appid || g.name}`" class="pub-steam-row">
                     <span class="pub-steam-name">{{ g.name }}</span>
-                    <span class="pub-steam-h">{{ g.hours.toLocaleString('ru') }} ч</span>
+                    <span class="pub-steam-h">{{ steamGameHours(g) }} ч</span>
                   </div>
                 </template>
+                <template v-if="block.config.show_profile_stats && steamStatsList(block).length">
+                  <div class="pub-divider" />
+                  <div class="pub-faceit-stats">
+                    <div v-for="s in steamStatsList(block)" :key="s.label" class="pub-faceit-stat">
+                      <div class="pub-fstat-v">{{ s.value }}</div>
+                      <div class="pub-fstat-l">{{ s.label }}</div>
+                    </div>
+                  </div>
+                </template>
+                <p v-if="block.config.show_inventory_highlight && inventoryStatus(block)" class="pub-sub-label">
+                  {{ inventoryStatus(block)?.title }}: {{ inventoryStatus(block)?.reason }}
+                </p>
               </template>
 
               <!-- Last.fm -->
@@ -433,7 +457,7 @@
                   <FaceitSkillLevel
                     v-if="block.config.nickname"
                     class="pub-faceit-lvl"
-                    :level="mock.faceitData(block.config.nickname as string).level"
+                    :level="faceitDataForBlock(block).level"
                   />
                 </div>
                 <template v-if="block.config.nickname">
@@ -543,14 +567,26 @@
                   </div>
                   <fluent-badge appearance="accent" class="pub-fluent-badge-online">Online</fluent-badge>
                 </div>
-                <template v-if="block.config.show_recent_games && block.config.steam_id">
+                <template v-if="block.config.show_recent_games && steamGamesList(block).length">
                   <div class="pub-divider" />
                   <div class="pub-sub-label">Недавно в игре</div>
-                  <div v-for="g in mock.steamGames(block.config.steam_id as string)" :key="g.name" class="pub-steam-row">
+                  <div v-for="g in steamGamesList(block)" :key="`${g.appid || g.name}`" class="pub-steam-row">
                     <span class="pub-steam-name">{{ g.name }}</span>
-                    <span class="pub-steam-h">{{ g.hours.toLocaleString('ru') }} ч</span>
+                    <span class="pub-steam-h">{{ steamGameHours(g) }} ч</span>
                   </div>
                 </template>
+                <template v-if="block.config.show_profile_stats && steamStatsList(block).length">
+                  <div class="pub-divider" />
+                  <div class="pub-faceit-stats">
+                    <div v-for="s in steamStatsList(block)" :key="s.label" class="pub-faceit-stat">
+                      <div class="pub-fstat-v">{{ s.value }}</div>
+                      <div class="pub-fstat-l">{{ s.label }}</div>
+                    </div>
+                  </div>
+                </template>
+                <p v-if="block.config.show_inventory_highlight && inventoryStatus(block)" class="pub-sub-label">
+                  {{ inventoryStatus(block)?.title }}: {{ inventoryStatus(block)?.reason }}
+                </p>
               </div>
 
               <!-- Last.fm -->
@@ -655,7 +691,7 @@
                   <FaceitSkillLevel
                     v-if="block.config.nickname"
                     class="pub-faceit-lvl"
-                    :level="mock.faceitData(block.config.nickname as string).level"
+                    :level="faceitDataForBlock(block).level"
                   />
                 </div>
                 <template v-if="block.config.nickname">
@@ -703,6 +739,13 @@ import type { Block } from '~/stores/profile'
 interface Link { label: string; url: string; icon?: string }
 interface Group { title: string; links: Link[] }
 interface Component { category: string; name: string }
+interface SteamGame {
+  appid?: number
+  name: string
+  playtime_2weeks?: number
+  playtime_forever?: number
+  hours?: number
+}
 
 definePageMeta({ layout: 'landing' })
 
@@ -800,12 +843,58 @@ function normalizeUrl(url: string | undefined): string {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`
 }
 
+function steamGamesList(block: Block): SteamGame[] {
+  const liveGames = Array.isArray(block.config.steam_recent_games) ? block.config.steam_recent_games as SteamGame[] : []
+  if (liveGames.length) return liveGames
+  return block.config.steam_id ? mock.steamGames(block.config.steam_id as string) : []
+}
+
+function steamGameHours(game: SteamGame): string {
+  const hours = typeof game.hours === 'number'
+    ? game.hours
+    : Math.round(((game.playtime_2weeks || game.playtime_forever || 0) / 60) * 10) / 10
+  return hours.toLocaleString('ru')
+}
+
+function steamStatsList(block: Block) {
+  const stats = block.config.steam_profile_stats as Record<string, unknown> | undefined
+  if (!stats) return []
+  return [
+    { label: 'Level', value: stats.level },
+    { label: 'Badges', value: stats.badge_count },
+    { label: 'XP', value: stats.player_xp },
+  ].filter(item => item.value !== undefined && item.value !== null && item.value !== '')
+}
+
+function inventoryStatus(block: Block) {
+  const item = block.config.steam_inventory_highlight as Record<string, unknown> | undefined
+  if (!item) return null
+  return {
+    title: String(item.title || 'Инвентарь'),
+    reason: String(item.reason || 'Источник цен не настроен.'),
+  }
+}
+
+function faceitDataForBlock(block: Block) {
+  const live = block.config.faceit_profile as Record<string, any> | undefined
+  if (live) {
+    return {
+      level: Number(live.skill_level || live.skill_level_label || 0),
+      elo: live.faceit_elo || '—',
+      kd: live.stats?.kd || '—',
+      winRate: live.stats?.win_rate || '—',
+      matches: live.stats?.matches || '—',
+    }
+  }
+  return mock.faceitData(block.config.nickname as string)
+}
+
 function faceitStatsList(block: Block) {
-  const data = mock.faceitData(block.config.nickname as string)
+  const data = faceitDataForBlock(block)
   return [
     { value: data.elo, label: 'ELO' },
     { value: data.kd, label: 'K/D' },
-    { value: `${data.winRate}%`, label: 'Win Rate' },
+    { value: String(data.winRate).includes('%') ? data.winRate : `${data.winRate}%`, label: 'Win Rate' },
     { value: data.matches, label: 'Матчи' },
   ]
 }

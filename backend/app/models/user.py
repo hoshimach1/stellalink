@@ -23,6 +23,9 @@ class User(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+    connected_accounts = relationship(
+        "ConnectedAccount", back_populates="user", cascade="all, delete-orphan"
+    )
 
     @property
     def is_admin(self) -> bool:
