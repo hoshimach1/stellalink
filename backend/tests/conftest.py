@@ -1,11 +1,10 @@
 import asyncio
-import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from app.config import settings
-from app.database import Base, get_db
+from app.database import get_db
 from app.main import app
 
 engine_test = create_async_engine(settings.DATABASE_URL, echo=False)
