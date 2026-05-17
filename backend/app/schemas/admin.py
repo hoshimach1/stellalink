@@ -11,6 +11,7 @@ class SmtpSettingsResponse(BaseModel):
     password_set: bool
     use_ssl: bool
     use_tls: bool
+    force_ipv4: bool
     timeout_seconds: int
     from_email: EmailStr
     from_name: str
@@ -27,6 +28,7 @@ class SmtpSettingsUpdate(BaseModel):
     password: Optional[str] = None
     use_ssl: bool = False
     use_tls: bool = True
+    force_ipv4: bool = False
     timeout_seconds: int = Field(default=15, ge=1, le=120)
     from_email: EmailStr
     from_name: str = Field(min_length=1, max_length=100)

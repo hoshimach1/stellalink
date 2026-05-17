@@ -4,6 +4,7 @@ import logging
 import re
 import secrets
 import smtplib
+import socket
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -38,6 +39,7 @@ class EmailDeliveryConfig:
     password: Optional[str]
     use_ssl: bool
     use_tls: bool
+    force_ipv4: bool
     timeout_seconds: int
     from_email: str
     from_name: str
@@ -52,6 +54,7 @@ def get_default_email_delivery_config() -> EmailDeliveryConfig:
         password=settings.SMTP_PASSWORD,
         use_ssl=settings.SMTP_USE_SSL,
         use_tls=settings.SMTP_USE_TLS,
+        force_ipv4=settings.SMTP_FORCE_IPV4,
         timeout_seconds=settings.SMTP_TIMEOUT_SECONDS,
         from_email=settings.SMTP_FROM,
         from_name=settings.SMTP_FROM_NAME,
@@ -354,16 +357,28 @@ def _build_action_email_html(
 </html>"""
 
 
+def _resolve_smtp_host(delivery: EmailDeliveryConfig) -> str:
+    if not delivery.force_ipv4 or not delivery.host:
+        return delivery.host or ""
+
+    addresses = socket.getaddrinfo(delivery.host, delivery.port, family=socket.AF_INET, type=socket.SOCK_STREAM)
+    if not addresses:
+        raise OSError(f"No IPv4 address found for SMTP host {delivery.host}")
+
+    return addresses[0][4][0]
+
+
 def _open_smtp_connection(delivery: EmailDeliveryConfig) -> AbstractContextManager[smtplib.SMTP]:
+    host = _resolve_smtp_host(delivery)
     if delivery.use_ssl:
         return smtplib.SMTP_SSL(
-            delivery.host,
+            host,
             delivery.port,
             timeout=delivery.timeout_seconds,
         )
 
     return smtplib.SMTP(
-        delivery.host,
+        host,
         delivery.port,
         timeout=delivery.timeout_seconds,
     )

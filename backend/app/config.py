@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str | None = None
     SMTP_USE_SSL: bool = False
     SMTP_USE_TLS: bool = True
+    SMTP_FORCE_IPV4: bool = False
     SMTP_TIMEOUT_SECONDS: int = 15
     SMTP_FROM: str = "no-reply@stellalink.app"
     SMTP_FROM_NAME: str = "Stellalink"
