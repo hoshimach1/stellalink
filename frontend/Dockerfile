@@ -1,12 +1,16 @@
+# syntax=docker/dockerfile:1.7
 FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
 COPY scripts/ ./scripts/
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --prefer-offline --no-audit --no-fund
 
 COPY . .
-RUN npm run build
+RUN --mount=type=cache,target=/app/.nuxt/cache \
+    --mount=type=cache,target=/app/node_modules/.cache \
+    npm run build
 
 FROM node:20-alpine
 WORKDIR /app

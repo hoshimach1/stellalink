@@ -3,15 +3,29 @@ stages:
   - build
   - deploy
 
+default:
+  interruptible: true
+
 variables:
-  GIT_DEPTH: "0"
+  GIT_DEPTH: "1"
   NPM_CONFIG_AUDIT: "false"
+  NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.cache/npm"
   NPM_CONFIG_FUND: "false"
   NUXT_TELEMETRY_DISABLED: "1"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
 
 backend_lint_and_test:
   stage: test
   image: python:3.12-slim
+  cache:
+    key:
+      files:
+        - backend/requirements.txt
+        - backend/requirements-dev.txt
+    paths:
+      - .cache/pip/
   services:
     - name: postgres:16-alpine
       alias: postgres
@@ -27,10 +41,12 @@ backend_lint_and_test:
   before_script:
     - cd backend
     - python --version
-    - python -m pip install --upgrade pip
     - python -m pip install -r requirements-dev.txt
   script:
-    - python -m ruff check app/
+    - python -m pip check
+    - python -m ruff check app tests
+    - python -m ruff format --check app tests
+    - python -m compileall -q app tests
     - |
       python - <<'PY'
       import pathlib
@@ -56,11 +72,19 @@ backend_lint_and_test:
       conn.close()
       print("schema applied")
       PY
-    - python -m pytest tests/ -v --tb=short
+    - python -m pytest tests/ -v --tb=short --strict-config --strict-markers
 
 frontend_build:
   stage: build
   image: node:20-alpine
+  needs: []
+  cache:
+    key:
+      files:
+        - frontend/package-lock.json
+    paths:
+      - .cache/npm/
+      - frontend/.nuxt/cache/
   rules:
     - changes:
         - frontend/**/*
@@ -71,18 +95,22 @@ frontend_build:
     - node --version
     - npm --version
   script:
-    - npm ci --no-audit --no-fund --prefer-offline
+    - npm ci --prefer-offline
     - npm run build
 
 deploy_production:
   stage: deploy
   image: alpine:3.20
+  needs:
+    - job: backend_lint_and_test
+    - job: frontend_build
+      optional: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
   environment:
     name: production
   before_script:
-    - apk add --no-cache openssh-client rsync tar
+    - apk add --no-cache openssh-client rsync
     - test -n "$DEPLOY_SSH_HOST"
     - test -n "$DEPLOY_SSH_USER"
     - test -n "$DEPLOY_SSH_PRIVATE_KEY"
@@ -130,11 +158,13 @@ deploy_production:
         BatchMode yes
         StrictHostKeyChecking yes
         UserKnownHostsFile $HOME/.ssh/known_hosts
+        ControlMaster auto
+        ControlPath $HOME/.ssh/control-%C
+        ControlPersist 10m
       EOF
     - chmod 600 "$HOME/.ssh/config"
   script:
-    - ssh deploy-target 'hostname'
-    - ssh deploy-target "mkdir -p '$DEPLOY_PATH'"
+    - ssh deploy-target "hostname && mkdir -p '$DEPLOY_PATH'"
     - |
       rsync -az --delete \
         --exclude '.git/' \
@@ -142,14 +172,21 @@ deploy_production:
         --exclude '.idea/' \
         --exclude '.playwright-mcp/' \
         --exclude '.tmp/' \
+        --exclude '.cache/' \
         --exclude 'artifacts/' \
         --exclude 'backups/' \
+        --exclude 'test-results/' \
         --exclude 'frontend/node_modules/' \
         --exclude 'frontend/.nuxt/' \
         --exclude 'frontend/.output/' \
+        --exclude 'frontend/backups/' \
+        --exclude 'frontend/coverage/' \
         --exclude 'backend/.env' \
+        --exclude 'backend/tests/' \
+        --exclude 'backend/uploads/' \
         --exclude 'backend/__pycache__/' \
         --exclude 'backend/.pytest_cache/' \
+        --exclude 'backend/.ruff_cache/' \
         ./ deploy-target:"$DEPLOY_PATH"/
     - |
       BACKEND_ENV_FILE=""
@@ -179,10 +216,14 @@ deploy_production:
       ssh deploy-target "DEPLOY_PATH='$DEPLOY_PATH' sh -s" <<'REMOTE'
       set -eu
       cd "$DEPLOY_PATH/backend"
+      export COMPOSE_DOCKER_CLI_BUILD=1
+      export DOCKER_BUILDKIT=1
 
       docker compose up -d db redis
       until docker compose exec -T db pg_isready -U stellalink >/dev/null 2>&1; do sleep 1; done
-      DOCKER_BUILDKIT=1 docker compose build --parallel api frontend
-      docker compose up -d --no-deps --force-recreate api frontend dozzle
-      docker image prune -f
+      docker compose build --parallel api frontend
+      docker compose up -d --no-deps api frontend dozzle
+      if [ "${DEPLOY_PRUNE_IMAGES:-0}" = "1" ]; then
+        docker image prune -f
+      fi
       REMOTE

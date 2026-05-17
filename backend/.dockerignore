@@ -1,0 +1,13 @@
+.env
+.env.*
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+tests/
+dozzle/
+docker-compose.yml
+uploads/
