@@ -27,6 +27,10 @@ class IntegrationsResponse(BaseModel):
     capabilities: IntegrationCapabilities
 
 
+class SteamOpenIdStartResponse(BaseModel):
+    auth_url: str
+
+
 class SteamConnectRequest(BaseModel):
     steam_id: str = Field(..., min_length=1, max_length=160)
 

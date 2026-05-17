@@ -1,6 +1,7 @@
 import asyncio
 import json
 import re
+import secrets
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -11,7 +12,9 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.integration import ConnectedAccount
+from app.redis import get_redis
 from app.schemas.integration import (
     ConnectedAccountResponse,
     IntegrationCapabilities,
@@ -22,6 +25,8 @@ from app.services.admin_settings import get_api_settings_data
 STEAM_ID64_RE = re.compile(r"^\d{17}$")
 STEAM_VANITY_RE = re.compile(r"^[A-Za-z0-9_-]{2,64}$")
 STEAM_API_BASE = "https://api.steampowered.com"
+STEAM_OPENID_LOGIN_URL = "https://steamcommunity.com/openid/login"
+STEAM_OPENID_STATE_TTL_SECONDS = 600
 FACEIT_API_BASE = "https://open.faceit.com/data/v4"
 FACEIT_GAME_ID = "cs2"
 
@@ -80,6 +85,28 @@ async def _fetch_json(
     return await asyncio.to_thread(_read_json, url, service, headers, timeout)
 
 
+def _read_text_post(url: str, data: dict[str, str], service: str, timeout: int = 12) -> str:
+    encoded = urllib.parse.urlencode(data).encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=encoded,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 - fixed trusted API host
+            return response.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise _hinted_error(service, exc.code, body) from exc
+    except urllib.error.URLError as exc:
+        raise ExternalApiError(f"{service}: network request failed.") from exc
+
+
+async def _post_text(url: str, data: dict[str, str], service: str, timeout: int = 12) -> str:
+    return await asyncio.to_thread(_read_text_post, url, data, service, timeout)
+
+
 def _steam_url(path: str, params: dict[str, Any]) -> str:
     query = urllib.parse.urlencode({k: v for k, v in params.items() if v is not None})
     return f"{STEAM_API_BASE}{path}?{query}"
@@ -88,6 +115,97 @@ def _steam_url(path: str, params: dict[str, Any]) -> str:
 def _faceit_url(path: str, params: Optional[dict[str, Any]] = None) -> str:
     query = urllib.parse.urlencode(params or {})
     return f"{FACEIT_API_BASE}{path}{f'?{query}' if query else ''}"
+
+
+def _steam_openid_state_key(state: str) -> str:
+    return f"integration:steam_openid:{state}"
+
+
+def _frontend_base_url() -> str:
+    return settings.FRONTEND_BASE_URL.rstrip("/")
+
+
+def _steam_openid_callback_url(state: str) -> str:
+    return f"{_frontend_base_url()}/api/integrations/steam/openid/callback?{urllib.parse.urlencode({'state': state})}"
+
+
+def _steam_openid_result_url(success: bool, detail: Optional[str] = None) -> str:
+    query = {"tab": "integrations", "steam": "connected" if success else "error"}
+    if detail and not success:
+        query["steam_error"] = detail[:160]
+    return f"{_frontend_base_url()}/dashboard?{urllib.parse.urlencode(query)}"
+
+
+async def create_steam_openid_auth_url(user_id: UUID) -> str:
+    state = secrets.token_urlsafe(32)
+    redis = await get_redis()
+    await redis.setex(_steam_openid_state_key(state), STEAM_OPENID_STATE_TTL_SECONDS, str(user_id))
+
+    return_to = _steam_openid_callback_url(state)
+    realm = _frontend_base_url()
+    params = {
+        "openid.ns": "http://specs.openid.net/auth/2.0",
+        "openid.mode": "checkid_setup",
+        "openid.return_to": return_to,
+        "openid.realm": realm,
+        "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
+        "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
+    }
+    return f"{STEAM_OPENID_LOGIN_URL}?{urllib.parse.urlencode(params)}"
+
+
+async def consume_steam_openid_state(state: str) -> Optional[UUID]:
+    redis = await get_redis()
+    key = _steam_openid_state_key(state)
+    raw_user_id = await redis.get(key)
+    if not raw_user_id:
+        return None
+    await redis.delete(key)
+    try:
+        return UUID(str(raw_user_id))
+    except ValueError:
+        return None
+
+
+async def verify_steam_openid_response(query: dict[str, str]) -> str:
+    if query.get("openid.mode") != "id_res":
+        raise ExternalApiError("Steam sign-in was cancelled or returned an invalid response.", 400)
+
+    verification_payload = {
+        key: value
+        for key, value in query.items()
+        if key.startswith("openid.")
+    }
+    verification_payload["openid.mode"] = "check_authentication"
+
+    response = await _post_text(STEAM_OPENID_LOGIN_URL, verification_payload, "Steam OpenID")
+    values = dict(line.split(":", 1) for line in response.splitlines() if ":" in line)
+    if values.get("is_valid") != "true":
+        raise ExternalApiError("Steam OpenID verification failed.", 400)
+
+    claimed_id = query.get("openid.claimed_id") or query.get("openid.identity") or ""
+    match = re.match(r"^https?://steamcommunity\.com/openid/id/(\d{17,25})/?$", claimed_id)
+    if not match:
+        raise ExternalApiError("Steam OpenID response did not include a valid SteamID64.", 400)
+    return match.group(1)
+
+
+async def connect_steam_openid_response(db: AsyncSession, query: dict[str, str]) -> str:
+    state = _clean_text(query.get("state"))
+    if not state:
+        return _steam_openid_result_url(False, "Missing Steam sign-in state.")
+
+    user_id = await consume_steam_openid_state(state)
+    if not user_id:
+        return _steam_openid_result_url(False, "Steam sign-in expired. Try again.")
+
+    try:
+        steam_id = await verify_steam_openid_response(query)
+        await connect_steam_account(db, user_id, steam_id)
+    except ExternalApiError as exc:
+        return _steam_openid_result_url(False, str(exc))
+
+    return _steam_openid_result_url(True)
 
 
 def _extract_steam_identifier(raw: str) -> str:

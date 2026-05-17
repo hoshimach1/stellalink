@@ -1,13 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.deps import get_current_user
 from app.models.user import User
-from app.schemas.integration import IntegrationsResponse, SteamConnectRequest
+from app.schemas.integration import IntegrationsResponse, SteamConnectRequest, SteamOpenIdStartResponse
 from app.services.external_integrations import (
     ExternalApiError,
+    connect_steam_openid_response,
     connect_steam_account,
+    create_steam_openid_auth_url,
     disconnect_steam_account,
     integrations_response,
     sync_steam_account,
@@ -26,6 +29,23 @@ async def read_my_integrations(
     db: AsyncSession = Depends(get_db),
 ):
     return await integrations_response(db, current_user.id)
+
+
+@router.post("/steam/openid/start", response_model=SteamOpenIdStartResponse)
+async def start_steam_openid(
+    current_user: User = Depends(get_current_user),
+):
+    auth_url = await create_steam_openid_auth_url(current_user.id)
+    return SteamOpenIdStartResponse(auth_url=auth_url)
+
+
+@router.get("/steam/openid/callback")
+async def steam_openid_callback(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    redirect_url = await connect_steam_openid_response(db, dict(request.query_params.multi_items()))
+    return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 @router.put("/steam", response_model=IntegrationsResponse)

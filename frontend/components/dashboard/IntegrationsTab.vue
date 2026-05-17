@@ -47,6 +47,12 @@
         </div>
 
         <form v-if="service.type === 'widget_steam'" class="steam-connect" @submit.prevent="saveSteamConnection">
+          <button class="steam-login" type="button" :disabled="steamOauthBusy" @click="startSteamLogin">
+            <span v-if="steamOauthBusy" class="integration-spinner" />
+            <i v-else class="ri-steam-fill" />
+            <span>Войти через Steam</span>
+          </button>
+          <div class="steam-divider"><span>или вручную</span></div>
           <label class="steam-field">
             <span>SteamID64 или ссылка на профиль</span>
             <input v-model="steamInput" type="text" placeholder="76561198... или https://steamcommunity.com/id/name">
@@ -100,6 +106,7 @@ import { extractAuthError } from '~/utils/auth-feedback'
 const profile = useProfileStore()
 const auth = useAuthStore()
 const config = useRuntimeConfig()
+const route = useRoute()
 
 type IntegrationType = 'widget_steam' | 'widget_lastfm' | 'widget_github' | 'widget_faceit'
 type NoticeTone = 'success' | 'error'
@@ -128,6 +135,7 @@ const connectableTypes = new Set<IntegrationType>(['widget_lastfm', 'widget_gith
 const integrations = ref<IntegrationsResponse | null>(null)
 const loading = ref(false)
 const steamBusy = ref(false)
+const steamOauthBusy = ref(false)
 const steamInput = ref('')
 const connectingType = ref<IntegrationType | null>(null)
 const connectNotice = ref('')
@@ -183,8 +191,23 @@ const serviceCards = computed(() =>
 const connectedCount = computed(() => serviceCards.value.filter(service => service.connected).length)
 
 onMounted(() => {
+  readSteamRedirectResult()
   void loadIntegrations()
 })
+
+function readSteamRedirectResult() {
+  if (route.query.steam === 'connected') {
+    connectNoticeTone.value = 'success'
+    connectNotice.value = 'Steam привязан через официальный вход.'
+    return
+  }
+  if (route.query.steam === 'error') {
+    connectNoticeTone.value = 'error'
+    connectNotice.value = typeof route.query.steam_error === 'string'
+      ? route.query.steam_error
+      : 'Не удалось завершить вход через Steam.'
+  }
+}
 
 function applyIntegrations(data: IntegrationsResponse) {
   integrations.value = data
@@ -222,6 +245,22 @@ async function ensureSteamBlock(account: ConnectedAccount) {
     await profile.updateBlock(existing.id, { config: nextConfig })
   } else {
     await profile.createBlock('widget_steam', nextConfig)
+  }
+}
+
+async function startSteamLogin() {
+  steamOauthBusy.value = true
+  connectNotice.value = ''
+  try {
+    const response = await auth.authorizedFetch<{ auth_url: string }>(
+      `${config.public.apiBase}/integrations/steam/openid/start`,
+      { method: 'POST' },
+    )
+    window.location.assign(response.auth_url)
+  } catch (error) {
+    connectNoticeTone.value = 'error'
+    connectNotice.value = extractAuthError(error, 'Не удалось начать вход через Steam.')
+    steamOauthBusy.value = false
   }
 }
 
@@ -481,6 +520,43 @@ async function connectService(type: IntegrationType) {
 .steam-connect {
   display: grid;
   gap: 10px;
+}
+
+.steam-login {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #171a21;
+  color: #fff;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.steam-login:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.steam-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--dash-text-3, #66789c);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.steam-divider::before,
+.steam-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--dash-outline, rgba(82, 103, 138, 0.18));
 }
 
 .steam-field {
