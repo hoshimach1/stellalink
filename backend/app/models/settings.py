@@ -11,4 +11,6 @@ class AppSetting(Base):
 
     key = Column(String(100), primary_key=True)
     value = Column(JSONB, nullable=False, default=dict)
-    updated_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    updated_at = Column(
+        DateTime(timezone=True), nullable=False, default=datetime.utcnow
+    )

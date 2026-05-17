@@ -48,15 +48,22 @@ def _hinted_error(service: str, status_code: int, body: str = "") -> ExternalApi
     if status_code == 401 or status_code == 403:
         return ExternalApiError(f"{service}: API key was rejected.", status_code=502)
     if status_code == 404:
-        return ExternalApiError(f"{service}: requested profile was not found.", status_code=404)
+        return ExternalApiError(
+            f"{service}: requested profile was not found.", status_code=404
+        )
     if status_code == 429:
         return ExternalApiError(f"{service}: rate limit exceeded.", status_code=429)
     details = body[:180].strip()
     suffix = f" {details}" if details else ""
-    return ExternalApiError(f"{service}: upstream request failed with {status_code}.{suffix}", status_code=502)
+    return ExternalApiError(
+        f"{service}: upstream request failed with {status_code}.{suffix}",
+        status_code=502,
+    )
 
 
-def _read_json(url: str, service: str, headers: Optional[dict[str, str]] = None, timeout: int = 12) -> dict[str, Any]:
+def _read_json(
+    url: str, service: str, headers: Optional[dict[str, str]] = None, timeout: int = 12
+) -> dict[str, Any]:
     request = urllib.request.Request(url, headers=headers or {})
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 - fixed trusted API hosts
@@ -85,7 +92,9 @@ async def _fetch_json(
     return await asyncio.to_thread(_read_json, url, service, headers, timeout)
 
 
-def _read_text_post(url: str, data: dict[str, str], service: str, timeout: int = 12) -> str:
+def _read_text_post(
+    url: str, data: dict[str, str], service: str, timeout: int = 12
+) -> str:
     encoded = urllib.parse.urlencode(data).encode("utf-8")
     request = urllib.request.Request(
         url,
@@ -103,7 +112,9 @@ def _read_text_post(url: str, data: dict[str, str], service: str, timeout: int =
         raise ExternalApiError(f"{service}: network request failed.") from exc
 
 
-async def _post_text(url: str, data: dict[str, str], service: str, timeout: int = 12) -> str:
+async def _post_text(
+    url: str, data: dict[str, str], service: str, timeout: int = 12
+) -> str:
     return await asyncio.to_thread(_read_text_post, url, data, service, timeout)
 
 
@@ -139,7 +150,9 @@ def _steam_openid_result_url(success: bool, detail: Optional[str] = None) -> str
 async def create_steam_openid_auth_url(user_id: UUID) -> str:
     state = secrets.token_urlsafe(32)
     redis = await get_redis()
-    await redis.setex(_steam_openid_state_key(state), STEAM_OPENID_STATE_TTL_SECONDS, str(user_id))
+    await redis.setex(
+        _steam_openid_state_key(state), STEAM_OPENID_STATE_TTL_SECONDS, str(user_id)
+    )
 
     return_to = _steam_openid_callback_url(state)
     realm = _frontend_base_url()
@@ -169,24 +182,30 @@ async def consume_steam_openid_state(state: str) -> Optional[UUID]:
 
 async def verify_steam_openid_response(query: dict[str, str]) -> str:
     if query.get("openid.mode") != "id_res":
-        raise ExternalApiError("Steam sign-in was cancelled or returned an invalid response.", 400)
+        raise ExternalApiError(
+            "Steam sign-in was cancelled or returned an invalid response.", 400
+        )
 
     verification_payload = {
-        key: value
-        for key, value in query.items()
-        if key.startswith("openid.")
+        key: value for key, value in query.items() if key.startswith("openid.")
     }
     verification_payload["openid.mode"] = "check_authentication"
 
-    response = await _post_text(STEAM_OPENID_LOGIN_URL, verification_payload, "Steam OpenID")
+    response = await _post_text(
+        STEAM_OPENID_LOGIN_URL, verification_payload, "Steam OpenID"
+    )
     values = dict(line.split(":", 1) for line in response.splitlines() if ":" in line)
     if values.get("is_valid") != "true":
         raise ExternalApiError("Steam OpenID verification failed.", 400)
 
     claimed_id = query.get("openid.claimed_id") or query.get("openid.identity") or ""
-    match = re.match(r"^https?://steamcommunity\.com/openid/id/(\d{17,25})/?$", claimed_id)
+    match = re.match(
+        r"^https?://steamcommunity\.com/openid/id/(\d{17,25})/?$", claimed_id
+    )
     if not match:
-        raise ExternalApiError("Steam OpenID response did not include a valid SteamID64.", 400)
+        raise ExternalApiError(
+            "Steam OpenID response did not include a valid SteamID64.", 400
+        )
     return match.group(1)
 
 
@@ -224,16 +243,22 @@ async def resolve_steam_id(raw: str, api_key: Optional[str]) -> str:
         return candidate
 
     if not STEAM_VANITY_RE.match(candidate):
-        raise ExternalApiError("Steam ID must be a SteamID64, vanity name, or steamcommunity.com URL.", 400)
+        raise ExternalApiError(
+            "Steam ID must be a SteamID64, vanity name, or steamcommunity.com URL.", 400
+        )
     if not api_key:
-        raise ExternalApiError("Steam API key is required to resolve a vanity Steam URL.", 400)
+        raise ExternalApiError(
+            "Steam API key is required to resolve a vanity Steam URL.", 400
+        )
 
     url = _steam_url(
         "/ISteamUser/ResolveVanityURL/v1/",
         {"key": api_key, "vanityurl": candidate},
     )
     payload = await _fetch_json(url, "Steam")
-    response = payload.get("response") if isinstance(payload.get("response"), dict) else {}
+    response = (
+        payload.get("response") if isinstance(payload.get("response"), dict) else {}
+    )
     if response.get("success") != 1 or not response.get("steamid"):
         raise ExternalApiError("Steam vanity URL was not found.", 404)
     return str(response["steamid"])
@@ -247,11 +272,13 @@ async def fetch_steam_profile(api_key: str, steam_id: str) -> Optional[dict[str,
         ),
         "Steam",
     )
-    players = ((payload.get("response") or {}).get("players") or [])
+    players = (payload.get("response") or {}).get("players") or []
     return players[0] if players else None
 
 
-async def fetch_recent_games(api_key: str, steam_id: str, count: int = 5) -> list[dict[str, Any]]:
+async def fetch_recent_games(
+    api_key: str, steam_id: str, count: int = 5
+) -> list[dict[str, Any]]:
     payload = await _fetch_json(
         _steam_url(
             "/IPlayerService/GetRecentlyPlayedGames/v1/",
@@ -259,7 +286,7 @@ async def fetch_recent_games(api_key: str, steam_id: str, count: int = 5) -> lis
         ),
         "Steam",
     )
-    games = ((payload.get("response") or {}).get("games") or [])
+    games = (payload.get("response") or {}).get("games") or []
     result = []
     for game in games:
         if not isinstance(game, dict):
@@ -296,18 +323,24 @@ async def fetch_steam_badges(api_key: str, steam_id: str) -> dict[str, Any]:
         ),
         "Steam",
     )
-    response = payload.get("response") if isinstance(payload.get("response"), dict) else {}
+    response = (
+        payload.get("response") if isinstance(payload.get("response"), dict) else {}
+    )
     badges = response.get("badges") if isinstance(response.get("badges"), list) else []
     return {
         "badge_count": len(badges),
         "player_xp": response.get("player_xp"),
         "player_level": response.get("player_level"),
-        "player_xp_needed_current_level": response.get("player_xp_needed_current_level"),
+        "player_xp_needed_current_level": response.get(
+            "player_xp_needed_current_level"
+        ),
         "player_xp_needed_to_level_up": response.get("player_xp_needed_to_level_up"),
     }
 
 
-async def fetch_faceit_profile(api_key: str, steam_id: str, game_id: str = FACEIT_GAME_ID) -> Optional[dict[str, Any]]:
+async def fetch_faceit_profile(
+    api_key: str, steam_id: str, game_id: str = FACEIT_GAME_ID
+) -> Optional[dict[str, Any]]:
     headers = {"Authorization": f"Bearer {api_key}"}
     try:
         player = await _fetch_json(
@@ -335,10 +368,16 @@ async def fetch_faceit_profile(api_key: str, steam_id: str, game_id: str = FACEI
     return _summarize_faceit_player(player, stats_payload, game_id)
 
 
-def _summarize_faceit_player(player: dict[str, Any], stats_payload: dict[str, Any], game_id: str) -> dict[str, Any]:
+def _summarize_faceit_player(
+    player: dict[str, Any], stats_payload: dict[str, Any], game_id: str
+) -> dict[str, Any]:
     games = player.get("games") if isinstance(player.get("games"), dict) else {}
     game = games.get(game_id) if isinstance(games.get(game_id), dict) else {}
-    lifetime = stats_payload.get("lifetime") if isinstance(stats_payload.get("lifetime"), dict) else {}
+    lifetime = (
+        stats_payload.get("lifetime")
+        if isinstance(stats_payload.get("lifetime"), dict)
+        else {}
+    )
 
     return {
         "available": True,
@@ -362,7 +401,8 @@ def _summarize_faceit_player(player: dict[str, Any], stats_payload: dict[str, An
             "wins": lifetime.get("Wins"),
             "win_rate": lifetime.get("Win Rate %"),
             "kd": lifetime.get("Average K/D Ratio") or lifetime.get("K/D Ratio"),
-            "headshots": lifetime.get("Average Headshots %") or lifetime.get("Total Headshots %"),
+            "headshots": lifetime.get("Average Headshots %")
+            or lifetime.get("Total Headshots %"),
             "recent_results": lifetime.get("Recent Results"),
         },
         "stats_error": stats_payload.get("sync_error"),
@@ -382,7 +422,9 @@ def unavailable_inventory_highlight(app_id: int, context_id: str) -> dict[str, A
     }
 
 
-async def build_steam_metadata(db: AsyncSession, steam_id: str) -> tuple[dict[str, Any], Optional[str]]:
+async def build_steam_metadata(
+    db: AsyncSession, steam_id: str
+) -> tuple[dict[str, Any], Optional[str]]:
     api_settings = await get_api_settings_data(db)
     steam_key = _clean_text(api_settings.get("steam_api_key"))
     faceit_key = _clean_text(api_settings.get("faceit_api_key"))
@@ -429,7 +471,9 @@ async def build_steam_metadata(db: AsyncSession, steam_id: str) -> tuple[dict[st
 
     if faceit_key:
         try:
-            metadata["faceit_profile"] = await fetch_faceit_profile(faceit_key, steam_id)
+            metadata["faceit_profile"] = await fetch_faceit_profile(
+                faceit_key, steam_id
+            )
         except ExternalApiError as exc:
             sync_errors.append(str(exc))
     else:
@@ -439,7 +483,9 @@ async def build_steam_metadata(db: AsyncSession, steam_id: str) -> tuple[dict[st
     return metadata, "; ".join(sync_errors) or None
 
 
-async def list_connected_accounts(db: AsyncSession, user_id: UUID) -> list[ConnectedAccount]:
+async def list_connected_accounts(
+    db: AsyncSession, user_id: UUID
+) -> list[ConnectedAccount]:
     result = await db.execute(
         select(ConnectedAccount)
         .where(ConnectedAccount.user_id == user_id)
@@ -448,7 +494,9 @@ async def list_connected_accounts(db: AsyncSession, user_id: UUID) -> list[Conne
     return list(result.scalars().all())
 
 
-async def get_connected_account(db: AsyncSession, user_id: UUID, provider: str) -> Optional[ConnectedAccount]:
+async def get_connected_account(
+    db: AsyncSession, user_id: UUID, provider: str
+) -> Optional[ConnectedAccount]:
     result = await db.execute(
         select(ConnectedAccount)
         .where(
@@ -503,12 +551,18 @@ async def upsert_single_provider_account(
     return account
 
 
-async def connect_steam_account(db: AsyncSession, user_id: UUID, raw_steam_id: str) -> ConnectedAccount:
+async def connect_steam_account(
+    db: AsyncSession, user_id: UUID, raw_steam_id: str
+) -> ConnectedAccount:
     api_settings = await get_api_settings_data(db)
     steam_key = _clean_text(api_settings.get("steam_api_key"))
     steam_id = await resolve_steam_id(raw_steam_id, steam_key)
     metadata, sync_error = await build_steam_metadata(db, steam_id)
-    steam_profile = metadata.get("steam_profile") if isinstance(metadata.get("steam_profile"), dict) else {}
+    steam_profile = (
+        metadata.get("steam_profile")
+        if isinstance(metadata.get("steam_profile"), dict)
+        else {}
+    )
     display_name = _clean_text(steam_profile.get("personaname")) or steam_id
 
     account = await upsert_single_provider_account(
@@ -558,7 +612,9 @@ async def disconnect_steam_account(db: AsyncSession, user_id: UUID) -> None:
 
 
 def account_to_response(account: ConnectedAccount) -> ConnectedAccountResponse:
-    metadata = account.account_metadata if isinstance(account.account_metadata, dict) else {}
+    metadata = (
+        account.account_metadata if isinstance(account.account_metadata, dict) else {}
+    )
     return ConnectedAccountResponse(
         id=account.id,
         provider=account.provider,
@@ -571,7 +627,9 @@ def account_to_response(account: ConnectedAccount) -> ConnectedAccountResponse:
     )
 
 
-async def integrations_response(db: AsyncSession, user_id: UUID) -> IntegrationsResponse:
+async def integrations_response(
+    db: AsyncSession, user_id: UUID
+) -> IntegrationsResponse:
     accounts = await list_connected_accounts(db, user_id)
     api_settings = await get_api_settings_data(db)
     return IntegrationsResponse(

@@ -23,7 +23,14 @@ router = APIRouter(tags=["profiles"])
 def _account_by_provider(profile, provider: str):
     user = profile.user if profile.user else None
     accounts = getattr(user, "connected_accounts", []) if user else []
-    return next((account for account in accounts if account.provider == provider and account.is_active), None)
+    return next(
+        (
+            account
+            for account in accounts
+            if account.provider == provider and account.is_active
+        ),
+        None,
+    )
 
 
 def _account_metadata(account) -> dict:
@@ -47,21 +54,31 @@ def _enriched_block_config(profile, block) -> dict:
             config["steam_profile"] = steam_metadata.get("steam_profile")
             config["steam_recent_games"] = steam_metadata.get("recent_games") or []
             config["steam_profile_stats"] = steam_metadata.get("profile_stats") or {}
-            config["steam_inventory_highlight"] = steam_metadata.get("inventory_highlight")
+            config["steam_inventory_highlight"] = steam_metadata.get(
+                "inventory_highlight"
+            )
             config["steam_sync_error"] = steam_account.sync_error
             config["steam_last_synced_at"] = (
-                steam_account.last_synced_at.isoformat() if steam_account.last_synced_at else None
+                steam_account.last_synced_at.isoformat()
+                if steam_account.last_synced_at
+                else None
             )
-            config["faceit_profile"] = faceit_metadata or steam_metadata.get("faceit_profile")
+            config["faceit_profile"] = faceit_metadata or steam_metadata.get(
+                "faceit_profile"
+            )
 
     if block.block_type == "widget_faceit" and faceit_account:
         if not config.get("nickname"):
-            config["nickname"] = faceit_account.display_name or faceit_metadata.get("nickname")
+            config["nickname"] = faceit_account.display_name or faceit_metadata.get(
+                "nickname"
+            )
         config["connected_account_id"] = str(faceit_account.id)
         config["faceit_profile"] = faceit_metadata
         config["faceit_sync_error"] = faceit_account.sync_error
         config["faceit_last_synced_at"] = (
-            faceit_account.last_synced_at.isoformat() if faceit_account.last_synced_at else None
+            faceit_account.last_synced_at.isoformat()
+            if faceit_account.last_synced_at
+            else None
         )
 
     return config
@@ -93,6 +110,7 @@ def _to_response(profile) -> ProfileResponse:
 
 
 # ── My profile ────────────────────────────────────────────────────────────────
+
 
 @router.get("/profiles/me", response_model=ProfileResponse)
 async def get_my_profile(
@@ -141,7 +159,8 @@ async def update_profile(
             raise HTTPException(status_code=409, detail="Slug already taken")
 
     profile = await svc.update_profile(
-        db, profile,
+        db,
+        profile,
         slug=body.slug,
         status=body.status,
         display_name=body.display_name,
@@ -154,6 +173,7 @@ async def update_profile(
 
 
 # ── Blocks ────────────────────────────────────────────────────────────────────
+
 
 @router.post("/profiles/me/blocks", response_model=BlockResponse, status_code=201)
 async def create_block(
@@ -180,7 +200,9 @@ async def update_block(
     block = next((b for b in profile.blocks if b.id == block_id), None)
     if not block:
         raise HTTPException(status_code=404, detail="Block not found")
-    return await svc.update_block(db, block, config=body.config, is_visible=body.is_visible)
+    return await svc.update_block(
+        db, block, config=body.config, is_visible=body.is_visible
+    )
 
 
 @router.delete("/profiles/me/blocks/{block_id}", status_code=204)
@@ -211,6 +233,7 @@ async def reorder_blocks(
 
 
 # ── Public ────────────────────────────────────────────────────────────────────
+
 
 @router.get("/u/{slug}", response_model=ProfileResponse)
 async def public_profile(slug: str, db: AsyncSession = Depends(get_db)):

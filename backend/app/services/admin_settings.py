@@ -87,8 +87,12 @@ async def get_smtp_response(db: AsyncSession) -> SmtpSettingsResponse:
         timeout_seconds=int(data.get("timeout_seconds") or 15),
         from_email=data.get("from_email") or settings.SMTP_FROM,
         from_name=data.get("from_name") or settings.SMTP_FROM_NAME,
-        frontend_base_url=(data.get("frontend_base_url") or settings.FRONTEND_BASE_URL).rstrip("/"),
-        email_verification_ttl_seconds=int(data.get("email_verification_ttl_seconds") or 86400),
+        frontend_base_url=(
+            data.get("frontend_base_url") or settings.FRONTEND_BASE_URL
+        ).rstrip("/"),
+        email_verification_ttl_seconds=int(
+            data.get("email_verification_ttl_seconds") or 86400
+        ),
         password_reset_ttl_seconds=int(data.get("password_reset_ttl_seconds") or 3600),
     )
 
@@ -119,7 +123,9 @@ async def get_api_settings_response(db: AsyncSession) -> ApiSettingsResponse:
     )
 
 
-async def save_api_settings(db: AsyncSession, body: ApiSettingsUpdate) -> ApiSettingsResponse:
+async def save_api_settings(
+    db: AsyncSession, body: ApiSettingsUpdate
+) -> ApiSettingsResponse:
     current = await get_api_settings_data(db)
     payload = body.model_dump(mode="json")
 
@@ -130,7 +136,9 @@ async def save_api_settings(db: AsyncSession, body: ApiSettingsUpdate) -> ApiSet
 
     payload["steam_api_key"] = _clean_text(payload.get("steam_api_key"))
     payload["faceit_api_key"] = _clean_text(payload.get("faceit_api_key"))
-    payload["steam_inventory_context_id"] = str(payload.get("steam_inventory_context_id") or "2").strip()
+    payload["steam_inventory_context_id"] = str(
+        payload.get("steam_inventory_context_id") or "2"
+    ).strip()
 
     setting = await _get_setting(db, API_SETTINGS_KEY)
     if not setting:
@@ -145,7 +153,9 @@ async def save_api_settings(db: AsyncSession, body: ApiSettingsUpdate) -> ApiSet
     return await get_api_settings_response(db)
 
 
-async def save_smtp_settings(db: AsyncSession, body: SmtpSettingsUpdate) -> SmtpSettingsResponse:
+async def save_smtp_settings(
+    db: AsyncSession, body: SmtpSettingsUpdate
+) -> SmtpSettingsResponse:
     current = await get_smtp_data(db)
     payload = body.model_dump(mode="json")
 
@@ -190,9 +200,12 @@ async def get_smtp_delivery_config(db: AsyncSession) -> EmailDeliveryConfig:
 
 async def apply_public_auth_settings(db: AsyncSession) -> None:
     data = await get_smtp_data(db)
-    settings.FRONTEND_BASE_URL = (data.get("frontend_base_url") or settings.FRONTEND_BASE_URL).rstrip("/")
+    settings.FRONTEND_BASE_URL = (
+        data.get("frontend_base_url") or settings.FRONTEND_BASE_URL
+    ).rstrip("/")
     settings.EMAIL_VERIFICATION_TTL_SECONDS = int(
-        data.get("email_verification_ttl_seconds") or settings.EMAIL_VERIFICATION_TTL_SECONDS
+        data.get("email_verification_ttl_seconds")
+        or settings.EMAIL_VERIFICATION_TTL_SECONDS
     )
     settings.PASSWORD_RESET_TTL_SECONDS = int(
         data.get("password_reset_ttl_seconds") or settings.PASSWORD_RESET_TTL_SECONDS

@@ -5,7 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.deps import get_current_user
 from app.models.user import User
-from app.schemas.integration import IntegrationsResponse, SteamConnectRequest, SteamOpenIdStartResponse
+from app.schemas.integration import (
+    IntegrationsResponse,
+    SteamConnectRequest,
+    SteamOpenIdStartResponse,
+)
 from app.services.external_integrations import (
     ExternalApiError,
     connect_steam_openid_response,
@@ -44,7 +48,9 @@ async def steam_openid_callback(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    redirect_url = await connect_steam_openid_response(db, dict(request.query_params.multi_items()))
+    redirect_url = await connect_steam_openid_response(
+        db, dict(request.query_params.multi_items())
+    )
     return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 

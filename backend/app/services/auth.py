@@ -80,7 +80,9 @@ def validate_password(password: str) -> Optional[str]:
 
 
 def create_access_token(user_id: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
     return jwt.encode(
         {"sub": user_id, "exp": expire},
         settings.SECRET_KEY,
@@ -104,7 +106,9 @@ async def create_session(
 ) -> tuple[str, str]:
     """Returns (access_token, refresh_token)."""
     refresh_token = secrets.token_urlsafe(64)
-    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
 
     session = UserSession(
         user_id=user.id,
@@ -134,7 +138,9 @@ async def get_user_by_id(db: AsyncSession, user_id: str) -> Optional[User]:
     return result.scalar_one_or_none()
 
 
-async def get_session_by_refresh_token(db: AsyncSession, token: str) -> Optional[UserSession]:
+async def get_session_by_refresh_token(
+    db: AsyncSession, token: str
+) -> Optional[UserSession]:
     result = await db.execute(
         select(UserSession)
         .options(selectinload(UserSession.user))
@@ -189,7 +195,9 @@ def _build_frontend_url(path: str, query: dict[str, str]) -> str:
 def make_login_attempt_identifier(email: str, ip_address: Optional[str]) -> str:
     normalized_email = email.strip().lower()
     normalized_ip = (ip_address or "unknown").strip().lower()
-    digest = hashlib.sha256(f"{normalized_email}|{normalized_ip}".encode("utf-8")).hexdigest()
+    digest = hashlib.sha256(
+        f"{normalized_email}|{normalized_ip}".encode("utf-8")
+    ).hexdigest()
     return digest
 
 
@@ -235,7 +243,9 @@ async def _redis_ttl(key: str) -> int:
 async def create_email_verification_token(user_id: UUID, email: str) -> str:
     token = secrets.token_urlsafe(48)
     payload = f"{user_id}|{email.strip().lower()}"
-    await _redis_setex(_auth_key("verify", token), settings.EMAIL_VERIFICATION_TTL_SECONDS, payload)
+    await _redis_setex(
+        _auth_key("verify", token), settings.EMAIL_VERIFICATION_TTL_SECONDS, payload
+    )
     return token
 
 
@@ -252,7 +262,9 @@ async def consume_email_verification_token(token: str) -> Optional[dict[str, str
 async def create_password_reset_token(user_id: UUID, email: str) -> str:
     token = secrets.token_urlsafe(48)
     payload = f"{user_id}|{email.strip().lower()}"
-    await _redis_setex(_auth_key("reset", token), settings.PASSWORD_RESET_TTL_SECONDS, payload)
+    await _redis_setex(
+        _auth_key("reset", token), settings.PASSWORD_RESET_TTL_SECONDS, payload
+    )
     return token
 
 
@@ -361,14 +373,18 @@ def _resolve_smtp_host(delivery: EmailDeliveryConfig) -> str:
     if not delivery.force_ipv4 or not delivery.host:
         return delivery.host or ""
 
-    addresses = socket.getaddrinfo(delivery.host, delivery.port, family=socket.AF_INET, type=socket.SOCK_STREAM)
+    addresses = socket.getaddrinfo(
+        delivery.host, delivery.port, family=socket.AF_INET, type=socket.SOCK_STREAM
+    )
     if not addresses:
         raise OSError(f"No IPv4 address found for SMTP host {delivery.host}")
 
     return addresses[0][4][0]
 
 
-def _open_smtp_connection(delivery: EmailDeliveryConfig) -> AbstractContextManager[smtplib.SMTP]:
+def _open_smtp_connection(
+    delivery: EmailDeliveryConfig,
+) -> AbstractContextManager[smtplib.SMTP]:
     host = _resolve_smtp_host(delivery)
     if delivery.use_ssl:
         return smtplib.SMTP_SSL(
@@ -401,7 +417,9 @@ def _send_email_sync(
         msg.add_alternative(html, subtype="html")
 
     if not delivery.enabled or not delivery.host:
-        logger.info("SMTP is not configured. Email to %s: %s\n%s", to_email, subject, text)
+        logger.info(
+            "SMTP is not configured. Email to %s: %s\n%s", to_email, subject, text
+        )
         return
 
     with _open_smtp_connection(delivery) as server:
@@ -421,7 +439,9 @@ async def send_auth_email(
     raise_errors: bool = False,
 ) -> None:
     try:
-        await asyncio.to_thread(_send_email_sync, to_email, subject, text, html, delivery_config)
+        await asyncio.to_thread(
+            _send_email_sync, to_email, subject, text, html, delivery_config
+        )
     except Exception:  # noqa: BLE001
         logger.exception("Failed to send auth email to %s", to_email)
         if raise_errors:
@@ -435,7 +455,9 @@ async def send_email_verification_email(
 ) -> None:
     verification_url = build_email_verification_url(token)
     subject = "Verify your Stellalink email"
-    expires_note = f"This link expires in {settings.EMAIL_VERIFICATION_TTL_SECONDS // 3600} hours."
+    expires_note = (
+        f"This link expires in {settings.EMAIL_VERIFICATION_TTL_SECONDS // 3600} hours."
+    )
     text = (
         "Please verify your email for Stellalink.\n\n"
         f"Open this link: {verification_url}\n\n"
@@ -460,7 +482,9 @@ async def send_password_reset_email(
 ) -> None:
     reset_url = build_password_reset_url(token)
     subject = "Reset your Stellalink password"
-    expires_note = f"This link expires in {settings.PASSWORD_RESET_TTL_SECONDS // 60} minutes."
+    expires_note = (
+        f"This link expires in {settings.PASSWORD_RESET_TTL_SECONDS // 60} minutes."
+    )
     text = (
         "We received a password reset request for your Stellalink account.\n\n"
         f"Open this link: {reset_url}\n\n"

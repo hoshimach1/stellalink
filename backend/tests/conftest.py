@@ -8,7 +8,9 @@ from app.database import get_db
 from app.main import app
 
 engine_test = create_async_engine(settings.DATABASE_URL, echo=False)
-TestSession = async_sessionmaker(engine_test, class_=AsyncSession, expire_on_commit=False)
+TestSession = async_sessionmaker(
+    engine_test, class_=AsyncSession, expire_on_commit=False
+)
 
 
 async def override_get_db():
@@ -28,5 +30,7 @@ def event_loop():
 
 @pytest_asyncio.fixture(scope="function")
 async def client():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as c:
         yield c

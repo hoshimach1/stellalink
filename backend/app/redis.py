@@ -24,6 +24,7 @@ async def close_redis() -> None:
 
 # --- Widget cache helpers ---
 
+
 def _widget_key(account_id: str, data_type: str) -> str:
     return f"widget:{account_id}:{data_type}"
 
@@ -34,7 +35,9 @@ async def get_widget_cache(account_id: str, data_type: str) -> Optional[Any]:
     return json.loads(raw) if raw else None
 
 
-async def set_widget_cache(account_id: str, data_type: str, payload: Any, ttl_seconds: int = 300) -> None:
+async def set_widget_cache(
+    account_id: str, data_type: str, payload: Any, ttl_seconds: int = 300
+) -> None:
     r = await get_redis()
     await r.setex(_widget_key(account_id, data_type), ttl_seconds, json.dumps(payload))
 

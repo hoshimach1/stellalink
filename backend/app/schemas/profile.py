@@ -5,15 +5,17 @@ from pydantic import BaseModel, Field
 
 
 class ProfileCreate(BaseModel):
-    slug: str = Field(..., min_length=2, max_length=50, pattern=r'^[a-z0-9_-]+$')
+    slug: str = Field(..., min_length=2, max_length=50, pattern=r"^[a-z0-9_-]+$")
     display_name: str = Field(..., min_length=1, max_length=100)
     bio: Optional[str] = None
     tags: List[str] = []
 
 
 class ProfileUpdate(BaseModel):
-    slug: Optional[str] = Field(None, min_length=2, max_length=50, pattern=r'^[a-z0-9_-]+$')
-    status: Optional[Literal['draft', 'private', 'published']] = None
+    slug: Optional[str] = Field(
+        None, min_length=2, max_length=50, pattern=r"^[a-z0-9_-]+$"
+    )
+    status: Optional[Literal["draft", "private", "published"]] = None
     display_name: Optional[str] = Field(None, min_length=1, max_length=100)
     bio: Optional[str] = None
     tags: Optional[List[str]] = None

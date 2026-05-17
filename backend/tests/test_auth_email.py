@@ -5,7 +5,9 @@ from app.services import auth as auth_service
 
 
 def test_auth_email_links_are_built_from_frontend_base_url(monkeypatch):
-    monkeypatch.setattr(settings, "FRONTEND_BASE_URL", "https://stellalink.example/app/")
+    monkeypatch.setattr(
+        settings, "FRONTEND_BASE_URL", "https://stellalink.example/app/"
+    )
 
     assert (
         auth_service.build_email_verification_url("abc+/=")

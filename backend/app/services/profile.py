@@ -31,7 +31,9 @@ async def get_profile_by_slug(db: AsyncSession, slug: str) -> Optional[Profile]:
     return await _load_profile(db, Profile.slug == slug)
 
 
-async def slug_taken(db: AsyncSession, slug: str, exclude_id: Optional[UUID] = None) -> bool:
+async def slug_taken(
+    db: AsyncSession, slug: str, exclude_id: Optional[UUID] = None
+) -> bool:
     q = select(Profile.id).where(Profile.slug == slug)
     if exclude_id:
         q = q.where(Profile.id != exclude_id)
@@ -156,7 +158,9 @@ async def delete_block(db: AsyncSession, block: ProfileBlock) -> None:
     await db.commit()
 
 
-async def reorder_blocks(db: AsyncSession, profile_id: UUID, block_ids: List[UUID]) -> None:
+async def reorder_blocks(
+    db: AsyncSession, profile_id: UUID, block_ids: List[UUID]
+) -> None:
     result = await db.execute(
         select(ProfileBlock).where(ProfileBlock.profile_id == profile_id)
     )

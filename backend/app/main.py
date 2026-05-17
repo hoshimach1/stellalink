@@ -32,7 +32,7 @@ async def ensure_runtime_tables() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await ensure_runtime_tables()
-    await get_redis()   # warm up connection
+    await get_redis()  # warm up connection
     yield
     await close_redis()
 

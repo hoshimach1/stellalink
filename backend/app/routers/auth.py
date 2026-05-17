@@ -23,7 +23,10 @@ from app.schemas.auth import (
     UserResponse,
     VerifyEmailRequest,
 )
-from app.services.admin_settings import apply_public_auth_settings, get_smtp_delivery_config
+from app.services.admin_settings import (
+    apply_public_auth_settings,
+    get_smtp_delivery_config,
+)
 from app.services.auth import (
     clear_failed_login_attempts,
     consume_email_verification_token,
@@ -54,7 +57,9 @@ MAX_SIZE = 5 * 1024 * 1024  # 5 MB
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED
+)
 async def register(
     body: RegisterRequest,
     request: Request,
@@ -63,11 +68,15 @@ async def register(
     await apply_public_auth_settings(db)
 
     if await get_user_by_email(db, body.email):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Email already registered"
+        )
 
     password_error = validate_password(body.password)
     if password_error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=password_error)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=password_error
+        )
 
     user = User(email=body.email, password_hash=hash_password(body.password))
     db.add(user)
@@ -81,7 +90,9 @@ async def register(
     )
 
     verify_token = await create_email_verification_token(user.id, user.email)
-    await send_email_verification_email(user.email, verify_token, await get_smtp_delivery_config(db))
+    await send_email_verification_email(
+        user.email, verify_token, await get_smtp_delivery_config(db)
+    )
 
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
@@ -104,7 +115,11 @@ async def login(
 
     user = await get_user_by_email(db, body.email)
 
-    if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
+    if (
+        not user
+        or not user.password_hash
+        or not verify_password(body.password, user.password_hash)
+    ):
         await register_failed_login_attempt(attempt_id)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -161,7 +176,9 @@ async def me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-@router.post("/request-email-verification", response_model=RequestEmailVerificationResponse)
+@router.post(
+    "/request-email-verification", response_model=RequestEmailVerificationResponse
+)
 async def request_email_verification(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -220,7 +237,9 @@ async def forgot_password(
 
     await apply_public_auth_settings(db)
     token = await create_password_reset_token(user.id, user.email)
-    await send_password_reset_email(user.email, token, await get_smtp_delivery_config(db))
+    await send_password_reset_email(
+        user.email, token, await get_smtp_delivery_config(db)
+    )
 
     if settings.AUTH_DEBUG_TOKENS:
         response.reset_token = token
@@ -235,7 +254,9 @@ async def reset_password(
 ):
     password_error = validate_password(body.new_password)
     if password_error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=password_error)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=password_error
+        )
 
     payload = await consume_password_reset_token(body.token)
     if not payload:
@@ -246,7 +267,9 @@ async def reset_password(
 
     user = await get_user_by_id(db, payload["user_id"])
     if not user or user.email.strip().lower() != payload["email"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset payload")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset payload"
+        )
 
     if user.password_hash and verify_password(body.new_password, user.password_hash):
         raise HTTPException(
@@ -269,11 +292,16 @@ async def upload_avatar(
     current_user: User = Depends(get_current_user),
 ):
     if file.content_type not in ALLOWED_MIME:
-        raise HTTPException(status_code=400, detail="Unsupported avatar format. Allowed: JPEG, PNG, WebP, GIF")
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported avatar format. Allowed: JPEG, PNG, WebP, GIF",
+        )
 
     content = await file.read()
     if len(content) > MAX_SIZE:
-        raise HTTPException(status_code=413, detail="Avatar is too large. Maximum size is 5 MB")
+        raise HTTPException(
+            status_code=413, detail="Avatar is too large. Maximum size is 5 MB"
+        )
 
     ext = os.path.splitext(file.filename or "")[1].lower() or ".jpg"
     filename = f"{current_user.id}{ext}"
@@ -310,12 +338,19 @@ async def change_password(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not current_user.password_hash or not verify_password(body.old_password, current_user.password_hash):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+    if not current_user.password_hash or not verify_password(
+        body.old_password, current_user.password_hash
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
 
     password_error = validate_password(body.new_password)
     if password_error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=password_error)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=password_error
+        )
 
     if verify_password(body.new_password, current_user.password_hash):
         raise HTTPException(
@@ -328,4 +363,6 @@ async def change_password(
     await db.commit()
 
     # Revoke every session except the current one passed from client.
-    await revoke_user_sessions(db, current_user.id, exclude_refresh_token=body.refresh_token)
+    await revoke_user_sessions(
+        db, current_user.id, exclude_refresh_token=body.refresh_token
+    )

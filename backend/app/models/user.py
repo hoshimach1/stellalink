@@ -18,11 +18,17 @@ class User(Base):
     email_verified = Column(Boolean, nullable=False, default=False)
     avatar_url = Column(Text, nullable=True)
     default_locale = Column(String(10), nullable=False, default="ru")
-    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, default=datetime.utcnow
+    )
+    updated_at = Column(
+        DateTime(timezone=True), nullable=False, default=datetime.utcnow
+    )
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
-    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+    sessions = relationship(
+        "UserSession", back_populates="user", cascade="all, delete-orphan"
+    )
     connected_accounts = relationship(
         "ConnectedAccount", back_populates="user", cascade="all, delete-orphan"
     )
@@ -36,11 +42,15 @@ class UserSession(Base):
     __tablename__ = "user_sessions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     refresh_token = Column(Text, unique=True, nullable=False)
     user_agent = Column(Text, nullable=True)
     ip_address = Column(INET, nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, default=datetime.utcnow
+    )
 
     user = relationship("User", back_populates="sessions")
