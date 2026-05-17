@@ -14,7 +14,47 @@
       </div>
     </Transition>
 
-    <section class="studio-preview-pane">
+    <section class="studio-preview-pane" aria-label="Живое превью профиля">
+      <div class="studio-workspace-head">
+        <div class="studio-workspace-copy">
+          <p class="studio-kicker">Живой конструктор</p>
+          <h1>Соберите профиль и сразу смотрите результат.</h1>
+          <p>Перетаскивайте блоки прямо в превью, настраивайте детали в инспекторе и публикуйте только готовую версию.</p>
+        </div>
+
+        <div class="studio-workspace-stats" aria-label="Сводка профиля">
+          <span class="status-pill" :class="{ published: profile.isPublished }">
+            <i :class="profile.isPublished ? 'ri-broadcast-line' : 'ri-draft-line'" />
+            {{ profile.isPublished ? 'Опубликован' : 'Черновик' }}
+          </span>
+          <span class="count-pill">
+            <i class="ri-stack-line" />
+            {{ visibleBlocksCount }} / {{ blocks.length }} видно
+          </span>
+        </div>
+      </div>
+
+      <div class="studio-preview-bar">
+        <div class="studio-status">
+          <span class="url-pill">{{ publicUrlLabel }}</span>
+        </div>
+
+        <div class="studio-quick-actions">
+          <button class="icon-action publish-action" type="button" :title="profile.isPublished ? 'Снять с публикации' : 'Опубликовать'" @click="toggleStatus">
+            <i :class="profile.isPublished ? 'ri-eye-off-line' : 'ri-rocket-line'" />
+            <span>{{ profile.isPublished ? 'Снять' : 'Опубликовать' }}</span>
+          </button>
+          <a class="icon-action" :href="publicPath" target="_blank" rel="noopener noreferrer" title="Открыть профиль">
+            <i class="ri-external-link-line" />
+            <span>Открыть</span>
+          </a>
+          <button class="icon-action" type="button" title="Скопировать ссылку" @click="copyLink">
+            <i class="ri-file-copy-line" />
+            <span>Копировать</span>
+          </button>
+        </div>
+      </div>
+
       <article class="public-card" :class="`theme-${currentTheme}`" :style="{ '--profile-accent': currentAccent }">
         <header class="public-header">
           <div class="avatar-wrap">
@@ -202,25 +242,11 @@
     </section>
 
     <aside class="studio-inspector" aria-label="Инспектор профиля">
-      <div class="studio-preview-bar">
-        <div class="studio-status">
-          <span class="status-pill" :class="{ published: profile.isPublished }">
-            <i :class="profile.isPublished ? 'ri-broadcast-line' : 'ri-draft-line'" />
-            {{ profile.isPublished ? 'Опубликован' : 'Черновик' }}
-          </span>
-          <span class="url-pill">{{ publicUrlLabel }}</span>
-        </div>
-
-        <div class="studio-quick-actions">
-          <button class="icon-action" type="button" :title="profile.isPublished ? 'Снять с публикации' : 'Опубликовать'" @click="toggleStatus">
-            <i :class="profile.isPublished ? 'ri-eye-off-line' : 'ri-rocket-line'" />
-          </button>
-          <a class="icon-action" :href="publicPath" target="_blank" rel="noopener noreferrer" title="Открыть профиль">
-            <i class="ri-external-link-line" />
-          </a>
-          <button class="icon-action" type="button" title="Скопировать ссылку" @click="copyLink">
-            <i class="ri-file-copy-line" />
-          </button>
+      <div class="studio-inspector-head">
+        <span class="section-icon"><i class="ri-equalizer-3-line" /></span>
+        <div>
+          <strong>Инспектор</strong>
+          <small>{{ editingBlockId ? 'Настройка выбранного блока' : panel === 'blocks' ? 'Порядок и библиотека блоков' : 'Профиль и внешний вид' }}</small>
         </div>
       </div>
 
@@ -492,6 +518,7 @@ const editTagsRaw = ref('')
 const blockDraft = reactive<Record<string, unknown>>({})
 
 const blocks = computed(() => profile.profile?.blocks ?? [])
+const visibleBlocksCount = computed(() => blocks.value.filter(block => block.is_visible).length)
 const draggableBlocks = ref<Block[]>([])
 
 watch(blocks, (value) => {
@@ -2035,6 +2062,389 @@ onBeforeUnmount(() => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+}
+
+/* Material 3 Expressive dashboard refresh */
+.studio-shell {
+  --m3-radius-sm: 14px;
+  --m3-radius-md: 20px;
+  --m3-radius-lg: 28px;
+  --m3-radius-xl: 34px;
+  --m3-ease: cubic-bezier(0.2, 0, 0, 1);
+  --m3-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  grid-template-columns: minmax(520px, 1fr) minmax(360px, 420px);
+  gap: clamp(16px, 2vw, 24px);
+}
+
+.studio-preview-pane {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-height: calc(100vh - 134px);
+  padding: clamp(14px, 1.8vw, 24px);
+  border-radius: var(--m3-radius-xl);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--dash-accent, #345EA8) 10%, transparent), transparent 46%),
+    linear-gradient(180deg, color-mix(in srgb, var(--dash-surface-strong, #fff) 86%, transparent), color-mix(in srgb, var(--dash-surface-soft, #F2F4F8) 74%, transparent));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 22px 56px color-mix(in srgb, var(--dash-text-1, #10182b) 9%, transparent);
+}
+
+.studio-workspace-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 4px 4px 2px;
+}
+
+.studio-workspace-copy {
+  min-width: 0;
+  max-width: 720px;
+}
+
+.studio-kicker {
+  margin: 0 0 6px;
+  color: var(--dash-accent-strong, #173F86);
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.studio-workspace-copy h1 {
+  margin: 0;
+  color: var(--dash-text-1, #111827);
+  font-size: clamp(28px, 3.1vw, 48px);
+  line-height: 0.98;
+  font-weight: 950;
+  text-wrap: balance;
+}
+
+.studio-workspace-copy p {
+  max-width: 650px;
+  margin: 10px 0 0;
+  color: var(--dash-text-2, #4B5C76);
+  font-size: 15px;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.studio-workspace-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.count-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 78%, transparent);
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+}
+
+.studio-preview-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--dash-outline, rgba(82, 103, 138, 0.18)) 82%, transparent);
+  border-radius: var(--m3-radius-lg);
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 82%, transparent);
+  box-shadow: none;
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+.studio-status {
+  display: flex;
+  min-width: 0;
+}
+
+.url-pill {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 42px;
+  padding-inline: 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dash-accent-soft, #E7EEFF) 56%, var(--dash-surface-strong, #fff));
+  color: var(--dash-accent-strong, #173F86);
+}
+
+.studio-quick-actions {
+  display: grid;
+  grid-template-columns: minmax(144px, auto) repeat(2, minmax(110px, auto));
+  gap: 8px;
+}
+
+.studio-quick-actions .icon-action {
+  width: auto;
+  min-width: 0;
+  min-height: 48px;
+  gap: 8px;
+  padding: 0 13px;
+  border-radius: 999px;
+  color: var(--dash-text-2, #475778);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.studio-quick-actions .publish-action {
+  border-color: transparent;
+  background: var(--dash-accent, #345EA8);
+  color: #fff;
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--dash-accent, #345EA8) 22%, transparent);
+}
+
+.public-card {
+  width: min(100%, 780px);
+  gap: 14px;
+  padding: clamp(16px, 2vw, 24px);
+  border-radius: 30px;
+  box-shadow:
+    0 24px 58px color-mix(in srgb, var(--dash-text-1, #10182b) 18%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.public-avatar {
+  border-radius: 26px;
+}
+
+.public-block {
+  border-radius: 22px;
+  transition:
+    transform 260ms var(--m3-spring),
+    border-color 220ms var(--m3-ease),
+    box-shadow 220ms var(--m3-ease),
+    opacity 220ms var(--m3-ease);
+}
+
+.public-block.editing {
+  border-color: color-mix(in srgb, var(--profile-accent) 72%, white);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--profile-accent) 24%, transparent);
+}
+
+.block-toolbar {
+  padding: 14px;
+}
+
+.block-preview {
+  padding: 14px;
+}
+
+.link-row,
+.stat-grid div,
+.preview-row,
+.empty-add {
+  border-radius: 16px;
+}
+
+.block-icon,
+.section-icon,
+.mini-icon,
+.library-item-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 16px;
+}
+
+.tiny-action,
+.back-btn,
+.accent-dot {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 14px;
+}
+
+.studio-inspector {
+  top: 92px;
+  max-height: calc(100vh - 110px);
+  overflow: auto;
+  border-radius: var(--m3-radius-xl);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--dash-surface-strong, #fff) 96%, transparent), color-mix(in srgb, var(--dash-surface-soft, #F2F4F8) 70%, transparent));
+  box-shadow:
+    0 20px 48px color-mix(in srgb, var(--dash-text-1, #10182b) 10%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.studio-inspector-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 12px;
+}
+
+.studio-inspector-head strong,
+.studio-inspector-head small {
+  display: block;
+}
+
+.studio-inspector-head strong {
+  color: var(--dash-text-1, #10182b);
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.studio-inspector-head small {
+  margin-top: 2px;
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.inspector-tabs {
+  gap: 6px;
+  margin: 0 12px;
+  padding: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dash-surface-soft, #F2F4F8) 78%, transparent);
+}
+
+.inspector-tab {
+  min-height: 48px;
+  border-radius: 999px;
+}
+
+.inspector-tab.active {
+  background: var(--dash-surface-strong, #fff);
+  color: var(--dash-accent-strong, #163E86);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--dash-text-1, #10182b) 8%, transparent);
+}
+
+.inspector-section {
+  gap: 18px;
+  padding: 16px;
+}
+
+.section-head h3 {
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.studio-field input,
+.studio-field textarea,
+.slug-input {
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 92%, transparent);
+}
+
+.theme-option,
+.library-item,
+.mini-block,
+.muted-panel {
+  border-radius: 22px;
+}
+
+.theme-option,
+.library-item,
+.mini-block {
+  transition:
+    transform 260ms var(--m3-spring),
+    border-color 180ms var(--m3-ease),
+    background 180ms var(--m3-ease),
+    box-shadow 180ms var(--m3-ease);
+}
+
+.theme-option.active,
+.library-item:hover,
+.mini-block:hover {
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--dash-text-1, #10182b) 8%, transparent);
+}
+
+.theme-swatch {
+  border-radius: 18px;
+}
+
+.filled-btn,
+.ghost-btn {
+  min-height: 48px;
+}
+
+.studio-notice {
+  min-height: 48px;
+  border-radius: 999px;
+  box-shadow: 0 16px 42px color-mix(in srgb, var(--dash-text-1, #10182b) 18%, transparent);
+}
+
+@media (max-width: 1180px) {
+  .studio-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .studio-inspector {
+    position: static;
+    order: -1;
+    max-height: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .studio-shell {
+    gap: 12px;
+  }
+
+  .studio-preview-pane {
+    min-height: auto;
+    padding: 10px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .studio-workspace-head {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 0 2px;
+  }
+
+  .studio-workspace-copy h1 {
+    font-size: clamp(27px, 9vw, 36px);
+  }
+
+  .studio-workspace-stats {
+    justify-content: flex-start;
+  }
+
+  .studio-preview-bar {
+    grid-template-columns: 1fr;
+    border-radius: 24px;
+  }
+
+  .studio-quick-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .studio-quick-actions .icon-action {
+    justify-content: center;
+  }
+
+  .public-card {
+    border-radius: 26px;
+    padding: 16px;
+  }
+
+  .studio-inspector {
+    border-radius: 26px;
+  }
+
+  .inspector-section,
+  .studio-inspector-head {
+    padding-inline: 14px;
   }
 }
 </style>

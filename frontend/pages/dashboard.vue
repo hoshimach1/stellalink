@@ -342,30 +342,30 @@ async function logout() {
 <style scoped>
 .dash-page {
   --font-brand: Onest, "Segoe UI", sans-serif;
-  --bg: #F7F9FC;
-  --surface: #FFFFFF;
-  --surface-low: #EEF2F7;
-  --surface-mid: #E7EDF6;
-  --surface-warm: #FFF7EB;
-  --text-1: #111827;
-  --text-2: #4B5C76;
-  --text-3: #738196;
-  --outline: #D7DFEC;
-  --primary: #345EA8;
+  --bg: oklch(98.4% 0.006 255);
+  --surface: oklch(100% 0 0);
+  --surface-low: oklch(95.3% 0.012 255);
+  --surface-mid: oklch(92% 0.018 255);
+  --surface-warm: oklch(96.5% 0.032 178);
+  --text-1: oklch(19% 0.024 255);
+  --text-2: oklch(43% 0.034 255);
+  --text-3: oklch(58% 0.032 255);
+  --outline: oklch(88% 0.018 255);
+  --primary: oklch(48% 0.15 260);
   --on-primary: #FFFFFF;
-  --primary-container: #E7EEFF;
-  --on-primary-container: #173F86;
-  --secondary: #2C6E63;
-  --tertiary: #A65F00;
-  --success: #188A55;
-  --warning: #9B6200;
-  --error: #B3323A;
-  --shadow-soft: 0 16px 42px rgba(48, 63, 92, 0.11);
-  --shadow-mid: 0 20px 52px rgba(48, 63, 92, 0.16);
-  --ease-spring: cubic-bezier(0.2, 0, 0, 1);
+  --primary-container: oklch(93.5% 0.038 260);
+  --on-primary-container: oklch(30% 0.12 260);
+  --secondary: oklch(50% 0.11 178);
+  --tertiary: oklch(55% 0.16 305);
+  --success: oklch(50% 0.13 152);
+  --warning: oklch(58% 0.12 78);
+  --error: oklch(52% 0.18 25);
+  --shadow-soft: 0 18px 48px color-mix(in srgb, var(--text-1) 10%, transparent);
+  --shadow-mid: 0 26px 64px color-mix(in srgb, var(--text-1) 15%, transparent);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --m3-motion: var(--ease-spring);
-  --m3-fast: 180ms;
-  --m3-med: 320ms;
+  --m3-fast: 170ms;
+  --m3-med: 300ms;
   --dash-bg: var(--bg);
   --dash-surface: var(--surface);
   --dash-surface-soft: var(--surface-low);
@@ -387,8 +387,8 @@ async function logout() {
   min-height: 100vh;
   color: var(--dash-text-1);
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.82), transparent 360px),
-    linear-gradient(135deg, #F8FBFF 0%, #F3F7F1 54%, #FFF8ED 100%);
+    linear-gradient(180deg, color-mix(in srgb, var(--primary-container) 42%, var(--bg)) 0, transparent 380px),
+    linear-gradient(135deg, var(--bg) 0%, color-mix(in srgb, var(--secondary) 8%, var(--bg)) 58%, color-mix(in srgb, var(--tertiary) 6%, var(--bg)) 100%);
   font-family: var(--font-brand);
   overflow-x: clip;
 }
@@ -411,7 +411,7 @@ async function logout() {
   min-height: 62px;
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--outline) 80%, transparent);
-  border-radius: 22px;
+  border-radius: 28px;
   background: color-mix(in srgb, var(--surface) 86%, transparent);
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(18px) saturate(145%);
@@ -616,7 +616,7 @@ async function logout() {
 }
 
 .dash-main {
-  width: min(1480px, calc(100% - 32px));
+  width: min(1540px, calc(100% - 32px));
   margin: 0 auto;
   padding: 98px 0 48px;
 }
@@ -1146,21 +1146,21 @@ async function logout() {
 
 @media (prefers-color-scheme: dark) {
   .dash-page {
-    --bg: #101216;
-    --surface: #171B21;
-    --surface-low: #202631;
-    --surface-mid: #283140;
-    --surface-warm: rgba(255, 209, 138, 0.1);
-    --text-1: #F3F6FB;
-    --text-2: #C2CBD8;
-    --text-3: #8D9AAF;
-    --outline: rgba(203, 213, 225, 0.16);
-    --primary: #9FB8FF;
-    --primary-container: rgba(159, 184, 255, 0.14);
-    --on-primary-container: #DDE6FF;
-    --success: #9EE6B8;
-    --warning: #FFD18A;
-    --error: #FFB3B8;
+    --bg: oklch(16% 0.015 255);
+    --surface: oklch(21% 0.018 255);
+    --surface-low: oklch(25% 0.022 255);
+    --surface-mid: oklch(30% 0.026 255);
+    --surface-warm: color-mix(in srgb, var(--secondary) 16%, transparent);
+    --text-1: oklch(94% 0.01 255);
+    --text-2: oklch(77% 0.02 255);
+    --text-3: oklch(64% 0.026 255);
+    --outline: rgba(203, 213, 225, 0.17);
+    --primary: oklch(77% 0.11 260);
+    --primary-container: color-mix(in srgb, var(--primary) 16%, transparent);
+    --on-primary-container: oklch(91% 0.035 260);
+    --success: oklch(76% 0.13 152);
+    --warning: oklch(82% 0.12 78);
+    --error: oklch(79% 0.13 25);
     --dash-bg: var(--bg);
     --dash-surface: var(--surface);
     --dash-surface-soft: var(--surface-low);
@@ -1182,8 +1182,8 @@ async function logout() {
     --shadow-mid: 0 24px 60px rgba(0, 0, 0, 0.42);
     --dash-shadow: var(--shadow-soft);
     background:
-      linear-gradient(180deg, rgba(20,24,31,0.92), transparent 360px),
-      linear-gradient(135deg, #101216 0%, #151B22 54%, #1B1714 100%);
+      linear-gradient(180deg, color-mix(in srgb, var(--primary-container) 58%, var(--bg)) 0, transparent 360px),
+      linear-gradient(135deg, var(--bg) 0%, color-mix(in srgb, var(--secondary) 9%, var(--bg)) 58%, color-mix(in srgb, var(--tertiary) 8%, var(--bg)) 100%);
   }
 }
 

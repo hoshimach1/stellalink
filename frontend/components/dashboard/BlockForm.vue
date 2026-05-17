@@ -508,4 +508,104 @@ function addComponent() {
     align-items: stretch;
   }
 }
+
+/* Material 3 Expressive form surfaces */
+.block-form {
+  --bf-ease: cubic-bezier(0.2, 0, 0, 1);
+  --bf-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  gap: 14px;
+}
+
+.bf-section,
+.bf-link,
+.bf-note {
+  border-radius: 22px;
+}
+
+.bf-section {
+  padding: 14px;
+  background: color-mix(in srgb, var(--dash-surface-soft, #f2f4f8) 76%, transparent);
+}
+
+.bf-link {
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 94%, transparent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--dash-text-1, #10182b) 5%, transparent);
+}
+
+.bf-section-head strong,
+.bf-link-head strong {
+  font-weight: 950;
+}
+
+.bf-field input,
+.bf-field textarea {
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 94%, transparent);
+}
+
+.bf-field input {
+  min-height: 48px;
+}
+
+.bf-field textarea {
+  min-height: 132px;
+}
+
+.bf-icon,
+.bf-icon-choice,
+.bf-secondary,
+.bf-segment,
+.bf-check {
+  transition:
+    transform 240ms var(--bf-spring),
+    background 180ms var(--bf-ease),
+    border-color 180ms var(--bf-ease),
+    color 180ms var(--bf-ease),
+    box-shadow 180ms var(--bf-ease);
+}
+
+.bf-icon,
+.bf-icon-choice,
+.bf-icon-preview {
+  border-radius: 14px;
+}
+
+.bf-icon,
+.bf-icon-choice {
+  width: 44px;
+  height: 44px;
+}
+
+.bf-secondary,
+.bf-segment {
+  min-height: 48px;
+}
+
+.bf-secondary {
+  background: color-mix(in srgb, var(--dash-accent-soft, rgba(52,94,168,0.12)) 68%, var(--dash-surface-strong, #fff));
+  color: var(--dash-accent-strong, #163E86);
+}
+
+.bf-check {
+  min-height: 56px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 94%, transparent);
+}
+
+.bf-check input {
+  width: 20px;
+  height: 20px;
+}
+
+.bf-segment.active,
+.bf-icon-choice.active {
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--dash-accent, #345EA8) 12%, transparent);
+}
+
+@media (hover: hover) {
+  .bf-check:hover,
+  .bf-link:hover {
+    border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 26%, var(--dash-outline, #d4dbe8));
+  }
+}
 </style>
