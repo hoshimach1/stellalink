@@ -15,35 +15,6 @@
     </Transition>
 
     <section class="studio-preview-pane" aria-label="Живое превью профиля">
-      <div class="studio-preview-bar">
-        <div class="studio-status" aria-label="Сводка профиля">
-          <span class="status-pill" :class="{ published: profile.isPublished }">
-            <i :class="profile.isPublished ? 'ri-broadcast-line' : 'ri-draft-line'" />
-            {{ profile.isPublished ? 'Опубликован' : 'Черновик' }}
-          </span>
-          <span class="count-pill">
-            <i class="ri-stack-line" />
-            {{ visibleBlocksCount }} / {{ blocks.length }} видно
-          </span>
-          <span class="url-pill">{{ publicUrlLabel }}</span>
-        </div>
-
-        <div class="studio-quick-actions">
-          <button class="icon-action publish-action" type="button" :title="profile.isPublished ? 'Снять с публикации' : 'Опубликовать'" @click="toggleStatus">
-            <i :class="profile.isPublished ? 'ri-eye-off-line' : 'ri-rocket-line'" />
-            <span>{{ profile.isPublished ? 'Снять' : 'Опубликовать' }}</span>
-          </button>
-          <a class="icon-action" :href="publicPath" target="_blank" rel="noopener noreferrer" title="Открыть профиль">
-            <i class="ri-external-link-line" />
-            <span>Открыть</span>
-          </a>
-          <button class="icon-action" type="button" title="Скопировать ссылку" @click="copyLink">
-            <i class="ri-file-copy-line" />
-            <span>Копировать</span>
-          </button>
-        </div>
-      </div>
-
       <article class="public-card" :class="`theme-${currentTheme}`" :style="{ '--profile-accent': currentAccent }">
         <header class="public-header">
           <div class="avatar-wrap">
@@ -237,6 +208,35 @@
     </section>
 
     <aside class="studio-inspector" aria-label="Инспектор профиля">
+      <div class="studio-preview-bar">
+        <div class="studio-status" aria-label="Сводка профиля">
+          <span class="status-pill" :class="{ published: profile.isPublished }">
+            <i :class="profile.isPublished ? 'ri-broadcast-line' : 'ri-draft-line'" />
+            {{ profile.isPublished ? 'Опубликован' : 'Черновик' }}
+          </span>
+          <span class="count-pill">
+            <i class="ri-stack-line" />
+            {{ visibleBlocksCount }} / {{ blocks.length }} видно
+          </span>
+          <span class="url-pill">{{ publicUrlLabel }}</span>
+        </div>
+
+        <div class="studio-quick-actions">
+          <button class="icon-action publish-action" type="button" :title="profile.isPublished ? 'Снять с публикации' : 'Опубликовать'" @click="toggleStatus">
+            <i :class="profile.isPublished ? 'ri-eye-off-line' : 'ri-rocket-line'" />
+            <span>{{ profile.isPublished ? 'Снять' : 'Опубликовать' }}</span>
+          </button>
+          <a class="icon-action" :href="publicPath" target="_blank" rel="noopener noreferrer" title="Открыть профиль">
+            <i class="ri-external-link-line" />
+            <span>Открыть</span>
+          </a>
+          <button class="icon-action" type="button" title="Скопировать ссылку" @click="copyLink">
+            <i class="ri-file-copy-line" />
+            <span>Копировать</span>
+          </button>
+        </div>
+      </div>
+
       <div class="inspector-tabs">
         <button class="inspector-tab" :class="{ active: panel === 'profile' && !editingBlockId }" type="button" @click="openPanel('profile')">
           <i class="ri-user-settings-line" />
@@ -2156,14 +2156,16 @@ onBeforeUnmount(() => {
 }
 
 .studio-preview-bar {
-  position: sticky;
-  top: 0;
-  z-index: 4;
+  position: relative;
+  top: auto;
+  z-index: 2;
+  flex: 0 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  grid-template-columns: 1fr;
+  align-items: stretch;
   gap: 10px;
-  padding: 7px;
+  margin: 10px 10px 0;
+  padding: 8px;
   border: 1px solid color-mix(in srgb, var(--dash-outline, rgba(82, 103, 138, 0.18)) 82%, transparent);
   border-radius: 22px;
   background: color-mix(in srgb, var(--dash-surface-strong, #fff) 88%, transparent);
@@ -2179,6 +2181,10 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
+.studio-status .url-pill {
+  flex: 1 1 100%;
+}
+
 .url-pill {
   min-width: 0;
   max-width: 100%;
@@ -2191,7 +2197,7 @@ onBeforeUnmount(() => {
 
 .studio-quick-actions {
   display: grid;
-  grid-template-columns: minmax(144px, auto) repeat(2, minmax(110px, auto));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -2208,6 +2214,7 @@ onBeforeUnmount(() => {
 }
 
 .studio-quick-actions .publish-action {
+  grid-column: 1 / -1;
   border-color: transparent;
   background: var(--dash-accent, #345EA8);
   color: #fff;
@@ -2419,7 +2426,11 @@ onBeforeUnmount(() => {
   }
 
   .studio-quick-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .studio-quick-actions .publish-action {
+    grid-column: 1 / -1;
   }
 
   .studio-quick-actions .icon-action {

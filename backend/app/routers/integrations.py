@@ -36,8 +36,9 @@ async def read_my_integrations(
 @router.post("/steam/openid/start", response_model=SteamOpenIdStartResponse)
 async def start_steam_openid(
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    auth_url = await create_steam_openid_auth_url(current_user.id)
+    auth_url = await create_steam_openid_auth_url(db, current_user.id)
     return SteamOpenIdStartResponse(auth_url=auth_url)
 
 

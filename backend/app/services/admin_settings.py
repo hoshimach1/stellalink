@@ -97,6 +97,11 @@ async def get_smtp_response(db: AsyncSession) -> SmtpSettingsResponse:
     )
 
 
+async def get_public_frontend_base_url(db: AsyncSession) -> str:
+    data = await get_smtp_data(db)
+    return (data.get("frontend_base_url") or settings.FRONTEND_BASE_URL).rstrip("/")
+
+
 async def get_api_settings_data(db: AsyncSession) -> dict[str, Any]:
     data = _base_api_data()
     setting = await _get_setting(db, API_SETTINGS_KEY)

@@ -7,11 +7,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app import models  # noqa: F401 - import all models before metadata bootstrap
+from app.database import AsyncSessionLocal
 from app.database import Base
 from app.database import engine
-from app import models  # noqa: F401 - import all models before metadata bootstrap
 from app.redis import close_redis, get_redis
 from app.routers import admin, auth, integrations, profile
+from app.services.admin_settings import apply_public_auth_settings
 from app.services.steam_auto_sync import SteamAutoSyncScheduler
 
 logger = logging.getLogger(__name__)
@@ -34,6 +36,8 @@ async def ensure_runtime_tables() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await ensure_runtime_tables()
+    async with AsyncSessionLocal() as db:
+        await apply_public_auth_settings(db)
     await get_redis()  # warm up connection
     steam_auto_sync.start()
     try:
