@@ -214,9 +214,9 @@
             <i :class="profile.isPublished ? 'ri-broadcast-line' : 'ri-draft-line'" />
             {{ profile.isPublished ? 'Опубликован' : 'Черновик' }}
           </span>
-          <span class="count-pill">
+          <span class="count-pill" title="Видимые блоки">
             <i class="ri-stack-line" />
-            {{ visibleBlocksCount }} / {{ blocks.length }} видно
+            {{ visibleBlocksCount }} / {{ blocks.length }}
           </span>
           <span class="url-pill">{{ publicUrlLabel }}</span>
         </div>
@@ -2163,12 +2163,12 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: 1fr;
   align-items: stretch;
-  gap: 10px;
-  margin: 10px 10px 0;
-  padding: 8px;
+  gap: 6px;
+  margin: 8px 8px 0;
+  padding: 6px;
   border: 1px solid color-mix(in srgb, var(--dash-outline, rgba(82, 103, 138, 0.18)) 82%, transparent);
-  border-radius: 22px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 88%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 82%, transparent);
   box-shadow: none;
   backdrop-filter: blur(18px) saturate(140%);
 }
@@ -2177,8 +2177,16 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 7px;
+  gap: 5px;
   min-width: 0;
+}
+
+.studio-preview-bar .status-pill,
+.studio-preview-bar .count-pill {
+  min-height: 28px;
+  gap: 5px;
+  padding-inline: 9px;
+  font-size: 11px;
 }
 
 .studio-status .url-pill {
@@ -2188,37 +2196,56 @@ onBeforeUnmount(() => {
 .url-pill {
   min-width: 0;
   max-width: 100%;
-  min-height: 36px;
-  padding-inline: 12px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--dash-accent-soft, #E7EEFF) 56%, var(--dash-surface-strong, #fff));
+  min-height: 0;
+  padding: 0 3px;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 800;
   color: var(--dash-accent-strong, #173F86);
 }
 
 .studio-quick-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .studio-quick-actions .icon-action {
-  width: auto;
-  min-width: 0;
-  min-height: 42px;
-  gap: 7px;
-  padding: 0 12px;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  gap: 6px;
+  padding: 0;
   border-radius: 999px;
   color: var(--dash-text-2, #475778);
   font-size: 12px;
   font-weight: 900;
 }
 
+.studio-quick-actions .icon-action:not(.publish-action) span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .studio-quick-actions .publish-action {
-  grid-column: 1 / -1;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  padding-inline: 12px;
   border-color: transparent;
   background: var(--dash-accent, #345EA8);
   color: #fff;
-  box-shadow: 0 12px 26px color-mix(in srgb, var(--dash-accent, #345EA8) 22%, transparent);
+  box-shadow: none;
 }
 
 .public-card {
@@ -2422,20 +2449,25 @@ onBeforeUnmount(() => {
 
   .studio-preview-bar {
     grid-template-columns: 1fr;
-    border-radius: 20px;
+    border-radius: 18px;
   }
 
   .studio-quick-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .studio-quick-actions .publish-action {
-    grid-column: 1 / -1;
+    display: flex;
   }
 
   .studio-quick-actions .icon-action {
     justify-content: center;
-    padding-inline: 8px;
+    flex-basis: 44px;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .studio-quick-actions .publish-action {
+    flex: 1 1 auto;
+    width: auto;
+    padding-inline: 10px;
   }
 
   .public-card {
