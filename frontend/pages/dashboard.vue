@@ -616,7 +616,7 @@ async function logout() {
 }
 
 .dash-main {
-  width: min(1540px, calc(100% - 32px));
+  width: min(1180px, calc(100% - 24px));
   margin: 0 auto;
   padding: 98px 0 48px;
 }
@@ -983,6 +983,7 @@ async function logout() {
   }
 
   .dash-main {
+    width: min(760px, calc(100% - 24px));
     padding-top: 146px;
   }
 
@@ -1010,7 +1011,6 @@ async function logout() {
 @media (max-width: 680px) {
   .dash-main {
     width: calc(100% - 16px);
-    max-width: 1480px;
     padding-top: 138px;
   }
 

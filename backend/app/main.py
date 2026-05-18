@@ -12,8 +12,10 @@ from app.database import engine
 from app import models  # noqa: F401 - import all models before metadata bootstrap
 from app.redis import close_redis, get_redis
 from app.routers import admin, auth, integrations, profile
+from app.services.steam_auto_sync import SteamAutoSyncScheduler
 
 logger = logging.getLogger(__name__)
+steam_auto_sync = SteamAutoSyncScheduler()
 
 
 async def ensure_runtime_tables() -> None:
@@ -33,8 +35,12 @@ async def ensure_runtime_tables() -> None:
 async def lifespan(app: FastAPI):
     await ensure_runtime_tables()
     await get_redis()  # warm up connection
-    yield
-    await close_redis()
+    steam_auto_sync.start()
+    try:
+        yield
+    finally:
+        await steam_auto_sync.stop()
+        await close_redis()
 
 
 app = FastAPI(title="Stellalink API", version="0.1.0", lifespan=lifespan)
