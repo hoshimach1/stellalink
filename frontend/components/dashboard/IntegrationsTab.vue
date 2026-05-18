@@ -1,86 +1,101 @@
 <template>
   <div class="integrations-shell">
-    <section class="integrations-hero">
-      <div class="hero-copy">
-        <p class="hero-kicker">Подключения</p>
-        <h2>Интеграции публичного профиля</h2>
-        <p>
-          Здесь вы можете посмотреть ваши интеграции с сервисами
-        </p>
+    <section class="integrations-summary" aria-label="Сводка сервисов">
+      <div class="summary-copy">
+        <h2>Сервисы</h2>
+        <p>Подключения, которые могут автоматически наполнять публичный профиль.</p>
       </div>
 
-      <div class="hero-meter" aria-label="Подключенные сервисы">
-        <strong>{{ connectedCount }}</strong>
-        <span>из {{ serviceCards.length }} интеграций активны</span>
+      <div class="summary-stats">
+        <span class="summary-pill strong">
+          <strong>{{ connectedCount }}</strong>
+          подключено
+        </span>
+        <span class="summary-pill">
+          {{ inactiveCount }} доступно
+        </span>
       </div>
     </section>
 
     <div v-if="connectNotice" class="integration-notice" :class="connectNoticeTone">
+      <i :class="connectNoticeTone === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'" />
       {{ connectNotice }}
     </div>
 
     <div v-if="loading" class="integration-notice">
+      <span class="integration-spinner dark" />
       Загружаем подключения...
     </div>
 
-    <section class="service-grid" aria-label="Сервисы">
+    <section class="service-list" aria-label="Сервисы">
       <article
         v-for="service in serviceCards"
         :key="service.type"
         class="service-card"
         :class="{ connected: service.connected, available: service.canConnect }"
       >
-        <div class="service-head">
+        <div class="service-main">
           <span class="service-icon">
             <FaceitLogo v-if="service.type === 'widget_faceit'" class="faceit-logo" />
             <i v-else :class="service.icon" />
           </span>
-          <span class="service-status" :class="{ connected: service.connected, available: service.canConnect }">
-            <i :class="service.statusIcon" />
-            {{ service.statusLabel }}
-          </span>
-        </div>
 
-        <div class="service-copy">
-          <h3>{{ service.label }}</h3>
-          <p>{{ service.description }}</p>
-        </div>
-
-        <div v-if="service.type === 'widget_steam'" class="steam-connect">
-          <button class="steam-login" type="button" :disabled="steamOauthBusy" @click="startSteamLogin">
-            <span v-if="steamOauthBusy" class="integration-spinner" />
-            <i v-else class="ri-steam-fill" />
-            <span>Войти через Steam</span>
-          </button>
-          <div v-if="steamAccount" class="steam-actions">
-            <button v-if="steamAccount" class="service-action" type="button" :disabled="steamBusy" @click="syncSteamConnection">
-              <i class="ri-refresh-line" />
-              <span>Синхронизировать</span>
-            </button>
-            <button v-if="steamAccount" class="service-action danger" type="button" :disabled="steamBusy" @click="disconnectSteamConnection">
-              <i class="ri-link-unlink-m" />
-              <span>Отключить</span>
-            </button>
+          <div class="service-copy">
+            <div class="service-title-row">
+              <h3>{{ service.label }}</h3>
+              <span class="service-status" :class="{ connected: service.connected, available: service.canConnect }">
+                <i :class="service.statusIcon" />
+                {{ service.statusLabel }}
+              </span>
+            </div>
+            <p>{{ service.description }}</p>
           </div>
         </div>
 
-        <div v-else-if="service.type === 'widget_faceit' && faceitAccount" class="faceit-summary">
-          <span>Уровень {{ faceitSkillLevel || '—' }}</span>
-          <span>{{ faceitElo ? `${faceitElo} ELO` : 'ELO не получен' }}</span>
-        </div>
+        <div class="service-controls">
+          <div v-if="service.type === 'widget_steam'" class="steam-connect">
+            <button v-if="!steamAccount" class="steam-login" type="button" :disabled="steamOauthBusy" @click="startSteamLogin">
+              <span v-if="steamOauthBusy" class="integration-spinner" />
+              <i v-else class="ri-steam-fill" />
+              <span>Войти через Steam</span>
+            </button>
 
-        <button
-          v-if="service.type !== 'widget_steam' && service.type !== 'widget_faceit'"
-          class="service-action"
-          :class="{ primary: service.canConnect, complete: service.connected }"
-          type="button"
-          :disabled="!service.canConnect || connectingType === service.type"
-          @click="connectService(service.type)"
-        >
-          <span v-if="connectingType === service.type" class="integration-spinner" />
-          <i v-else :class="service.actionIcon" />
-          <span>{{ service.actionLabel }}</span>
-        </button>
+            <div v-if="steamAccount" class="steam-actions">
+              <button class="service-action primary" type="button" :disabled="steamBusy" @click="syncSteamConnection">
+                <span v-if="steamBusy" class="integration-spinner" />
+                <template v-else>
+                  <i class="ri-refresh-line" />
+                  <span>Синхронизировать</span>
+                </template>
+              </button>
+              <button class="service-action danger" type="button" :disabled="steamBusy" @click="disconnectSteamConnection">
+                <i class="ri-link-unlink-m" />
+                <span>Отключить</span>
+              </button>
+            </div>
+          </div>
+
+          <div v-else-if="service.type === 'widget_faceit'" class="faceit-block">
+            <div v-if="faceitAccount" class="faceit-summary">
+              <span>Уровень {{ faceitSkillLevel || '—' }}</span>
+              <span>{{ faceitElo ? `${faceitElo} ELO` : 'ELO не получен' }}</span>
+            </div>
+            <span v-else class="service-hint">Найдется после Steam, если ключ FACEIT настроен.</span>
+          </div>
+
+          <button
+            v-else
+            class="service-action"
+            :class="{ primary: service.canConnect, complete: service.connected }"
+            type="button"
+            :disabled="!service.canConnect || connectingType === service.type"
+            @click="connectService(service.type)"
+          >
+            <span v-if="connectingType === service.type" class="integration-spinner" />
+            <i v-else :class="service.actionIcon" />
+            <span>{{ service.actionLabel }}</span>
+          </button>
+        </div>
       </article>
     </section>
   </div>
@@ -180,6 +195,7 @@ const serviceCards = computed(() =>
     }),
 )
 const connectedCount = computed(() => serviceCards.value.filter(service => service.connected).length)
+const inactiveCount = computed(() => Math.max(serviceCards.value.length - connectedCount.value, 0))
 
 onMounted(() => {
   readSteamRedirectResult()
@@ -331,7 +347,7 @@ async function connectService(type: IntegrationType) {
 .integrations-shell {
   width: min(100%, 1060px);
   display: grid;
-  gap: 14px;
+  gap: 12px;
   margin: 0 auto;
 }
 
@@ -340,119 +356,127 @@ async function connectService(type: IntegrationType) {
   box-sizing: border-box;
 }
 
-.integrations-hero,
-.service-card {
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 92%, transparent);
-  box-shadow: 0 10px 28px rgba(48, 63, 92, 0.08);
+.integrations-summary,
+.service-card,
+.integration-notice {
+  border: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 86%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 94%, transparent);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--dash-text-1, #10182b) 7%, transparent);
 }
 
-.integrations-hero {
+.integrations-summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 18px;
+  gap: 14px;
+  padding: 14px 16px;
 }
 
-.hero-copy {
-  max-width: 700px;
+.summary-copy {
   min-width: 0;
 }
 
-.hero-kicker,
-.hero-copy h2,
-.hero-copy p,
+.summary-copy h2,
+.summary-copy p,
 .service-copy h3,
 .service-copy p {
   margin: 0;
 }
 
-.hero-kicker {
-  color: var(--dash-accent-strong, #163E86);
+.summary-copy h2 {
+  color: var(--dash-text-1, #10182b);
+  font-size: 22px;
+  line-height: 1.12;
+}
+
+.summary-copy p {
+  margin-top: 4px;
+  color: var(--dash-text-2, #475778);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.summary-pill {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--dash-surface-soft, #F2F4F8);
+  color: var(--dash-text-2, #475778);
   font-size: 12px;
   font-weight: 900;
+  white-space: nowrap;
 }
 
-.hero-copy h2 {
-  margin-top: 4px;
-  color: var(--dash-text-1, #10182b);
-  font-size: 28px;
-  line-height: 1.08;
-  overflow-wrap: anywhere;
-}
-
-.hero-copy p {
-  margin-top: 8px;
-  color: var(--dash-text-2, #475778);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.hero-meter {
-  min-width: 176px;
-  display: grid;
-  gap: 4px;
-  padding: 14px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
-  border-radius: 8px;
+.summary-pill.strong {
   background: var(--dash-accent-soft, rgba(52,94,168,0.12));
   color: var(--dash-accent-strong, #163E86);
 }
 
-.hero-meter strong {
-  font-size: 34px;
+.summary-pill strong {
+  font-size: 18px;
   line-height: 1;
 }
 
-.hero-meter span {
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-.service-grid {
+.service-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .service-card {
   min-width: 0;
   display: grid;
-  gap: 16px;
-  padding: 16px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
   transition:
-    transform 180ms cubic-bezier(0.2, 0, 0, 1),
-    border-color 180ms cubic-bezier(0.2, 0, 0, 1),
-    background 180ms cubic-bezier(0.2, 0, 0, 1);
+    transform 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    border-color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    background 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    box-shadow 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .service-card.connected {
-  border-color: color-mix(in srgb, var(--dash-green, #188A55) 32%, var(--dash-outline, #d4dbe8));
+  border-color: color-mix(in srgb, var(--dash-green, #188A55) 28%, var(--dash-outline, #d4dbe8));
 }
 
 .service-card.available {
   border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 20%, var(--dash-outline, #d4dbe8));
 }
 
-.service-head {
+.service-main {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 13px;
+  min-width: 0;
 }
 
 .service-icon {
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   display: inline-grid;
   place-items: center;
-  border-radius: 8px;
+  flex: 0 0 auto;
+  border-radius: 16px;
   background: var(--dash-accent-soft, rgba(52,94,168,0.12));
   color: var(--dash-accent-strong, #163E86);
-  font-size: 22px;
+  font-size: 23px;
+}
+
+.service-card.connected .service-icon {
+  background: var(--dash-green-soft, #E1F6EA);
+  color: var(--dash-green, #188A55);
 }
 
 .faceit-logo {
@@ -461,12 +485,37 @@ async function connectService(type: IntegrationType) {
   display: block;
 }
 
+.service-copy {
+  min-width: 0;
+}
+
+.service-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.service-copy h3 {
+  color: var(--dash-text-1, #10182b);
+  font-size: 17px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.service-copy p {
+  margin-top: 4px;
+  color: var(--dash-text-2, #475778);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .service-status {
-  min-height: 32px;
+  min-height: 28px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 0 10px;
+  padding: 0 9px;
   border-radius: 999px;
   background: var(--dash-surface-soft, #F2F4F8);
   color: var(--dash-text-2, #475778);
@@ -485,130 +534,57 @@ async function connectService(type: IntegrationType) {
   color: var(--dash-accent-strong, #163E86);
 }
 
-.service-copy h3 {
-  color: var(--dash-text-1, #10182b);
-  font-size: 18px;
-  overflow-wrap: anywhere;
-}
-
-.service-copy p {
-  margin-top: 4px;
-  color: var(--dash-text-2, #475778);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.steam-connect {
+.service-controls,
+.steam-connect,
+.faceit-block {
   display: grid;
-  gap: 10px;
-}
-
-.steam-login {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  justify-items: end;
   gap: 8px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: #171a21;
-  color: #fff;
-  font: inherit;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.steam-login:disabled {
-  cursor: wait;
-  opacity: 0.72;
-}
-
-.steam-divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--dash-text-3, #66789c);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.steam-divider::before,
-.steam-divider::after {
-  content: "";
-  height: 1px;
-  flex: 1;
-  background: var(--dash-outline, rgba(82, 103, 138, 0.18));
-}
-
-.steam-field {
-  display: grid;
-  gap: 6px;
-}
-
-.steam-field span {
-  color: var(--dash-text-2, #475778);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.steam-field input {
-  width: 100%;
-  min-height: 42px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
-  border-radius: 8px;
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-1, #10182b);
-  font: inherit;
-  outline: none;
-  padding: 0 12px;
+  min-width: 170px;
 }
 
 .steam-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
 }
 
-.faceit-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.faceit-summary span {
-  min-height: 32px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-2, #475778);
-  font-size: 12px;
-  font-weight: 900;
-}
-
+.steam-login,
 .service-action {
-  min-height: 42px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
   border-radius: 999px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  transition:
+    transform 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    background 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    border-color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.steam-login {
+  border-color: transparent;
+  background: #171a21;
+  color: #fff;
+  cursor: pointer;
+}
+
+.service-action {
   background: var(--dash-surface-soft, #F2F4F8);
   color: var(--dash-text-2, #475778);
-  font: inherit;
-  font-weight: 900;
   cursor: default;
-  transition:
-    transform 180ms cubic-bezier(0.2, 0, 0, 1),
-    border-color 180ms cubic-bezier(0.2, 0, 0, 1),
-    background 180ms cubic-bezier(0.2, 0, 0, 1),
-    color 180ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .service-action.primary {
-  border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 34%, var(--dash-outline, #d4dbe8));
+  border-color: transparent;
   background: var(--dash-accent, #345EA8);
   color: #fff;
   cursor: pointer;
@@ -622,21 +598,53 @@ async function connectService(type: IntegrationType) {
 
 .service-action.danger {
   border-color: color-mix(in srgb, var(--dash-red, #B3323A) 24%, var(--dash-outline, #d4dbe8));
+  background: color-mix(in srgb, var(--dash-red-soft, #FFE5E7) 62%, white);
   color: var(--dash-red, #B3323A);
+  cursor: pointer;
 }
 
+.steam-login:disabled,
 .service-action:disabled:not(.complete) {
   cursor: wait;
-  opacity: 0.82;
+  opacity: 0.72;
+}
+
+.faceit-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.faceit-summary span,
+.service-hint {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--dash-surface-soft, #F2F4F8);
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.service-hint {
+  max-width: 240px;
+  height: auto;
+  min-height: 36px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  line-height: 1.25;
+  text-align: right;
 }
 
 .integration-notice {
   min-height: 44px;
   display: flex;
   align-items: center;
+  gap: 9px;
   padding: 10px 14px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
-  border-radius: 8px;
   background: var(--dash-surface-soft, #F2F4F8);
   color: var(--dash-text-2, #475778);
   font-size: 13px;
@@ -665,15 +673,27 @@ async function connectService(type: IntegrationType) {
   animation: integration-spin 0.78s linear infinite;
 }
 
+.integration-spinner.dark {
+  border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 24%, transparent);
+  border-top-color: var(--dash-accent, #345EA8);
+}
+
+.steam-login:focus-visible,
+.service-action:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--dash-accent, #345EA8) 32%, transparent);
+  outline-offset: 2px;
+}
+
 @media (hover: hover) {
   .service-card:hover {
     transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 32%, var(--dash-outline, #d4dbe8));
+    border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 28%, var(--dash-outline, #d4dbe8));
+    box-shadow: 0 14px 34px color-mix(in srgb, var(--dash-text-1, #10182b) 9%, transparent);
   }
 
-  .service-action.primary:hover:not(:disabled) {
+  .service-action.primary:hover:not(:disabled),
+  .steam-login:hover:not(:disabled) {
     transform: translateY(-1px);
-    background: color-mix(in srgb, var(--dash-accent, #345EA8) 88%, #000);
   }
 }
 
@@ -681,38 +701,72 @@ async function connectService(type: IntegrationType) {
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 780px) {
-  .integrations-hero {
+@media (max-width: 860px) {
+  .integrations-shell {
+    max-width: 760px;
+  }
+
+  .integrations-summary,
+  .service-card {
     align-items: stretch;
-    flex-direction: column;
-  }
-
-  .hero-meter {
-    min-width: 0;
-  }
-
-  .service-grid {
     grid-template-columns: 1fr;
   }
 
-  .service-head {
-    align-items: flex-start;
+  .integrations-summary {
     flex-direction: column;
   }
 
-  .service-status {
-    max-width: 100%;
+  .summary-stats {
+    justify-content: flex-start;
+  }
+
+  .service-controls,
+  .steam-connect,
+  .faceit-block {
+    justify-items: stretch;
+    min-width: 0;
+  }
+
+  .steam-actions,
+  .faceit-summary {
+    justify-content: flex-start;
+  }
+
+  .service-action,
+  .steam-login {
+    width: 100%;
+  }
+
+  .service-hint {
+    max-width: none;
+    text-align: left;
   }
 }
 
-@media (max-width: 480px) {
-  .integrations-hero,
+@media (max-width: 520px) {
+  .integrations-summary,
   .service-card {
-    padding: 16px;
+    border-radius: 16px;
+    padding: 14px;
   }
 
-  .hero-copy h2 {
-    font-size: 26px;
+  .service-main {
+    align-items: flex-start;
+  }
+
+  .service-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .integrations-shell *,
+  .integrations-shell *::before,
+  .integrations-shell *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
   }
 }
 </style>

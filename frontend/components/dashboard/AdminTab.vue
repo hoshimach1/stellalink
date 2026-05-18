@@ -1,10 +1,9 @@
 <template>
   <div class="admin-shell">
-    <section class="admin-summary">
-      <div>
-        <p class="admin-kicker">Администрирование</p>
-        <h2>Почта и auth-ссылки</h2>
-        <span>SMTP, адрес фронтенда и время жизни ссылок подтверждения.</span>
+    <section class="admin-toolbar">
+      <div class="admin-title">
+        <h2>Система</h2>
+        <span>Почта, auth-ссылки и игровые API.</span>
       </div>
       <button class="outline-btn" type="button" :disabled="loading || apiLoading" @click="loadAllSettings">
         <span v-if="loading || apiLoading" class="admin-spinner dark" />
@@ -15,20 +14,49 @@
       </button>
     </section>
 
+    <section class="admin-health" aria-label="Статус системы">
+      <article class="health-card" :class="smtpHealthTone">
+        <span class="health-icon"><i class="ri-mail-check-line" /></span>
+        <div>
+          <strong>{{ smtpHealthLabel }}</strong>
+          <span>{{ smtpStatus }}</span>
+        </div>
+      </article>
+
+      <article class="health-card" :class="apiHealthTone">
+        <span class="health-icon"><i class="ri-gamepad-line" /></span>
+        <div>
+          <strong>{{ apiHealthLabel }}</strong>
+          <span>{{ apiStatus }}</span>
+        </div>
+      </article>
+
+      <article class="health-card">
+        <span class="health-icon"><i class="ri-timer-flash-line" /></span>
+        <div>
+          <strong>{{ ttlSummary }}</strong>
+          <span>{{ form.frontend_base_url || 'Frontend URL не задан' }}</span>
+        </div>
+      </article>
+    </section>
+
     <section class="admin-grid">
       <article class="admin-card admin-card-wide">
         <div class="card-head">
-          <span class="card-icon"><i class="ri-mail-settings-line" /></span>
           <div>
-            <h3>SMTP</h3>
-            <p>{{ smtpStatus }}</p>
+            <h3>Почта</h3>
+            <p>Отправка подтверждений и сброса пароля.</p>
           </div>
+          <span class="card-icon"><i class="ri-mail-settings-line" /></span>
         </div>
 
         <form class="admin-form" @submit.prevent="saveSettings">
-          <label class="admin-toggle">
+          <label class="admin-switch">
             <input v-model="form.enabled" type="checkbox">
-            <span>Включить отправку писем</span>
+            <span>
+              <strong>Отправка писем</strong>
+              <small>{{ form.enabled ? 'Включена' : 'Выключена, ссылки останутся в логах backend' }}</small>
+            </span>
           </label>
 
           <div class="admin-row">
@@ -94,11 +122,11 @@
 
       <article class="admin-card">
         <div class="card-head">
-          <span class="card-icon"><i class="ri-links-line" /></span>
           <div>
-            <h3>Ссылки</h3>
+            <h3>Ссылки и TTL</h3>
             <p>База для verify-email и reset-password.</p>
           </div>
+          <span class="card-icon"><i class="ri-links-line" /></span>
         </div>
 
         <form class="admin-form" @submit.prevent="saveSettings">
@@ -116,16 +144,24 @@
             <span>Сброс пароля, сек</span>
             <input v-model.number="form.password_reset_ttl_seconds" type="number" min="300" max="86400">
           </label>
+
+          <button class="outline-btn" type="submit" :disabled="saving">
+            <span v-if="saving" class="admin-spinner dark" />
+            <template v-else>
+              <i class="ri-save-3-line" />
+              <span>Сохранить ссылки</span>
+            </template>
+          </button>
         </form>
       </article>
 
       <article class="admin-card">
         <div class="card-head">
-          <span class="card-icon"><i class="ri-key-2-line" /></span>
           <div>
-            <h3>Steam и FACEIT API</h3>
+            <h3>Игровые API</h3>
             <p>{{ apiStatus }}</p>
           </div>
+          <span class="card-icon"><i class="ri-key-2-line" /></span>
         </div>
 
         <form class="admin-form" @submit.prevent="saveApiSettings">
@@ -151,7 +187,7 @@
             </label>
           </div>
 
-          <div class="admin-note">
+          <div class="admin-note muted">
             Steam не отдаёт цены предметов через обычный Web API. Для честного “самого дорогого предмета” нужен отдельный источник цен или publisher key с Economy permissions.
           </div>
 
@@ -169,11 +205,11 @@
 
       <article class="admin-card">
         <div class="card-head">
-          <span class="card-icon"><i class="ri-send-plane-line" /></span>
           <div>
-            <h3>Тест</h3>
+            <h3>Тест письма</h3>
             <p>Проверка текущей конфигурации.</p>
           </div>
+          <span class="card-icon"><i class="ri-send-plane-line" /></span>
         </div>
 
         <form class="admin-form" @submit.prevent="sendTestEmail">
@@ -298,9 +334,38 @@ const apiStatus = computed(() => {
   if (steamKeySet.value) return 'Steam подключен. Добавьте FACEIT key для автоподтягивания ELO и уровня.'
   return 'Добавьте Steam key, чтобы валидировать Steam ID и получать профильные данные.'
 })
+const smtpHealthTone = computed(() => {
+  if (!form.enabled) return 'muted'
+  return form.host ? 'ok' : 'warn'
+})
+const smtpHealthLabel = computed(() => {
+  if (!form.enabled) return 'Почта выключена'
+  return form.host ? 'Почта готова' : 'Нужен SMTP host'
+})
+const apiHealthTone = computed(() => {
+  if (steamKeySet.value && faceitKeySet.value) return 'ok'
+  if (steamKeySet.value || faceitKeySet.value) return 'warn'
+  return 'muted'
+})
+const apiHealthLabel = computed(() => {
+  if (steamKeySet.value && faceitKeySet.value) return 'API готовы'
+  if (steamKeySet.value || faceitKeySet.value) return 'API частично'
+  return 'API не настроены'
+})
+const ttlSummary = computed(() =>
+  `Email ${formatDuration(form.email_verification_ttl_seconds)} · Reset ${formatDuration(form.password_reset_ttl_seconds)}`,
+)
 onMounted(() => {
   void loadAllSettings()
 })
+
+function formatDuration(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '—'
+  const hours = seconds / 3600
+  if (hours >= 24 && Number.isInteger(hours / 24)) return `${hours / 24} д`
+  if (hours >= 1) return `${Math.round(hours)} ч`
+  return `${Math.round(seconds / 60)} мин`
+}
 
 function applySettings(data: SmtpSettings) {
   form.enabled = data.enabled
@@ -443,7 +508,7 @@ async function sendTestEmail() {
 <style scoped>
 .admin-shell {
   display: grid;
-  width: min(1120px, 100%);
+  width: min(1060px, 100%);
   gap: 12px;
   margin: 0 auto;
 }
@@ -453,59 +518,124 @@ async function sendTestEmail() {
   box-sizing: border-box;
 }
 
-.admin-summary,
+.admin-toolbar,
+.health-card,
 .admin-card {
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 92%, transparent);
-  box-shadow: 0 10px 28px rgba(48, 63, 92, 0.08);
+  border: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 86%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 94%, transparent);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--dash-text-1, #10182b) 7%, transparent);
 }
 
-.admin-summary {
+.admin-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 18px;
+  padding: 14px 16px;
 }
 
-.admin-kicker,
-.admin-summary h2,
-.admin-summary span,
+.admin-title,
+.card-head > div,
+.health-card > div {
+  min-width: 0;
+}
+
+.admin-title h2,
+.admin-title span,
 .card-head h3,
-.card-head p {
+.card-head p,
+.health-card strong,
+.health-card span {
   margin: 0;
 }
 
-.admin-kicker {
-  color: var(--dash-accent-strong, #163E86);
-  font-size: 12px;
-  font-weight: 900;
+.admin-title h2 {
+  color: var(--dash-text-1, #10182b);
+  font-size: 22px;
+  line-height: 1.12;
 }
 
-.admin-summary h2 {
-  margin-top: 4px;
-  font-size: 30px;
-  line-height: 1.08;
-}
-
-.admin-summary span,
-.card-head p {
+.admin-title span,
+.card-head p,
+.health-card span {
   color: var(--dash-text-2, #475778);
   font-size: 13px;
   line-height: 1.45;
 }
 
+.admin-title span {
+  display: block;
+  margin-top: 4px;
+}
+
+.admin-health {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.health-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 13px;
+}
+
+.health-icon {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
+  color: var(--dash-accent-strong, #163E86);
+  font-size: 18px;
+}
+
+.health-card strong {
+  display: block;
+  color: var(--dash-text-1, #10182b);
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 900;
+}
+
+.health-card span {
+  display: -webkit-box;
+  margin-top: 3px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.health-card.ok .health-icon {
+  background: var(--dash-green-soft, #E1F6EA);
+  color: var(--dash-green, #188A55);
+}
+
+.health-card.warn .health-icon {
+  background: var(--dash-warn-soft, #FFF0CF);
+  color: var(--dash-warn, #9B6200);
+}
+
+.health-card.muted .health-icon {
+  background: var(--dash-surface-soft, #F2F4F8);
+  color: var(--dash-text-3, #66789c);
+}
+
 .admin-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  grid-template-columns: minmax(0, 1.28fr) minmax(300px, 0.86fr);
   gap: 12px;
 }
 
 .admin-card {
   display: grid;
   align-content: start;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
   padding: 16px;
 }
@@ -517,7 +647,8 @@ async function sendTestEmail() {
 .card-head {
   display: flex;
   gap: 12px;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
 }
 
 .card-icon {
@@ -526,7 +657,7 @@ async function sendTestEmail() {
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
-  border-radius: 8px;
+  border-radius: 14px;
   background: var(--dash-accent-soft, rgba(52,94,168,0.12));
   color: var(--dash-accent-strong, #163E86);
   font-size: 19px;
@@ -534,7 +665,8 @@ async function sendTestEmail() {
 
 .card-head h3 {
   color: var(--dash-text-1, #10182b);
-  font-size: 18px;
+  font-size: 17px;
+  line-height: 1.2;
 }
 
 .admin-form {
@@ -544,7 +676,7 @@ async function sendTestEmail() {
 
 .admin-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.46fr);
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.45fr);
   gap: 12px;
 }
 
@@ -555,7 +687,7 @@ async function sendTestEmail() {
 }
 
 .admin-field.small {
-  min-width: 140px;
+  min-width: 130px;
 }
 
 .admin-field > span {
@@ -569,39 +701,64 @@ async function sendTestEmail() {
   width: 100%;
   min-height: 44px;
   border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
-  border-radius: 8px;
-  background: var(--dash-surface-strong, #fff);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 96%, transparent);
   color: var(--dash-text-1, #10182b);
   font: inherit;
   outline: none;
   padding: 0 12px;
-  transition: border-color 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 180ms cubic-bezier(0.2, 0, 0, 1);
+  transition:
+    border-color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    box-shadow 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    background 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .admin-field input:focus,
 .admin-field select:focus {
   border-color: var(--dash-accent, #345EA8);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent, #345EA8) 16%, transparent);
+  background: var(--dash-surface-strong, #fff);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent, #345EA8) 15%, transparent);
 }
 
-.admin-toggle {
-  min-height: 44px;
+.admin-switch {
+  min-height: 52px;
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 82%, transparent);
+  border-radius: 16px;
+  background: var(--dash-surface-soft, #F2F4F8);
   color: var(--dash-text-1, #10182b);
-  font-weight: 900;
+  cursor: pointer;
 }
 
-.admin-toggle input {
-  width: 18px;
-  height: 18px;
+.admin-switch input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
   accent-color: var(--dash-accent, #345EA8);
+}
+
+.admin-switch span {
+  display: grid;
+  gap: 1px;
+}
+
+.admin-switch strong {
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.admin-switch small {
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .outline-btn,
 .filled-btn {
-  min-height: 42px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -612,6 +769,11 @@ async function sendTestEmail() {
   font: inherit;
   font-weight: 900;
   cursor: pointer;
+  transition:
+    transform 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    background 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    border-color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .outline-btn {
@@ -632,12 +794,16 @@ async function sendTestEmail() {
 }
 
 .admin-note {
-  padding: 11px 13px;
-  border-radius: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
   background: var(--dash-surface-soft, #F2F4F8);
   color: var(--dash-text-2, #475778);
   font-size: 13px;
   line-height: 1.45;
+}
+
+.admin-note.muted {
+  color: var(--dash-text-3, #66789c);
 }
 
 .admin-note.success {
@@ -665,11 +831,32 @@ async function sendTestEmail() {
   border-top-color: var(--dash-accent, #345EA8);
 }
 
+.outline-btn:focus-visible,
+.filled-btn:focus-visible,
+.admin-switch:focus-within,
+.admin-field input:focus-visible,
+.admin-field select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--dash-accent, #345EA8) 32%, transparent);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .outline-btn:hover:not(:disabled),
+  .filled-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+}
+
 @keyframes admin-spin {
   to { transform: rotate(360deg); }
 }
 
 @media (max-width: 980px) {
+  .admin-shell {
+    max-width: 760px;
+  }
+
+  .admin-health,
   .admin-grid {
     grid-template-columns: 1fr;
   }
@@ -680,22 +867,41 @@ async function sendTestEmail() {
 }
 
 @media (max-width: 680px) {
-  .admin-summary {
+  .admin-toolbar {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .admin-summary h2 {
-    font-size: 24px;
+  .admin-title h2 {
+    font-size: 20px;
   }
 
   .admin-row {
     grid-template-columns: 1fr;
   }
 
+  .admin-field.small {
+    min-width: 0;
+  }
+
   .outline-btn,
   .filled-btn {
     width: 100%;
+  }
+
+  .admin-toolbar,
+  .health-card,
+  .admin-card {
+    border-radius: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell *,
+  .admin-shell *::before,
+  .admin-shell *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
   }
 }
 </style>

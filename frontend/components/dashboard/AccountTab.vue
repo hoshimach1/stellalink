@@ -2,8 +2,8 @@
   <CropAvatarModal :file="cropFile" :saving="avatarLoading" @save="onCropSave" @cancel="cropFile = null" />
 
   <div class="account-shell">
-    <section class="account-summary">
-      <div class="account-id">
+    <section class="account-overview" aria-label="Сводка аккаунта">
+      <div class="account-person">
         <div class="account-avatar">
           <img v-if="avatarSrc" :src="avatarSrc" alt="">
           <span v-else>{{ userInitial }}</span>
@@ -14,124 +14,134 @@
           </label>
         </div>
         <div class="account-copy">
-          <p class="account-kicker">Аккаунт</p>
-          <h2>{{ auth.user?.email ?? 'Stellalink account' }}</h2>
-          <span>{{ auth.user?.email_verified ? 'Email подтвержден' : 'Email ожидает подтверждения' }}</span>
+          <strong>{{ profile.profile?.display_name || auth.user?.email || 'Stellalink' }}</strong>
+          <span>{{ auth.user?.email ?? 'Email не указан' }}</span>
+          <NuxtLink v-if="profile.profile" class="account-link" :to="`/${profile.profile.slug}`">
+            <i class="ri-external-link-line" />
+            <span>{{ requestHost }}/{{ profile.profile.slug }}</span>
+          </NuxtLink>
         </div>
       </div>
 
-      <div class="account-badges">
-        <span class="account-badge" :class="{ ok: auth.user?.email_verified }">
+      <div class="account-status-row">
+        <span class="account-chip" :class="{ ok: auth.user?.email_verified }">
           <i :class="auth.user?.email_verified ? 'ri-shield-check-line' : 'ri-mail-warning-line'" />
-          {{ auth.user?.email_verified ? 'Защищен' : 'Нужно письмо' }}
+          {{ auth.user?.email_verified ? 'Email подтвержден' : 'Нужно подтвердить email' }}
         </span>
-        <span v-if="createdLabel" class="account-badge">
+        <span v-if="createdLabel" class="account-chip">
           <i class="ri-calendar-line" />
-          {{ createdLabel }}
+          С {{ createdLabel }}
         </span>
       </div>
 
-      <div v-if="avatarError" class="account-note error account-summary-note">{{ avatarError }}</div>
-      <div v-if="avatarOk" class="account-note success account-summary-note">Аватар обновлен.</div>
+      <div v-if="avatarError" class="account-note error account-wide-note">{{ avatarError }}</div>
+      <div v-if="avatarOk" class="account-note success account-wide-note">Аватар обновлен.</div>
     </section>
 
-    <section class="account-grid">
-      <article v-if="profile.profile" class="account-card">
+    <section class="account-layout">
+      <article v-if="profile.profile" class="account-card account-card-main">
         <div class="card-head">
-          <span class="card-icon"><i class="ri-id-card-line" /></span>
           <div>
-            <h3>Публичная идентичность</h3>
-            <p>Имя и адрес страницы можно менять и здесь.</p>
+            <h3>Публичный профиль</h3>
+            <p>Имя и адрес, которые видят посетители.</p>
           </div>
         </div>
 
         <form class="account-form" @submit.prevent="saveIdentity">
-          <label class="account-field">
-            <span>Имя или ник</span>
-            <input v-model="editName" type="text" placeholder="Alex K." autocomplete="off">
-          </label>
+          <div class="account-field-grid">
+            <label class="account-field">
+              <span>Имя или ник</span>
+              <input v-model="editName" type="text" placeholder="Alex K." autocomplete="off">
+            </label>
 
-          <label class="account-field">
-            <span>Адрес страницы</span>
-            <div class="slug-field">
-              <span>{{ requestHost }}/</span>
-              <input v-model="editSlug" type="text" placeholder="username" autocomplete="off">
-            </div>
-          </label>
+            <label class="account-field">
+              <span>Адрес страницы</span>
+              <div class="slug-field">
+                <span>{{ requestHost }}/</span>
+                <input v-model="editSlug" type="text" placeholder="username" autocomplete="off">
+              </div>
+            </label>
+          </div>
 
           <div v-if="identityError" class="account-note error">{{ identityError }}</div>
           <div v-if="identityOk" class="account-note success">Профиль обновлен.</div>
 
-          <button class="filled-btn" type="submit" :disabled="identityLoading || !identityHasChanges">
-            <span v-if="identityLoading" class="account-spinner" />
-            <span v-else>Сохранить</span>
-          </button>
+          <div class="form-actions">
+            <span class="form-hint">{{ identityHasChanges ? 'Есть несохраненные изменения' : 'Все изменения сохранены' }}</span>
+            <button class="filled-btn" type="submit" :disabled="identityLoading || !identityHasChanges">
+              <span v-if="identityLoading" class="account-spinner" />
+              <span v-else>Сохранить</span>
+            </button>
+          </div>
         </form>
       </article>
 
-      <article class="account-card">
-        <div class="card-head">
-          <span class="card-icon"><i class="ri-mail-settings-line" /></span>
-          <div>
-            <h3>Email</h3>
-            <p>{{ auth.user?.email }}</p>
-          </div>
-        </div>
-
-        <div class="email-status" :class="{ verified: auth.user?.email_verified }">
-          <i :class="auth.user?.email_verified ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'" />
-          <span>{{ auth.user?.email_verified ? 'Адрес подтвержден' : 'Адрес не подтвержден' }}</span>
-        </div>
-
-        <button v-if="!auth.user?.email_verified" class="outline-btn" type="button" :disabled="verifyLoading" @click="sendVerification">
-          <span v-if="verifyLoading" class="account-spinner dark" />
-          <template v-else>
-            <i class="ri-send-plane-line" />
-            <span>Отправить письмо</span>
-          </template>
-        </button>
-
-        <div v-if="verifyNotice" class="account-note" :class="verifyNoticeTone">{{ verifyNotice }}</div>
-      </article>
-
-      <article class="account-card">
-        <div class="card-head">
-          <span class="card-icon"><i class="ri-lock-password-line" /></span>
-          <div>
-            <h3>Пароль</h3>
-            <p>Минимум 8 символов, буква и цифра.</p>
-          </div>
-        </div>
-
-        <form class="account-form" @submit.prevent="changePassword">
-          <label class="account-field">
-            <span>Текущий пароль</span>
-            <input v-model="oldPass" type="password" autocomplete="current-password" placeholder="Введите текущий пароль">
-          </label>
-
-          <label class="account-field">
-            <span>Новый пароль</span>
-            <input v-model="newPass" type="password" autocomplete="new-password" placeholder="Новый пароль" minlength="8">
-          </label>
-
-          <label class="account-field">
-            <span>Повторите пароль</span>
-            <input v-model="confirmPass" type="password" autocomplete="new-password" placeholder="Еще раз">
-          </label>
-
-          <div class="strength-meter" :class="passwordStrength.tone">
-            <span :style="{ width: passwordStrength.width }" />
+      <div class="account-stack">
+        <article class="account-card">
+          <div class="card-head split">
+            <div>
+              <h3>Email</h3>
+              <p>{{ auth.user?.email }}</p>
+            </div>
+            <span class="mini-icon" :class="{ ok: auth.user?.email_verified }">
+              <i :class="auth.user?.email_verified ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'" />
+            </span>
           </div>
 
-          <div v-if="passError" class="account-note error">{{ passError }}</div>
-          <div v-if="passOk" class="account-note success">Пароль обновлен.</div>
+          <div class="email-status" :class="{ verified: auth.user?.email_verified }">
+            <span>{{ auth.user?.email_verified ? 'Адрес подтвержден' : 'Адрес не подтвержден' }}</span>
+          </div>
 
-          <button class="filled-btn" type="submit" :disabled="passLoading || !canSubmitPass">
-            <span v-if="passLoading" class="account-spinner" />
-            <span v-else>Сменить пароль</span>
+          <button v-if="!auth.user?.email_verified" class="outline-btn" type="button" :disabled="verifyLoading" @click="sendVerification">
+            <span v-if="verifyLoading" class="account-spinner dark" />
+            <template v-else>
+              <i class="ri-send-plane-line" />
+              <span>Отправить письмо</span>
+            </template>
           </button>
-        </form>
-      </article>
+
+          <div v-if="verifyNotice" class="account-note" :class="verifyNoticeTone">{{ verifyNotice }}</div>
+        </article>
+
+        <article class="account-card">
+          <div class="card-head split">
+            <div>
+              <h3>Пароль</h3>
+              <p>Минимум 8 символов, буква и цифра.</p>
+            </div>
+            <span class="mini-icon"><i class="ri-lock-password-line" /></span>
+          </div>
+
+          <form class="account-form" @submit.prevent="changePassword">
+            <label class="account-field">
+              <span>Текущий пароль</span>
+              <input v-model="oldPass" type="password" autocomplete="current-password" placeholder="Введите текущий пароль">
+            </label>
+
+            <label class="account-field">
+              <span>Новый пароль</span>
+              <input v-model="newPass" type="password" autocomplete="new-password" placeholder="Новый пароль" minlength="8">
+            </label>
+
+            <label class="account-field">
+              <span>Повторите пароль</span>
+              <input v-model="confirmPass" type="password" autocomplete="new-password" placeholder="Еще раз">
+            </label>
+
+            <div class="strength-meter" :class="passwordStrength.tone">
+              <span :style="{ width: passwordStrength.width }" />
+            </div>
+
+            <div v-if="passError" class="account-note error">{{ passError }}</div>
+            <div v-if="passOk" class="account-note success">Пароль обновлен.</div>
+
+            <button class="filled-btn" type="submit" :disabled="passLoading || !canSubmitPass">
+              <span v-if="passLoading" class="account-spinner" />
+              <span v-else>Сменить пароль</span>
+            </button>
+          </form>
+        </article>
+      </div>
 
     </section>
   </div>
@@ -309,9 +319,10 @@ async function changePassword() {
 <style scoped>
 .account-shell {
   display: grid;
-  width: 100%;
+  width: min(100%, 1060px);
   min-width: 0;
-  gap: 16px;
+  gap: 12px;
+  margin: 0 auto;
 }
 
 .account-shell,
@@ -319,39 +330,46 @@ async function changePassword() {
   box-sizing: border-box;
 }
 
+.account-overview,
 .account-card {
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 90%, transparent);
-  box-shadow: var(--dash-shadow, 0 16px 42px rgba(48, 63, 92, 0.11));
+  width: 100%;
   min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 86%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 94%, transparent);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--dash-text-1, #10182b) 7%, transparent);
 }
 
-.account-id {
+.account-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+}
+
+.account-person {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 13px;
   min-width: 0;
 }
 
 .account-avatar {
   position: relative;
+  width: 68px;
+  height: 68px;
   display: grid;
   place-items: center;
-  --avatar-camera-offset: -5px;
-  --avatar-camera-size: 34px;
-  overflow: visible;
-  background: linear-gradient(135deg, var(--dash-accent, #345EA8), #F59E0B);
-  color: #fff;
-  font-weight: 900;
-}
-
-.account-avatar {
-  width: 88px;
-  height: 88px;
   flex: 0 0 auto;
-  border-radius: 8px;
-  font-size: 34px;
+  overflow: visible;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 28% 20%, rgba(255,255,255,0.35), transparent 30%),
+    linear-gradient(135deg, var(--dash-accent, #345EA8), color-mix(in srgb, var(--dash-accent, #345EA8) 50%, var(--dash-green, #188A55)));
+  color: #fff;
+  font-size: 28px;
+  font-weight: 900;
 }
 
 .account-avatar img {
@@ -364,130 +382,188 @@ async function changePassword() {
 
 .avatar-camera {
   position: absolute;
-  right: var(--avatar-camera-offset);
-  bottom: var(--avatar-camera-offset);
+  right: -5px;
+  bottom: -5px;
   z-index: 1;
-  width: var(--avatar-camera-size);
-  height: var(--avatar-camera-size);
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
   border: 3px solid var(--dash-surface-strong, #fff);
   border-radius: 50%;
-  background: color-mix(in srgb, var(--dash-accent, #345EA8) 84%, white);
+  background: var(--dash-accent, #345EA8);
   color: #fff;
   cursor: pointer;
   line-height: 1;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--dash-text-1, #10182b) 18%, transparent);
+  transition: transform 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)), background 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.avatar-camera::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
 }
 
 .avatar-camera i {
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1;
 }
 
 .account-copy {
+  display: grid;
+  gap: 3px;
   min-width: 0;
 }
 
-.account-kicker,
-.account-copy h2,
+.account-copy strong,
 .account-copy span,
 .card-head h3,
 .card-head p {
   margin: 0;
 }
 
-.account-kicker {
-  color: var(--dash-accent-strong, #163E86);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.account-copy h2 {
-  margin-top: 4px;
+.account-copy strong {
   color: var(--dash-text-1, #10182b);
-  font-size: 36px;
-  line-height: 1.05;
+  font-size: 22px;
+  line-height: 1.12;
+  font-weight: 900;
   overflow-wrap: anywhere;
 }
 
 .account-copy span {
-  display: block;
-  margin-top: 6px;
   color: var(--dash-text-2, #475778);
-  font-size: 14px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
-.account-badges {
+.account-link {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
+  color: var(--dash-accent-strong, #163E86);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.account-link span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-status-row {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
 }
 
-.account-badge {
-  min-height: 34px;
+.account-chip {
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 0 12px;
+  padding: 0 11px;
   border-radius: 999px;
   background: var(--dash-warn-soft, #FFF0CF);
   color: var(--dash-warn, #9B6200);
   font-size: 12px;
   font-weight: 900;
+  white-space: nowrap;
 }
 
-.account-badge.ok {
+.account-chip.ok {
   background: var(--dash-green-soft, #E1F6EA);
   color: var(--dash-green, #188A55);
 }
 
-.account-grid {
+.account-wide-note {
+  grid-column: 1 / -1;
+}
+
+.account-layout {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.account-stack {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
 }
 
 .account-card {
   display: grid;
   align-content: start;
-  gap: 16px;
-  padding: 18px;
+  gap: 14px;
+  padding: 16px;
+}
+
+.account-card-main {
+  min-height: 100%;
 }
 
 .card-head {
   display: flex;
   gap: 12px;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.card-icon {
-  width: 40px;
-  height: 40px;
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border-radius: 8px;
-  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
-  color: var(--dash-accent-strong, #163E86);
-  font-size: 20px;
+.card-head.split {
+  align-items: flex-start;
 }
 
 .card-head h3 {
   color: var(--dash-text-1, #10182b);
-  font-size: 19px;
+  font-size: 17px;
+  line-height: 1.2;
 }
 
 .card-head p {
   margin-top: 3px;
   color: var(--dash-text-2, #475778);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
+.mini-icon {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
+  color: var(--dash-accent-strong, #163E86);
+  font-size: 18px;
+}
+
+.mini-icon.ok {
+  background: var(--dash-green-soft, #E1F6EA);
+  color: var(--dash-green, #188A55);
+}
+
 .account-form {
+  display: grid;
+  gap: 12px;
+}
+
+.account-field-grid {
   display: grid;
   gap: 12px;
 }
@@ -506,14 +582,17 @@ async function changePassword() {
 .account-field input,
 .slug-field {
   width: 100%;
-  min-height: 46px;
+  min-height: 44px;
   border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
-  border-radius: 8px;
-  background: var(--dash-surface-strong, #fff);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 96%, transparent);
   color: var(--dash-text-1, #10182b);
   font: inherit;
   outline: none;
-  transition: border-color 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 180ms cubic-bezier(0.2, 0, 0, 1);
+  transition:
+    border-color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    box-shadow 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    background 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .account-field input {
@@ -528,14 +607,18 @@ async function changePassword() {
 }
 
 .slug-field span {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
   color: var(--dash-text-3, #66789c);
   font-size: 12px;
   font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .slug-field input {
-  min-width: 0;
+  min-width: 88px;
   min-height: auto;
   padding: 0;
   border: 0;
@@ -545,7 +628,22 @@ async function changePassword() {
 .account-field input:focus,
 .slug-field:focus-within {
   border-color: var(--dash-accent, #345EA8);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent, #345EA8) 16%, transparent);
+  background: var(--dash-surface-strong, #fff);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent, #345EA8) 15%, transparent);
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.form-hint {
+  color: var(--dash-text-3, #66789c);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .outline-btn,
@@ -562,10 +660,10 @@ async function changePassword() {
   font-weight: 900;
   cursor: pointer;
   transition:
-    transform 180ms cubic-bezier(0.2, 0, 0, 1),
-    background 180ms cubic-bezier(0.2, 0, 0, 1),
-    border-color 180ms cubic-bezier(0.2, 0, 0, 1),
-    color 180ms cubic-bezier(0.2, 0, 0, 1);
+    transform 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    background 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    border-color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .outline-btn {
@@ -579,26 +677,21 @@ async function changePassword() {
   border-color: transparent;
 }
 
-.outline-btn.danger {
-  color: var(--dash-red, #B3323A);
-}
-
-.outline-btn.disabled,
 .outline-btn:disabled,
 .filled-btn:disabled {
   cursor: not-allowed;
-  opacity: 0.58;
+  opacity: 0.56;
 }
 
 .email-status {
-  min-height: 48px;
+  min-height: 40px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 14px;
-  border-radius: 8px;
+  padding: 0 12px;
+  border-radius: 14px;
   background: var(--dash-warn-soft, #FFF0CF);
   color: var(--dash-warn, #9B6200);
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -608,8 +701,8 @@ async function changePassword() {
 }
 
 .account-note {
-  padding: 11px 13px;
-  border-radius: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
   background: var(--dash-surface-soft, #F2F4F8);
   color: var(--dash-text-2, #475778);
   font-size: 13px;
@@ -638,7 +731,7 @@ async function changePassword() {
   height: 100%;
   border-radius: inherit;
   background: var(--dash-red, #B3323A);
-  transition: width 220ms cubic-bezier(0.2, 0, 0, 1), background 220ms cubic-bezier(0.2, 0, 0, 1);
+  transition: width 220ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)), background 220ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .strength-meter.medium span {
@@ -665,6 +758,15 @@ async function changePassword() {
   border-top-color: var(--dash-accent, #345EA8);
 }
 
+.account-link:focus-visible,
+.avatar-camera:focus-visible,
+.outline-btn:focus-visible,
+.filled-btn:focus-visible,
+.account-field input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--dash-accent, #345EA8) 32%, transparent);
+  outline-offset: 2px;
+}
+
 @media (hover: hover) {
   .outline-btn:hover:not(:disabled),
   .filled-btn:hover:not(:disabled),
@@ -672,9 +774,8 @@ async function changePassword() {
     transform: translateY(-1px);
   }
 
-  .outline-btn.danger:hover:not(:disabled) {
-    background: var(--dash-red-soft, #FFE5E7);
-    border-color: color-mix(in srgb, var(--dash-red, #B3323A) 32%, var(--dash-outline, #d4dbe8));
+  .account-link:hover {
+    background: color-mix(in srgb, var(--dash-accent-soft, rgba(52,94,168,0.12)) 72%, white);
   }
 }
 
@@ -683,26 +784,54 @@ async function changePassword() {
 }
 
 @media (max-width: 980px) {
-  .account-grid {
+  .account-shell {
+    max-width: 760px;
+  }
+
+  .account-overview,
+  .account-layout {
     grid-template-columns: 1fr;
+  }
+
+  .account-status-row {
+    justify-content: flex-start;
   }
 }
 
 @media (max-width: 680px) {
-  .account-id {
+  .account-overview,
+  .account-card {
+    border-radius: 16px;
+    padding: 14px;
+  }
+
+  .account-person {
+    align-items: flex-start;
+  }
+
+  .account-avatar {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    font-size: 23px;
+  }
+
+  .account-copy strong {
+    font-size: 18px;
+  }
+
+  .account-status-row {
+    gap: 6px;
+  }
+
+  .account-chip {
+    min-height: 30px;
+    padding: 0 9px;
+  }
+
+  .form-actions {
     align-items: stretch;
-  }
-
-  .account-id {
     flex-direction: column;
-  }
-
-  .account-badges {
-    justify-content: flex-start;
-  }
-
-  .account-copy h2 {
-    font-size: 28px;
   }
 
   .filled-btn,
@@ -711,143 +840,12 @@ async function changePassword() {
   }
 }
 
-.account-shell {
-  max-width: 1060px;
-  gap: 12px;
-  margin: 0 auto;
-}
-
-.account-summary,
-.account-card {
-  width: 100%;
-  min-width: 0;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 92%, transparent);
-  box-shadow: 0 10px 28px rgba(48, 63, 92, 0.08);
-}
-
-.account-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  min-height: 124px;
-  padding: 16px;
-}
-
-.account-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.account-card {
-  gap: 14px;
-  padding: 16px;
-}
-
-.account-avatar {
-  --avatar-camera-offset: -4px;
-  --avatar-camera-size: 32px;
-  width: 76px;
-  height: 76px;
-  border-radius: 8px;
-  font-size: 30px;
-}
-
-.account-copy h2 {
-  max-width: 640px;
-  font-size: 28px;
-  line-height: 1.08;
-}
-
-.account-copy span {
-  margin-top: 4px;
-}
-
-.account-badges {
-  max-width: 260px;
-}
-
-.account-summary-note {
-  flex: 1 0 100%;
-}
-
-.card-head {
-  align-items: center;
-}
-
-.card-icon {
-  width: 36px;
-  height: 36px;
-  font-size: 18px;
-}
-
-.card-head h3 {
-  font-size: 17px;
-}
-
-.card-head p {
-  font-size: 12px;
-}
-
-.account-field input,
-.slug-field {
-  min-height: 44px;
-}
-
-.email-status {
-  min-height: 44px;
-}
-
-.outline-btn,
-.filled-btn {
-  min-height: 42px;
-}
-
-@media (max-width: 980px) {
-  .account-shell {
-    max-width: 720px;
-  }
-
-  .account-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 680px) {
-  .account-summary {
-    align-items: flex-start;
-    flex-direction: column;
-    min-height: 0;
-  }
-
-  .account-id {
-    width: 100%;
-  }
-
-  .account-badges {
-    justify-content: flex-start;
-    max-width: none;
-  }
-
-  .account-copy h2 {
-    font-size: 23px;
-  }
-
-  .slug-field {
-    display: grid;
-    gap: 4px;
-    min-height: 58px;
-    padding: 8px 12px;
-  }
-
-  .slug-field span {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+@media (prefers-reduced-motion: reduce) {
+  .account-shell *,
+  .account-shell *::before,
+  .account-shell *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
   }
 }
 </style>
