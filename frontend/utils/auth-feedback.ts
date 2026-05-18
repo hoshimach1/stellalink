@@ -7,6 +7,7 @@ type FetchErrorShape = {
 
 const AUTH_MESSAGE_MAP: Record<string, string> = {
   'Email already registered': 'Этот email уже зарегистрирован.',
+  'Email is unchanged': 'Введите email, который отличается от текущего.',
   'Invalid email or password': 'Неверный email или пароль.',
   'Invalid or expired refresh token': 'Сессия истекла. Войдите снова.',
   'Email is already verified': 'Email уже подтвержден.',

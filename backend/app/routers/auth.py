@@ -1,5 +1,6 @@
 import math
 import os
+from datetime import datetime
 from pathlib import Path
 
 import aiofiles
@@ -11,6 +12,7 @@ from app.database import get_db
 from app.deps import get_current_user
 from app.models.user import User
 from app.schemas.auth import (
+    ChangeEmailRequest,
     ChangePasswordRequest,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -330,6 +332,53 @@ async def delete_avatar(
     current_user.avatar_url = None
     db.add(current_user)
     await db.commit()
+
+
+@router.post("/change-email", response_model=UserResponse)
+async def change_email(
+    body: ChangeEmailRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not current_user.password_hash or not verify_password(
+        body.current_password, current_user.password_hash
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    next_email = body.email.strip().lower()
+    current_email = current_user.email.strip().lower()
+    if next_email == current_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is unchanged",
+        )
+
+    if await get_user_by_email(db, next_email):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Email already registered"
+        )
+
+    current_user.email = next_email
+    current_user.email_verified = False
+    current_user.updated_at = datetime.utcnow()
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+
+    await apply_public_auth_settings(db)
+    verify_token = await create_email_verification_token(
+        current_user.id, current_user.email
+    )
+    await send_email_verification_email(
+        current_user.email,
+        verify_token,
+        await get_smtp_delivery_config(db),
+    )
+
+    return current_user
 
 
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)

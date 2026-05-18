@@ -159,3 +159,83 @@ async def test_change_password_rotates_other_sessions(client: AsyncClient):
         "/auth/login", json={"email": "pwchange@example.com", "password": "newstrong2"}
     )
     assert good_login.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_change_email_updates_login_email(client: AsyncClient):
+    reg = await client.post(
+        "/auth/register",
+        json={"email": "email-old@example.com", "password": "strongpass1"},
+    )
+    access_token = reg.json()["access_token"]
+
+    change = await client.post(
+        "/auth/change-email",
+        json={
+            "email": "Email-New@Example.com",
+            "current_password": "strongpass1",
+        },
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert change.status_code == 200
+    data = change.json()
+    assert data["email"] == "email-new@example.com"
+    assert data["email_verified"] is False
+
+    me = await client.get(
+        "/auth/me", headers={"Authorization": f"Bearer {access_token}"}
+    )
+    assert me.status_code == 200
+    assert me.json()["email"] == "email-new@example.com"
+
+    old_login = await client.post(
+        "/auth/login",
+        json={"email": "email-old@example.com", "password": "strongpass1"},
+    )
+    assert old_login.status_code == 401
+
+    new_login = await client.post(
+        "/auth/login",
+        json={"email": "email-new@example.com", "password": "strongpass1"},
+    )
+    assert new_login.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_change_email_rejects_duplicate(client: AsyncClient):
+    reg = await client.post(
+        "/auth/register",
+        json={"email": "email-owner@example.com", "password": "strongpass1"},
+    )
+    await client.post(
+        "/auth/register",
+        json={"email": "email-taken@example.com", "password": "strongpass1"},
+    )
+
+    change = await client.post(
+        "/auth/change-email",
+        json={
+            "email": "email-taken@example.com",
+            "current_password": "strongpass1",
+        },
+        headers={"Authorization": f"Bearer {reg.json()['access_token']}"},
+    )
+    assert change.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_change_email_requires_current_password(client: AsyncClient):
+    reg = await client.post(
+        "/auth/register",
+        json={"email": "email-password@example.com", "password": "strongpass1"},
+    )
+
+    change = await client.post(
+        "/auth/change-email",
+        json={
+            "email": "email-password-new@example.com",
+            "current_password": "wrongpass1",
+        },
+        headers={"Authorization": f"Bearer {reg.json()['access_token']}"},
+    )
+    assert change.status_code == 400

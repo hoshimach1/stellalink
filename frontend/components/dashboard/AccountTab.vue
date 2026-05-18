@@ -83,14 +83,40 @@
               <h3>Email</h3>
               <p>{{ auth.user?.email }}</p>
             </div>
-            <span class="mini-icon" :class="{ ok: auth.user?.email_verified }">
+            <span
+              class="mini-icon email-status"
+              :class="{ ok: auth.user?.email_verified }"
+              tabindex="0"
+              :aria-label="emailStatusTooltip"
+              :data-tooltip="emailStatusTooltip"
+            >
               <i :class="auth.user?.email_verified ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'" />
+              <span>{{ emailStatusLabel }}</span>
             </span>
           </div>
 
-          <div class="email-status" :class="{ verified: auth.user?.email_verified }">
-            <span>{{ auth.user?.email_verified ? 'Адрес подтвержден' : 'Адрес не подтвержден' }}</span>
-          </div>
+          <form class="account-form" @submit.prevent="changeEmail">
+            <label class="account-field">
+              <span>Новый email</span>
+              <input v-model="editEmail" type="email" autocomplete="email" placeholder="name@example.com">
+            </label>
+
+            <label class="account-field">
+              <span>Текущий пароль</span>
+              <input v-model="emailPassword" type="password" autocomplete="current-password" placeholder="Подтвердите изменение паролем">
+            </label>
+
+            <div v-if="emailError" class="account-note error">{{ emailError }}</div>
+            <div v-if="emailOk" class="account-note success">Email обновлен. Мы отправили письмо для подтверждения нового адреса.</div>
+
+            <div class="form-actions">
+              <span class="form-hint">{{ emailHasChanges ? 'После смены нужно подтвердить новый email' : 'Введите новый адрес, чтобы изменить email' }}</span>
+              <button class="filled-btn" type="submit" :disabled="emailLoading || !canSubmitEmail">
+                <span v-if="emailLoading" class="account-spinner" />
+                <span v-else>Сменить email</span>
+              </button>
+            </div>
+          </form>
 
           <button v-if="!auth.user?.email_verified" class="outline-btn" type="button" :disabled="verifyLoading" @click="sendVerification">
             <span v-if="verifyLoading" class="account-spinner dark" />
@@ -196,6 +222,36 @@ const identityHasChanges = computed(() => {
     || normalizeSlug(editSlug.value) !== profile.profile.slug
 })
 
+const editEmail = ref(auth.user?.email ?? '')
+const emailPassword = ref('')
+const emailLoading = ref(false)
+const emailError = ref('')
+const emailOk = ref(false)
+
+const emailStatusLabel = computed(() => auth.user?.email_verified ? 'Подтвержден' : 'Не подтвержден')
+const emailStatusTooltip = computed(() => auth.user?.email_verified
+  ? 'Адрес подтвержден. Его можно использовать для входа и восстановления доступа.'
+  : 'Адрес не подтвержден. Отправьте письмо и перейдите по ссылке, чтобы защитить аккаунт.')
+const emailHasChanges = computed(() => {
+  if (!auth.user?.email) return false
+  return normalizeEmail(editEmail.value) !== normalizeEmail(auth.user.email)
+})
+const canSubmitEmail = computed(() =>
+  emailHasChanges.value
+    && emailPassword.value.length > 0
+    && editEmail.value.trim().length > 0,
+)
+
+watch(() => auth.user?.email, (email) => {
+  editEmail.value = email ?? ''
+  emailPassword.value = ''
+})
+
+watch(editEmail, () => {
+  emailError.value = ''
+  emailOk.value = false
+})
+
 const verifyLoading = ref(false)
 const verifyNotice = ref('')
 const verifyNoticeTone = ref<'success' | 'error'>('success')
@@ -228,6 +284,10 @@ const canSubmitPass = computed(() =>
 
 function normalizeSlug(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '').slice(0, 50)
+}
+
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase()
 }
 
 function onAvatarFile(event: Event) {
@@ -286,6 +346,32 @@ async function sendVerification() {
     verifyNotice.value = extractAuthError(error, 'Не удалось отправить письмо.')
   } finally {
     verifyLoading.value = false
+  }
+}
+
+async function changeEmail() {
+  emailError.value = ''
+  emailOk.value = false
+  verifyNotice.value = ''
+
+  if (!emailHasChanges.value) {
+    emailError.value = 'Введите email, который отличается от текущего.'
+    return
+  }
+  if (!emailPassword.value) {
+    emailError.value = 'Введите текущий пароль.'
+    return
+  }
+
+  emailLoading.value = true
+  try {
+    await auth.changeEmail(editEmail.value, emailPassword.value)
+    emailPassword.value = ''
+    emailOk.value = true
+  } catch (error) {
+    emailError.value = extractAuthError(error, 'Не удалось сменить email.')
+  } finally {
+    emailLoading.value = false
   }
 }
 
@@ -523,6 +609,10 @@ async function changePassword() {
   justify-content: space-between;
 }
 
+.card-head > div {
+  min-width: 0;
+}
+
 .card-head.split {
   align-items: flex-start;
 }
@@ -542,6 +632,7 @@ async function changePassword() {
 }
 
 .mini-icon {
+  position: relative;
   width: 36px;
   height: 36px;
   display: inline-grid;
@@ -556,6 +647,71 @@ async function changePassword() {
 .mini-icon.ok {
   background: var(--dash-green-soft, #E1F6EA);
   color: var(--dash-green, #188A55);
+}
+
+.mini-icon.email-status {
+  width: auto;
+  min-height: 36px;
+  height: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  justify-content: center;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: var(--dash-warn-soft, #FFF0CF);
+  color: var(--dash-warn, #9B6200);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.mini-icon.email-status.ok {
+  background: var(--dash-green-soft, #E1F6EA);
+  color: var(--dash-green, #188A55);
+}
+
+.mini-icon.email-status i {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.mini-icon[data-tooltip]::before,
+.mini-icon[data-tooltip]::after {
+  position: absolute;
+  right: 0;
+  z-index: 5;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 160ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    transform 160ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.mini-icon[data-tooltip]::before {
+  content: "";
+  top: calc(100% + 3px);
+  border: 6px solid transparent;
+  border-bottom-color: var(--dash-text-1, #10182b);
+  transform: translateY(-4px);
+}
+
+.mini-icon[data-tooltip]::after {
+  content: attr(data-tooltip);
+  top: calc(100% + 14px);
+  width: max-content;
+  max-width: min(260px, 72vw);
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: var(--dash-text-1, #10182b);
+  color: #fff;
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--dash-text-1, #10182b) 22%, transparent);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  transform: translateY(-4px);
 }
 
 .account-form {
@@ -683,23 +839,6 @@ async function changePassword() {
   opacity: 0.56;
 }
 
-.email-status {
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  border-radius: 14px;
-  background: var(--dash-warn-soft, #FFF0CF);
-  color: var(--dash-warn, #9B6200);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.email-status.verified {
-  background: var(--dash-green-soft, #E1F6EA);
-  color: var(--dash-green, #188A55);
-}
-
 .account-note {
   padding: 10px 12px;
   border-radius: 14px;
@@ -760,6 +899,7 @@ async function changePassword() {
 
 .account-link:focus-visible,
 .avatar-camera:focus-visible,
+.mini-icon:focus-visible,
 .outline-btn:focus-visible,
 .filled-btn:focus-visible,
 .account-field input:focus-visible {
@@ -777,6 +917,18 @@ async function changePassword() {
   .account-link:hover {
     background: color-mix(in srgb, var(--dash-accent-soft, rgba(52,94,168,0.12)) 72%, white);
   }
+
+  .mini-icon[data-tooltip]:hover::before,
+  .mini-icon[data-tooltip]:hover::after {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mini-icon[data-tooltip]:focus-visible::before,
+.mini-icon[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 @keyframes account-spin {

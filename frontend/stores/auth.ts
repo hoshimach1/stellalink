@@ -331,6 +331,17 @@ export const useAuthStore = defineStore('auth', {
       })
     },
 
+    async changeEmail(email: string, currentPassword: string) {
+      const config = useRuntimeConfig()
+      this.user = await this.authorizedFetch<User>(`${config.public.apiBase}/auth/change-email`, {
+        method: 'POST',
+        body: {
+          email: normalizeEmail(email),
+          current_password: currentPassword,
+        },
+      })
+    },
+
     async requestEmailVerification(): Promise<RequestEmailVerificationResponse> {
       const config = useRuntimeConfig()
       return this.authorizedFetch<RequestEmailVerificationResponse>(
