@@ -98,14 +98,20 @@ frontend_build:
   script:
     - npm ci --prefer-offline
     - npm run build
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - frontend/.output/
 
 deploy_production:
   stage: deploy
   image: alpine:3.20
   needs:
     - job: backend_lint_and_test
+      artifacts: false
     - job: frontend_build
       optional: true
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
   environment:
@@ -165,8 +171,12 @@ deploy_production:
       EOF
     - chmod 600 "$HOME/.ssh/config"
   script:
-    - ssh deploy-target "hostname && mkdir -p '$DEPLOY_PATH'"
     - |
+      START="$(date +%s)"
+      ssh deploy-target "hostname && mkdir -p '$DEPLOY_PATH'"
+      echo "deploy_timing ssh_prepare=$(( $(date +%s) - START ))s"
+    - |
+      START="$(date +%s)"
       rsync -az --delete \
         --exclude '.git/' \
         --exclude '.gitea/' \
@@ -189,7 +199,9 @@ deploy_production:
         --exclude 'backend/.pytest_cache/' \
         --exclude 'backend/.ruff_cache/' \
         ./ deploy-target:"$DEPLOY_PATH"/
+      echo "deploy_timing rsync_source=$(( $(date +%s) - START ))s"
     - |
+      START="$(date +%s)"
       BACKEND_ENV_FILE=""
       if [ -f "$BACKEND_ENV" ]; then
         BACKEND_ENV_FILE="$BACKEND_ENV"
@@ -213,18 +225,49 @@ deploy_production:
       fi
 
       scp "$BACKEND_ENV_FILE" deploy-target:"$DEPLOY_PATH/backend/.env"
+      echo "deploy_timing backend_env=$(( $(date +%s) - START ))s"
     - |
-      ssh deploy-target "DEPLOY_PATH='$DEPLOY_PATH' sh -s" <<'REMOTE'
+      START="$(date +%s)"
+      FRONTEND_ARTIFACT_READY=0
+      if [ -f frontend/.output/server/index.mjs ]; then
+        rsync -az --delete frontend/.output/ deploy-target:"$DEPLOY_PATH/frontend/.output"/
+        FRONTEND_ARTIFACT_READY=1
+      fi
+      echo "deploy_timing frontend_artifact=$(( $(date +%s) - START ))s ready=$FRONTEND_ARTIFACT_READY"
+    - |
+      START="$(date +%s)"
+      FRONTEND_ARTIFACT_READY=0
+      if [ -f frontend/.output/server/index.mjs ]; then
+        FRONTEND_ARTIFACT_READY=1
+      fi
+      ssh deploy-target "DEPLOY_PATH='$DEPLOY_PATH' FRONTEND_ARTIFACT_READY='$FRONTEND_ARTIFACT_READY' sh -s" <<'REMOTE'
       set -eu
       cd "$DEPLOY_PATH/backend"
       export COMPOSE_DOCKER_CLI_BUILD=1
       export DOCKER_BUILDKIT=1
+      step_start="$(date +%s)"
 
       docker compose up -d db redis
       until docker compose exec -T db pg_isready -U stellalink >/dev/null 2>&1; do sleep 1; done
-      docker compose build --parallel api frontend
-      docker compose up -d --no-deps api frontend dozzle
+      echo "deploy_timing remote_db_redis=$(( $(date +%s) - step_start ))s"
+
+      step_start="$(date +%s)"
+      docker compose build api
+      echo "deploy_timing remote_api_build=$(( $(date +%s) - step_start ))s"
+
+      step_start="$(date +%s)"
+      docker compose up -d --no-deps api dozzle
+      if [ "$FRONTEND_ARTIFACT_READY" = "1" ]; then
+        docker compose up -d --no-deps --force-recreate frontend
+      else
+        docker compose up -d --no-deps frontend
+      fi
+      echo "deploy_timing remote_compose_up=$(( $(date +%s) - step_start ))s"
+
       if [ "${DEPLOY_PRUNE_IMAGES:-0}" = "1" ]; then
+        step_start="$(date +%s)"
         docker image prune -f
+        echo "deploy_timing remote_image_prune=$(( $(date +%s) - step_start ))s"
       fi
       REMOTE
+      echo "deploy_timing remote_total=$(( $(date +%s) - START ))s"

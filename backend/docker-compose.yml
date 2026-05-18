@@ -26,12 +26,18 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
 
   frontend:
-    build: ../frontend
+    image: node:20-alpine
+    working_dir: /app
+    command: node .output/server/index.mjs
     ports:
       - "3000:3000"
     environment:
       NUXT_PUBLIC_API_BASE: /api
       NUXT_API_PROXY_TARGET: http://api:8000
+      NODE_ENV: production
+      PORT: "3000"
+    volumes:
+      - ../frontend/.output:/app/.output:ro
     depends_on:
       - api
 
