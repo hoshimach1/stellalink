@@ -9,9 +9,6 @@
       <h1 class="auth-headline">Новый пароль</h1>
       <p class="auth-subtitle">Придумайте новый пароль для своего аккаунта и подтвердите его.</p>
 
-      <div v-if="error" class="auth-alert auth-alert-error" role="alert">{{ error }}</div>
-      <div v-if="success" class="auth-alert auth-alert-success" role="status">{{ success }}</div>
-
       <form class="auth-form" @submit.prevent="submit">
         <div class="auth-field">
           <label>Новый пароль</label>
@@ -62,6 +59,7 @@ useHead({ title: 'Сброс пароля — Stellalink' })
 
 const auth = useAuthStore()
 const route = useRoute()
+const { pushToast } = useAppToast()
 
 const token = computed(() => {
   const raw = route.query.token
@@ -73,19 +71,15 @@ const password = ref('')
 const confirmPassword = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
-const error = ref('')
-const success = ref('')
 
 onMounted(() => {
   if (!token.value) {
-    error.value = 'Ссылка для сброса пароля неполная или уже недействительна.'
+    pushToast('Ссылка для сброса пароля неполная или уже недействительна.', 'error')
   }
 })
 
 async function submit() {
   loading.value = true
-  error.value = ''
-  success.value = ''
   try {
     if (!token.value) {
       throw new Error('Ссылка для сброса пароля недействительна.')
@@ -95,12 +89,12 @@ async function submit() {
     }
 
     await auth.resetPassword(token.value, password.value)
-    success.value = 'Пароль обновлён. Сейчас перенаправим вас на страницу входа.'
+    pushToast('Пароль обновлён. Сейчас перенаправим вас на страницу входа.', 'success')
     setTimeout(() => {
       void navigateTo({ path: '/auth/login', query: { reset: '1' } })
     }, 900)
   } catch (err) {
-    error.value = extractAuthError(err, 'Не удалось сохранить новый пароль.')
+    pushToast(extractAuthError(err, 'Не удалось сохранить новый пароль.'), 'error')
   } finally {
     loading.value = false
   }

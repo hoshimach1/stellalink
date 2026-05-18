@@ -71,7 +71,6 @@
           <button class="dash-mail-close" type="button" aria-label="Скрыть" @click="dismissEmailNotice">
             <i class="ri-close-line" />
           </button>
-          <p v-if="verifyNotice" class="dash-mail-note" :class="`tone-${verifyNoticeTone}`">{{ verifyNotice }}</p>
         </section>
       </Transition>
 
@@ -125,8 +124,6 @@
             </label>
 
             <div class="setup-helper" :class="setupSlugState.tone">{{ setupSlugState.text }}</div>
-            <div v-if="setupError" class="dash-note error">{{ setupError }}</div>
-
             <button class="dash-primary" type="submit" :disabled="setupLoading || !canCreateProfile">
               <span v-if="setupLoading" class="dash-spinner" />
               <span v-else>Создать профиль</span>
@@ -169,6 +166,7 @@ const router = useRouter()
 const route = useRoute()
 const requestUrl = useRequestURL()
 const config = useRuntimeConfig()
+const { pushToast } = useAppToast()
 
 await profile.fetch()
 
@@ -176,13 +174,10 @@ type DashboardTab = 'profile' | 'account' | 'integrations' | 'admin'
 
 const tab = ref<DashboardTab>(readTab(route.query.tab))
 const verifyLoading = ref(false)
-const verifyNotice = ref('')
-const verifyNoticeTone = ref<'success' | 'error'>('success')
 const showEmailNotice = ref(false)
 const setupName = ref('')
 const setupSlug = ref('')
 const setupSlugTouched = ref(typeof route.query.slug === 'string' && route.query.slug.length > 0)
-const setupError = ref('')
 const setupLoading = ref(false)
 const avatarVersion = ref(Date.now())
 
@@ -295,24 +290,20 @@ function onSlugInput() {
 
 async function sendVerification() {
   verifyLoading.value = true
-  verifyNotice.value = ''
   try {
     const response = await auth.requestEmailVerification()
-    verifyNoticeTone.value = 'success'
-    verifyNotice.value = translateAuthMessage(response.detail, 'Письмо отправлено.')
+    pushToast(translateAuthMessage(response.detail, 'Письмо отправлено.'), 'success')
   } catch (error) {
-    verifyNoticeTone.value = 'error'
-    verifyNotice.value = extractAuthError(error, 'Не удалось отправить письмо.')
+    pushToast(extractAuthError(error, 'Не удалось отправить письмо.'), 'error')
   } finally {
     verifyLoading.value = false
   }
 }
 
 async function createProfile() {
-  setupError.value = ''
   setupSlug.value = normalizeSlug(setupSlug.value)
   if (!canCreateProfile.value) {
-    setupError.value = 'Выберите адрес длиной минимум 2 символа.'
+    pushToast('Выберите адрес длиной минимум 2 символа.', 'warning')
     return
   }
   setupLoading.value = true
@@ -327,7 +318,7 @@ async function createProfile() {
     await router.replace({ query })
     tab.value = 'profile'
   } catch (error) {
-    setupError.value = extractAuthError(error, 'Не удалось создать профиль.')
+    pushToast(extractAuthError(error, 'Не удалось создать профиль.'), 'error')
   } finally {
     setupLoading.value = false
   }
@@ -890,8 +881,7 @@ async function logout() {
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent) 16%, transparent);
 }
 
-.setup-helper,
-.dash-note {
+.setup-helper {
   padding: 11px 13px;
   border-radius: 8px;
   font-size: 13px;
@@ -911,11 +901,6 @@ async function logout() {
 .setup-helper.warn {
   background: var(--dash-warn-soft);
   color: var(--dash-warn);
-}
-
-.dash-note.error {
-  background: var(--dash-red-soft);
-  color: var(--dash-red);
 }
 
 .dash-primary {

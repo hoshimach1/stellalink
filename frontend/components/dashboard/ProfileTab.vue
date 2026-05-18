@@ -7,13 +7,6 @@
   />
 
   <div v-if="profile.profile" class="studio-shell">
-    <Transition name="studio-notice">
-      <div v-if="notice" class="studio-notice" :class="`tone-${noticeTone}`" aria-live="polite">
-        <i :class="noticeTone === 'success' ? 'ri-checkbox-circle-line' : noticeTone === 'error' ? 'ri-error-warning-line' : 'ri-information-line'" />
-        <span>{{ notice }}</span>
-      </div>
-    </Transition>
-
     <section class="studio-preview-pane" aria-label="Живое превью профиля">
       <article class="public-card" :class="`theme-${currentTheme}`" :style="{ '--profile-accent': currentAccent }">
         <header class="public-header">
@@ -430,7 +423,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRequestURL } from '#app'
 import { VueDraggable } from 'vue-draggable-plus'
 import { resolveAvatarUrl } from '~/composables/useAvatarUrl'
@@ -487,12 +480,10 @@ const mock = useProfileMockData()
 const request = useRequestURL()
 const requestHost = request.host
 const requestOrigin = request.origin
+const { pushToast } = useAppToast()
 
 const panel = ref<Panel>('profile')
 const editingBlockId = ref<string | null>(null)
-const notice = ref('')
-const noticeTone = ref<NoticeTone>('info')
-let noticeTimer: ReturnType<typeof setTimeout> | null = null
 
 const avatarTimestamp = ref(Date.now())
 const avatarCropFile = ref<File | null>(null)
@@ -561,13 +552,7 @@ function clearObject(target: Record<string, unknown>) {
 }
 
 function setNotice(message: string, tone: NoticeTone = 'info') {
-  notice.value = message
-  noticeTone.value = tone
-  if (noticeTimer) clearTimeout(noticeTimer)
-  noticeTimer = setTimeout(() => {
-    notice.value = ''
-    noticeTimer = null
-  }, 2800)
+  pushToast(message, tone)
 }
 
 function normalizeSlug(value: string) {
@@ -843,9 +828,6 @@ async function onAvatarCropSave(blob: Blob) {
   }
 }
 
-onBeforeUnmount(() => {
-  if (noticeTimer) clearTimeout(noticeTimer)
-})
 </script>
 
 <style scoped>
@@ -1780,33 +1762,6 @@ onBeforeUnmount(() => {
   font-size: 13px;
 }
 
-.studio-notice {
-  position: fixed;
-  left: 50%;
-  bottom: 24px;
-  z-index: 70;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  max-width: min(520px, calc(100vw - 24px));
-  padding: 0 16px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 96%, transparent);
-  color: var(--dash-text-1, #10182b);
-  box-shadow: var(--dash-shadow, 0 16px 42px rgba(48, 63, 92, 0.11));
-  transform: translateX(-50%);
-}
-
-.studio-notice.tone-success {
-  color: var(--dash-green, #188A55);
-}
-
-.studio-notice.tone-error {
-  color: var(--dash-red, #B3323A);
-}
-
 .studio-spinner {
   width: 18px;
   height: 18px;
@@ -1828,9 +1783,7 @@ onBeforeUnmount(() => {
 }
 
 .inspector-pane-enter-active,
-.inspector-pane-leave-active,
-.studio-notice-enter-active,
-.studio-notice-leave-active {
+.inspector-pane-leave-active {
   transition: opacity 220ms cubic-bezier(0.2, 0, 0, 1), transform 220ms cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -1838,12 +1791,6 @@ onBeforeUnmount(() => {
 .inspector-pane-leave-to {
   opacity: 0;
   transform: translateY(8px);
-}
-
-.studio-notice-enter-from,
-.studio-notice-leave-to {
-  opacity: 0;
-  transform: translateX(-50%) translateY(12px);
 }
 
 @media (hover: hover) {
@@ -2404,12 +2351,6 @@ onBeforeUnmount(() => {
 .filled-btn,
 .ghost-btn {
   min-height: 44px;
-}
-
-.studio-notice {
-  min-height: 48px;
-  border-radius: 999px;
-  box-shadow: 0 16px 42px color-mix(in srgb, var(--dash-text-1, #10182b) 18%, transparent);
 }
 
 @media (max-width: 1180px) {

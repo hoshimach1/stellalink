@@ -17,11 +17,6 @@
       </div>
     </section>
 
-    <div v-if="connectNotice" class="integration-notice" :class="connectNoticeTone">
-      <i :class="connectNoticeTone === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'" />
-      {{ connectNotice }}
-    </div>
-
     <div v-if="loading" class="integration-notice">
       <span class="integration-spinner dark" />
       Загружаем подключения...
@@ -112,6 +107,7 @@ const profile = useProfileStore()
 const auth = useAuthStore()
 const config = useRuntimeConfig()
 const route = useRoute()
+const { pushToast } = useAppToast()
 
 type IntegrationType = 'widget_steam' | 'widget_lastfm' | 'widget_github' | 'widget_faceit'
 type NoticeTone = 'success' | 'error'
@@ -142,8 +138,6 @@ const loading = ref(false)
 const steamBusy = ref(false)
 const steamOauthBusy = ref(false)
 const connectingType = ref<IntegrationType | null>(null)
-const connectNotice = ref('')
-const connectNoticeTone = ref<NoticeTone>('success')
 
 const steamAccount = computed(() => integrations.value?.accounts.find(account => account.provider === 'steam' && account.is_active) ?? null)
 const faceitAccount = computed(() => integrations.value?.accounts.find(account => account.provider === 'faceit' && account.is_active) ?? null)
@@ -204,16 +198,18 @@ onMounted(() => {
 
 function readSteamRedirectResult() {
   if (route.query.steam === 'connected') {
-    connectNoticeTone.value = 'success'
-    connectNotice.value = 'Steam привязан через официальный вход.'
+    setIntegrationNotice('Steam привязан через официальный вход.', 'success')
     return
   }
   if (route.query.steam === 'error') {
-    connectNoticeTone.value = 'error'
-    connectNotice.value = typeof route.query.steam_error === 'string'
+    setIntegrationNotice(typeof route.query.steam_error === 'string'
       ? route.query.steam_error
-      : 'Не удалось завершить вход через Steam.'
+      : 'Не удалось завершить вход через Steam.', 'error')
   }
+}
+
+function setIntegrationNotice(message: string, tone: NoticeTone) {
+  pushToast(message, tone)
 }
 
 function applyIntegrations(data: IntegrationsResponse) {
@@ -229,8 +225,7 @@ async function loadIntegrations() {
       await ensureSteamBlock()
     }
   } catch (error) {
-    connectNoticeTone.value = 'error'
-    connectNotice.value = extractAuthError(error, 'Не удалось загрузить подключения.')
+    setIntegrationNotice(extractAuthError(error, 'Не удалось загрузить подключения.'), 'error')
   } finally {
     loading.value = false
   }
@@ -274,7 +269,6 @@ function sanitizedSteamBlockConfig(value: Record<string, unknown>) {
 
 async function startSteamLogin() {
   steamOauthBusy.value = true
-  connectNotice.value = ''
   try {
     const response = await auth.authorizedFetch<{ auth_url: string }>(
       `${config.public.apiBase}/integrations/steam/openid/start`,
@@ -282,26 +276,22 @@ async function startSteamLogin() {
     )
     window.location.assign(response.auth_url)
   } catch (error) {
-    connectNoticeTone.value = 'error'
-    connectNotice.value = extractAuthError(error, 'Не удалось начать вход через Steam.')
+    setIntegrationNotice(extractAuthError(error, 'Не удалось начать вход через Steam.'), 'error')
     steamOauthBusy.value = false
   }
 }
 
 async function syncSteamConnection() {
   steamBusy.value = true
-  connectNotice.value = ''
   try {
     const data = await auth.authorizedFetch<IntegrationsResponse>(`${config.public.apiBase}/integrations/steam/sync`, {
       method: 'POST',
     })
     applyIntegrations(data)
     await profile.fetch()
-    connectNoticeTone.value = 'success'
-    connectNotice.value = 'Steam и FACEIT-данные синхронизированы.'
+    setIntegrationNotice('Steam и FACEIT-данные синхронизированы.', 'success')
   } catch (error) {
-    connectNoticeTone.value = 'error'
-    connectNotice.value = extractAuthError(error, 'Не удалось синхронизировать Steam.')
+    setIntegrationNotice(extractAuthError(error, 'Не удалось синхронизировать Steam.'), 'error')
   } finally {
     steamBusy.value = false
   }
@@ -309,16 +299,13 @@ async function syncSteamConnection() {
 
 async function disconnectSteamConnection() {
   steamBusy.value = true
-  connectNotice.value = ''
   try {
     await auth.authorizedFetch(`${config.public.apiBase}/integrations/steam`, { method: 'DELETE' })
     await loadIntegrations()
     await profile.fetch()
-    connectNoticeTone.value = 'success'
-    connectNotice.value = 'Steam отключён от аккаунта.'
+    setIntegrationNotice('Steam отключён от аккаунта.', 'success')
   } catch (error) {
-    connectNoticeTone.value = 'error'
-    connectNotice.value = extractAuthError(error, 'Не удалось отключить Steam.')
+    setIntegrationNotice(extractAuthError(error, 'Не удалось отключить Steam.'), 'error')
   } finally {
     steamBusy.value = false
   }
@@ -327,16 +314,13 @@ async function disconnectSteamConnection() {
 async function connectService(type: IntegrationType) {
   if (!connectableTypes.has(type) || connectedTypes.value.has(type)) return
   connectingType.value = type
-  connectNotice.value = ''
   try {
     await profile.createBlock(type, createDefaultBlockConfig(type))
-    connectNoticeTone.value = 'success'
-    connectNotice.value = type === 'widget_github'
+    setIntegrationNotice(type === 'widget_github'
       ? 'GitHub подключён. Блок добавлен в публичный профиль.'
-      : 'Last.fm подключён. Блок добавлен в публичный профиль.'
+      : 'Last.fm подключён. Блок добавлен в публичный профиль.', 'success')
   } catch (error) {
-    connectNoticeTone.value = 'error'
-    connectNotice.value = extractAuthError(error, 'Не удалось подключить интеграцию.')
+    setIntegrationNotice(extractAuthError(error, 'Не удалось подключить интеграцию.'), 'error')
   } finally {
     connectingType.value = null
   }
@@ -649,18 +633,6 @@ async function connectService(type: IntegrationType) {
   color: var(--dash-text-2, #475778);
   font-size: 13px;
   font-weight: 800;
-}
-
-.integration-notice.success {
-  border-color: color-mix(in srgb, var(--dash-green, #188A55) 24%, var(--dash-outline, #d4dbe8));
-  background: var(--dash-green-soft, #E1F6EA);
-  color: var(--dash-green, #188A55);
-}
-
-.integration-notice.error {
-  border-color: color-mix(in srgb, var(--dash-red, #B3323A) 24%, var(--dash-outline, #d4dbe8));
-  background: var(--dash-red-soft, #FFE5E7);
-  color: var(--dash-red, #B3323A);
 }
 
 .integration-spinner {

@@ -9,8 +9,6 @@
       <h1 class="auth-headline">Создать аккаунт</h1>
       <p class="auth-subtitle">Регистрация займёт минуту. После этого можно будет сразу перейти к настройке профиля.</p>
 
-      <div v-if="error" class="auth-alert auth-alert-error" role="alert">{{ error }}</div>
-
       <form class="auth-form" @submit.prevent="submit">
         <div class="auth-field">
           <label>Email</label>
@@ -78,13 +76,13 @@ useHead({ title: 'Регистрация — Stellalink' })
 
 const auth = useAuthStore()
 const route = useRoute()
+const { pushToast } = useAppToast()
 
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
-const error = ref('')
 
 const redirectPath = computed(() => {
   const raw = route.query.redirect
@@ -106,7 +104,6 @@ function normalizeSlug(input?: string): string {
 
 async function submit() {
   loading.value = true
-  error.value = ''
   try {
     if (password.value !== confirmPassword.value) {
       throw new Error('Пароли не совпадают')
@@ -122,7 +119,7 @@ async function submit() {
 
     await navigateTo(redirectPath.value)
   } catch (err) {
-    error.value = extractAuthError(err, 'Не удалось создать аккаунт.')
+    pushToast(extractAuthError(err, 'Не удалось создать аккаунт.'), 'error')
   } finally {
     loading.value = false
   }

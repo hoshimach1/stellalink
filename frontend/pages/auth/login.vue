@@ -9,9 +9,6 @@
       <h1 class="auth-headline">Войти</h1>
       <p class="auth-subtitle">Войдите, чтобы управлять своим профилем, ссылками и настройками.</p>
 
-      <div v-if="notice" class="auth-alert auth-alert-success" role="status">{{ notice }}</div>
-      <div v-if="error" class="auth-alert auth-alert-error" role="alert">{{ error }}</div>
-
       <form class="auth-form" @submit.prevent="submit">
         <div class="auth-field">
           <label>Email</label>
@@ -65,17 +62,21 @@ useHead({ title: 'Вход — Stellalink' })
 
 const auth = useAuthStore()
 const route = useRoute()
+const { pushToast } = useAppToast()
 
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
-const error = ref('')
 
-const notice = computed(() => {
+const routeNotice = computed(() => {
   if (route.query.verified === '1') return 'Email успешно подтверждён. Теперь можно войти.'
   if (route.query.reset === '1') return 'Пароль обновлён. Войдите с новым паролем.'
   return ''
+})
+
+onMounted(() => {
+  if (routeNotice.value) pushToast(routeNotice.value, 'success')
 })
 
 const redirectPath = computed(() => {
@@ -88,12 +89,11 @@ const redirectPath = computed(() => {
 
 async function submit() {
   loading.value = true
-  error.value = ''
   try {
     await auth.login(email.value, password.value)
     await navigateTo(redirectPath.value)
   } catch (err) {
-    error.value = extractAuthError(err, 'Не удалось выполнить вход.')
+    pushToast(extractAuthError(err, 'Не удалось выполнить вход.'), 'error')
   } finally {
     loading.value = false
   }

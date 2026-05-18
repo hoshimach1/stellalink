@@ -2,47 +2,45 @@
   <CropAvatarModal :file="cropFile" :saving="avatarLoading" @save="onCropSave" @cancel="cropFile = null" />
 
   <div class="account-shell">
-    <section class="account-overview" aria-label="Сводка аккаунта">
-      <div class="account-person">
-        <div class="account-avatar">
-          <img v-if="avatarSrc" :src="avatarSrc" alt="">
-          <span v-else>{{ userInitial }}</span>
-          <label class="avatar-camera" :class="{ loading: avatarLoading }" title="Обновить аватар">
-            <span v-if="avatarLoading" class="account-spinner dark" />
-            <i v-else class="ri-camera-line" />
-            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden @change="onAvatarFile">
-          </label>
-        </div>
-        <div class="account-copy">
-          <strong>{{ profile.profile?.display_name || auth.user?.email || 'Stellalink' }}</strong>
-          <span>{{ auth.user?.email ?? 'Email не указан' }}</span>
-          <NuxtLink v-if="profile.profile" class="account-link" :to="`/${profile.profile.slug}`">
-            <i class="ri-external-link-line" />
-            <span>{{ requestHost }}/{{ profile.profile.slug }}</span>
-          </NuxtLink>
-        </div>
-      </div>
-
-      <div class="account-status-row">
-        <span class="account-chip" :class="{ ok: auth.user?.email_verified }">
-          <i :class="auth.user?.email_verified ? 'ri-shield-check-line' : 'ri-mail-warning-line'" />
-          {{ auth.user?.email_verified ? 'Email подтвержден' : 'Нужно подтвердить email' }}
-        </span>
-        <span v-if="createdLabel" class="account-chip">
-          <i class="ri-calendar-line" />
-          С {{ createdLabel }}
-        </span>
-      </div>
-
-      <div v-if="avatarError" class="account-note error account-wide-note">{{ avatarError }}</div>
-      <div v-if="avatarOk" class="account-note success account-wide-note">Аватар обновлен.</div>
-    </section>
-
     <section class="account-layout">
       <article v-if="profile.profile" class="account-card account-card-main">
+        <div class="account-main-identity">
+          <div class="account-person">
+            <div class="account-avatar">
+              <img v-if="avatarSrc" :src="avatarSrc" alt="">
+              <span v-else>{{ userInitial }}</span>
+              <label class="avatar-camera" :class="{ loading: avatarLoading }" title="Обновить аватар">
+                <span v-if="avatarLoading" class="account-spinner dark" />
+                <i v-else class="ri-camera-line" />
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden @change="onAvatarFile">
+              </label>
+            </div>
+            <div class="account-copy">
+              <strong>{{ profile.profile?.display_name || auth.user?.email || 'Stellalink' }}</strong>
+              <span>{{ auth.user?.email ?? 'Email не указан' }}</span>
+              <NuxtLink v-if="profile.profile" class="account-link" :to="`/${profile.profile.slug}`">
+                <i class="ri-external-link-line" />
+                <span>{{ requestHost }}/{{ profile.profile.slug }}</span>
+              </NuxtLink>
+            </div>
+          </div>
+
+          <div class="account-status-row">
+            <span class="account-chip" :class="{ ok: auth.user?.email_verified }">
+              <i :class="auth.user?.email_verified ? 'ri-shield-check-line' : 'ri-mail-warning-line'" />
+              {{ auth.user?.email_verified ? 'Email подтвержден' : 'Нужно подтвердить email' }}
+            </span>
+            <span v-if="createdLabel" class="account-chip">
+              <i class="ri-calendar-line" />
+              С {{ createdLabel }}
+            </span>
+          </div>
+
+        </div>
+
         <div class="card-head">
           <div>
-            <h3>Публичный профиль</h3>
+            <h3>Данные профиля</h3>
             <p>Имя и адрес, которые видят посетители.</p>
           </div>
         </div>
@@ -62,9 +60,6 @@
               </div>
             </label>
           </div>
-
-          <div v-if="identityError" class="account-note error">{{ identityError }}</div>
-          <div v-if="identityOk" class="account-note success">Профиль обновлен.</div>
 
           <div class="form-actions">
             <span class="form-hint">{{ identityHasChanges ? 'Есть несохраненные изменения' : 'Все изменения сохранены' }}</span>
@@ -106,9 +101,6 @@
               <input v-model="emailPassword" type="password" autocomplete="current-password" placeholder="Подтвердите изменение паролем">
             </label>
 
-            <div v-if="emailError" class="account-note error">{{ emailError }}</div>
-            <div v-if="emailOk" class="account-note success">Email обновлен. Мы отправили письмо для подтверждения нового адреса.</div>
-
             <div class="form-actions">
               <span class="form-hint">{{ emailHasChanges ? 'После смены нужно подтвердить новый email' : 'Введите новый адрес, чтобы изменить email' }}</span>
               <button class="filled-btn" type="submit" :disabled="emailLoading || !canSubmitEmail">
@@ -126,7 +118,6 @@
             </template>
           </button>
 
-          <div v-if="verifyNotice" class="account-note" :class="verifyNoticeTone">{{ verifyNotice }}</div>
         </article>
 
         <article class="account-card">
@@ -158,9 +149,6 @@
               <span :style="{ width: passwordStrength.width }" />
             </div>
 
-            <div v-if="passError" class="account-note error">{{ passError }}</div>
-            <div v-if="passOk" class="account-note success">Пароль обновлен.</div>
-
             <button class="filled-btn" type="submit" :disabled="passLoading || !canSubmitPass">
               <span v-if="passLoading" class="account-spinner" />
               <span v-else>Сменить пароль</span>
@@ -185,6 +173,7 @@ const auth = useAuthStore()
 const profile = useProfileStore()
 const config = useRuntimeConfig()
 const requestHost = useRequestURL().host
+const { pushToast } = useAppToast()
 
 const avatarTimestamp = ref(Date.now())
 const avatarSrc = computed(() =>
@@ -201,15 +190,11 @@ const createdLabel = computed(() => {
 })
 
 const avatarLoading = ref(false)
-const avatarError = ref('')
-const avatarOk = ref(false)
 const cropFile = ref<File | null>(null)
 
 const editName = ref(profile.profile?.display_name ?? '')
 const editSlug = ref(profile.profile?.slug ?? '')
 const identityLoading = ref(false)
-const identityError = ref('')
-const identityOk = ref(false)
 
 watch(() => profile.profile, () => {
   editName.value = profile.profile?.display_name ?? ''
@@ -225,8 +210,6 @@ const identityHasChanges = computed(() => {
 const editEmail = ref(auth.user?.email ?? '')
 const emailPassword = ref('')
 const emailLoading = ref(false)
-const emailError = ref('')
-const emailOk = ref(false)
 
 const emailStatusLabel = computed(() => auth.user?.email_verified ? 'Подтвержден' : 'Не подтвержден')
 const emailStatusTooltip = computed(() => auth.user?.email_verified
@@ -247,20 +230,11 @@ watch(() => auth.user?.email, (email) => {
   emailPassword.value = ''
 })
 
-watch(editEmail, () => {
-  emailError.value = ''
-  emailOk.value = false
-})
-
 const verifyLoading = ref(false)
-const verifyNotice = ref('')
-const verifyNoticeTone = ref<'success' | 'error'>('success')
 
 const oldPass = ref('')
 const newPass = ref('')
 const confirmPass = ref('')
-const passError = ref('')
-const passOk = ref(false)
 const passLoading = ref(false)
 
 const passwordStrength = computed(() => {
@@ -295,22 +269,18 @@ function onAvatarFile(event: Event) {
   const file = input.files?.[0]
   if (!file) return
   input.value = ''
-  avatarError.value = ''
-  avatarOk.value = false
   cropFile.value = file
 }
 
 async function onCropSave(blob: Blob) {
   cropFile.value = null
   avatarLoading.value = true
-  avatarError.value = ''
-  avatarOk.value = false
   try {
     await auth.uploadAvatar(new File([blob], 'avatar.jpg', { type: 'image/jpeg' }))
     avatarTimestamp.value = Date.now()
-    avatarOk.value = true
+    pushToast('Аватар обновлен.', 'success')
   } catch (error) {
-    avatarError.value = extractAuthError(error, 'Не удалось загрузить аватар.')
+    pushToast(extractAuthError(error, 'Не удалось загрузить аватар.'), 'error')
   } finally {
     avatarLoading.value = false
   }
@@ -319,16 +289,14 @@ async function onCropSave(blob: Blob) {
 async function saveIdentity() {
   if (!profile.profile) return
   identityLoading.value = true
-  identityError.value = ''
-  identityOk.value = false
   try {
     await profile.update({
       display_name: editName.value.trim() || profile.profile.display_name,
       slug: normalizeSlug(editSlug.value) || profile.profile.slug,
     })
-    identityOk.value = true
+    pushToast('Профиль обновлен.', 'success')
   } catch (error) {
-    identityError.value = extractAuthError(error, 'Не удалось сохранить профиль.')
+    pushToast(extractAuthError(error, 'Не удалось сохранить профиль.'), 'error')
   } finally {
     identityLoading.value = false
   }
@@ -336,30 +304,23 @@ async function saveIdentity() {
 
 async function sendVerification() {
   verifyLoading.value = true
-  verifyNotice.value = ''
   try {
     const response = await auth.requestEmailVerification()
-    verifyNoticeTone.value = 'success'
-    verifyNotice.value = translateAuthMessage(response.detail, 'Письмо отправлено.')
+    pushToast(translateAuthMessage(response.detail, 'Письмо отправлено.'), 'success')
   } catch (error) {
-    verifyNoticeTone.value = 'error'
-    verifyNotice.value = extractAuthError(error, 'Не удалось отправить письмо.')
+    pushToast(extractAuthError(error, 'Не удалось отправить письмо.'), 'error')
   } finally {
     verifyLoading.value = false
   }
 }
 
 async function changeEmail() {
-  emailError.value = ''
-  emailOk.value = false
-  verifyNotice.value = ''
-
   if (!emailHasChanges.value) {
-    emailError.value = 'Введите email, который отличается от текущего.'
+    pushToast('Введите email, который отличается от текущего.', 'warning')
     return
   }
   if (!emailPassword.value) {
-    emailError.value = 'Введите текущий пароль.'
+    pushToast('Введите текущий пароль.', 'warning')
     return
   }
 
@@ -367,34 +328,32 @@ async function changeEmail() {
   try {
     await auth.changeEmail(editEmail.value, emailPassword.value)
     emailPassword.value = ''
-    emailOk.value = true
+    pushToast('Email обновлен. Мы отправили письмо для подтверждения нового адреса.', 'success')
   } catch (error) {
-    emailError.value = extractAuthError(error, 'Не удалось сменить email.')
+    pushToast(extractAuthError(error, 'Не удалось сменить email.'), 'error')
   } finally {
     emailLoading.value = false
   }
 }
 
 async function changePassword() {
-  passError.value = ''
-  passOk.value = false
   if (newPass.value !== confirmPass.value) {
-    passError.value = 'Пароли не совпадают.'
+    pushToast('Пароли не совпадают.', 'warning')
     return
   }
   if (newPass.value.length < 8) {
-    passError.value = 'Минимум 8 символов.'
+    pushToast('Минимум 8 символов.', 'warning')
     return
   }
   passLoading.value = true
   try {
     await auth.changePassword(oldPass.value, newPass.value)
-    passOk.value = true
+    pushToast('Пароль обновлен.', 'success')
     oldPass.value = ''
     newPass.value = ''
     confirmPass.value = ''
   } catch (error) {
-    passError.value = extractAuthError(error, 'Не удалось сменить пароль.')
+    pushToast(extractAuthError(error, 'Не удалось сменить пароль.'), 'error')
   } finally {
     passLoading.value = false
   }
@@ -416,7 +375,6 @@ async function changePassword() {
   box-sizing: border-box;
 }
 
-.account-overview,
 .account-card {
   width: 100%;
   min-width: 0;
@@ -424,14 +382,6 @@ async function changePassword() {
   border-radius: 18px;
   background: color-mix(in srgb, var(--dash-surface-strong, #fff) 94%, transparent);
   box-shadow: 0 10px 28px color-mix(in srgb, var(--dash-text-1, #10182b) 7%, transparent);
-}
-
-.account-overview {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  padding: 14px;
 }
 
 .account-person {
@@ -599,7 +549,20 @@ async function changePassword() {
 }
 
 .account-card-main {
-  min-height: 100%;
+  align-self: start;
+  gap: 16px;
+}
+
+.account-main-identity {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 72%, transparent);
+}
+
+.account-card-main .account-status-row {
+  justify-content: flex-start;
 }
 
 .card-head {
@@ -692,7 +655,7 @@ async function changePassword() {
   content: "";
   top: calc(100% + 3px);
   border: 6px solid transparent;
-  border-bottom-color: var(--dash-text-1, #10182b);
+  border-bottom-color: #151A24;
   transform: translateY(-4px);
 }
 
@@ -703,8 +666,8 @@ async function changePassword() {
   max-width: min(260px, 72vw);
   padding: 9px 10px;
   border-radius: 12px;
-  background: var(--dash-text-1, #10182b);
-  color: #fff;
+  background: #151A24;
+  color: #F8FAFC;
   box-shadow: 0 12px 28px color-mix(in srgb, var(--dash-text-1, #10182b) 22%, transparent);
   font-size: 12px;
   font-weight: 800;
@@ -839,25 +802,6 @@ async function changePassword() {
   opacity: 0.56;
 }
 
-.account-note {
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-2, #475778);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.account-note.success {
-  background: var(--dash-green-soft, #E1F6EA);
-  color: var(--dash-green, #188A55);
-}
-
-.account-note.error {
-  background: var(--dash-red-soft, #FFE5E7);
-  color: var(--dash-red, #B3323A);
-}
-
 .strength-meter {
   height: 7px;
   overflow: hidden;
@@ -940,18 +884,12 @@ async function changePassword() {
     max-width: 760px;
   }
 
-  .account-overview,
   .account-layout {
     grid-template-columns: 1fr;
-  }
-
-  .account-status-row {
-    justify-content: flex-start;
   }
 }
 
 @media (max-width: 680px) {
-  .account-overview,
   .account-card {
     border-radius: 16px;
     padding: 14px;

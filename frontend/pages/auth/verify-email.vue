@@ -9,11 +9,6 @@
       <h1 class="auth-headline">Подтверждение email</h1>
       <p class="auth-subtitle">Подтвердите email, чтобы защитить аккаунт и получать важные уведомления.</p>
 
-      <div v-if="status === 'loading'" class="auth-alert auth-alert-info" role="status">Проверяем ссылку подтверждения…</div>
-      <div v-if="status === 'success'" class="auth-alert auth-alert-success" role="status">{{ message }}</div>
-      <div v-if="status === 'error'" class="auth-alert auth-alert-error" role="alert">{{ message }}</div>
-      <div v-if="status === 'idle' && message" class="auth-alert auth-alert-info" role="status">{{ message }}</div>
-
       <div class="auth-form">
         <button v-if="canResend" class="auth-btn auth-btn-secondary" :disabled="resendLoading" @click="resend">
           <span v-if="resendLoading" class="auth-spinner auth-spinner-dark" />
@@ -37,6 +32,7 @@ useHead({ title: 'Подтверждение email — Stellalink' })
 
 const auth = useAuthStore()
 const route = useRoute()
+const { pushToast } = useAppToast()
 
 const status = ref<'idle' | 'loading' | 'success' | 'error'>('idle')
 const message = ref('')
@@ -59,9 +55,11 @@ onMounted(async () => {
       await auth.verifyEmail(token.value)
       status.value = 'success'
       message.value = 'Email успешно подтверждён.'
+      pushToast(message.value, 'success')
     } catch (err) {
       status.value = 'error'
       message.value = extractAuthError(err, 'Не удалось подтвердить email.')
+      pushToast(message.value, 'error')
     }
     return
   }
@@ -69,17 +67,20 @@ onMounted(async () => {
   if (route.query.sent === '1') {
     message.value = 'Письмо с подтверждением отправлено. Проверьте входящие и папку "Спам".'
     status.value = 'idle'
+    pushToast(message.value, 'info')
     return
   }
 
   if (auth.isEmailVerified) {
     status.value = 'success'
     message.value = 'Email уже подтверждён.'
+    pushToast(message.value, 'success')
     return
   }
 
   status.value = 'idle'
   message.value = 'Откройте ссылку из письма, чтобы завершить подтверждение email.'
+  pushToast(message.value, 'info')
 })
 
 async function resend() {
@@ -91,9 +92,11 @@ async function resend() {
       response.detail,
       'Письмо с подтверждением отправлено ещё раз. Проверьте почту и папку "Спам".',
     )
+    pushToast(message.value, 'success')
   } catch (err) {
     status.value = 'error'
     message.value = extractAuthError(err, 'Не удалось отправить письмо повторно.')
+    pushToast(message.value, 'error')
   } finally {
     resendLoading.value = false
   }

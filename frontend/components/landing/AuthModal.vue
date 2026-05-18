@@ -61,10 +61,6 @@
               </div>
             </div>
 
-            <div v-if="error" class="auth-error">
-              <i class="ri-error-warning-line" /> {{ error }}
-            </div>
-
             <button type="submit" class="btn-primary auth-submit" :disabled="loading">
               <span v-if="loading" class="auth-spinner" />
               <span v-else>{{ tab === 'login' ? 'Войти' : 'Создать профиль' }}</span>
@@ -101,19 +97,18 @@ const emit = defineEmits<{
 
 const auth = useAuthStore()
 const router = useRouter()
+const { pushToast } = useAppToast()
 
 const tab = ref<'login' | 'register'>('register')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const showPass = ref(false)
-const error = ref('')
 const loading = ref(false)
 
 watch(() => props.modelValue, (val) => {
   if (val) {
     tab.value = props.initialTab ?? 'register'
-    error.value = ''
     password.value = ''
     confirmPassword.value = ''
   }
@@ -131,7 +126,6 @@ function normalizeSlug(input?: string): string {
 
 function switchTab(next: 'login' | 'register') {
   tab.value = next
-  error.value = ''
 }
 
 function close() {
@@ -158,7 +152,6 @@ function extractError(err: unknown): string {
 }
 
 async function submit() {
-  error.value = ''
   loading.value = true
   try {
     if (tab.value === 'login') {
@@ -178,7 +171,7 @@ async function submit() {
       await router.push('/dashboard')
     }
   } catch (err) {
-    error.value = extractError(err)
+    pushToast(extractError(err), 'error')
   } finally {
     loading.value = false
   }
@@ -270,14 +263,6 @@ async function submit() {
 .pass-toggle:hover { color: #ececef; }
 
 .auth-hint { font-size: 11px; color: #3f3f46; margin-top: 5px; }
-
-.auth-error {
-  display: flex; align-items: center; gap: 7px;
-  background: rgba(255, 80, 80, 0.10);
-  border: 1px solid rgba(255, 80, 80, 0.22);
-  border-radius: 8px; padding: 10px 14px;
-  color: #ff7070; font-size: 13px; margin-bottom: 14px;
-}
 
 .auth-submit {
   width: 100%; margin-top: 6px; padding: 13px;

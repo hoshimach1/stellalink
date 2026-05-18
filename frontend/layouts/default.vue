@@ -1,6 +1,7 @@
 <template>
   <v-app>
     <slot />
+    <AppToastHost />
   </v-app>
 </template>
 

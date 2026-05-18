@@ -4,6 +4,7 @@
       <div class="auth-root-glow auth-root-glow-left" />
       <div class="auth-root-glow auth-root-glow-right" />
       <slot />
+      <AppToastHost />
     </div>
   </v-app>
 </template>
