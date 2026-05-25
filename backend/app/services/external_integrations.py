@@ -178,7 +178,9 @@ async def _post_json(
     headers: Optional[dict[str, str]] = None,
     timeout: int = 12,
 ) -> dict[str, Any]:
-    return await asyncio.to_thread(_read_json_post, url, data, service, headers, timeout)
+    return await asyncio.to_thread(
+        _read_json_post, url, data, service, headers, timeout
+    )
 
 
 def _steam_url(path: str, params: dict[str, Any]) -> str:
@@ -457,9 +459,7 @@ async def connect_steam_openid_response(db: AsyncSession, query: dict[str, str])
     return _steam_openid_result_url(frontend_base_url, True)
 
 
-async def _get_code_oauth_config(
-    db: AsyncSession, provider: str
-) -> tuple[str, str]:
+async def _get_code_oauth_config(db: AsyncSession, provider: str) -> tuple[str, str]:
     api_settings = await get_api_settings_data(db)
     client_id = _clean_text(api_settings.get(f"{provider}_oauth_client_id"))
     client_secret = _clean_text(api_settings.get(f"{provider}_oauth_client_secret"))
@@ -1145,7 +1145,9 @@ async def sync_code_provider_account(
     provider = _normalize_code_provider(provider)
     account = await get_connected_account(db, user_id, provider)
     if not account or not account.access_token:
-        raise ExternalApiError(f"{_provider_label(provider)} account is not connected.", 404)
+        raise ExternalApiError(
+            f"{_provider_label(provider)} account is not connected.", 404
+        )
 
     metadata = (
         dict(account.account_metadata)
