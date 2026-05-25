@@ -206,8 +206,8 @@
       <article class="admin-card admin-card-wide">
         <div class="card-head">
           <div>
-            <h3>OAuth приложений</h3>
-            <p>GitHub, GitLab и Gitea, включая self-hosted инстансы.</p>
+            <h3>Git provider auth</h3>
+            <p>Token и OAuth для GitHub, GitLab и Gitea, включая self-hosted инстансы.</p>
           </div>
           <span class="card-icon"><i class="ri-git-branch-line" /></span>
         </div>
@@ -225,6 +225,11 @@
                 <span>{{ provider.hint }}</span>
               </div>
             </div>
+
+            <label class="admin-field">
+              <span>Admin API token</span>
+              <input v-model="providerTokens[provider.tokenKey]" type="password" autocomplete="new-password" :placeholder="provider.tokenPlaceholder">
+            </label>
 
             <div class="admin-row">
               <label class="admin-field">
@@ -306,6 +311,12 @@ interface ApiSettings {
   steam_api_key_hint: string | null
   faceit_api_key_set: boolean
   faceit_api_key_hint: string | null
+  github_api_token_set: boolean
+  github_api_token_hint: string | null
+  gitlab_api_token_set: boolean
+  gitlab_api_token_hint: string | null
+  gitea_api_token_set: boolean
+  gitea_api_token_hint: string | null
   github_oauth_client_id: string | null
   github_oauth_client_secret_set: boolean
   github_oauth_client_secret_hint: string | null
@@ -336,6 +347,11 @@ const faceitKeyHint = ref('(****)')
 const smtpPassword = ref('')
 const apiSteamKey = ref('')
 const apiFaceitKey = ref('')
+const providerTokens = reactive({
+  github: '',
+  gitlab: '',
+  gitea: '',
+})
 const oauthSecrets = reactive({
   github: '',
   gitlab: '',
@@ -376,10 +392,16 @@ const oauthForm = reactive({
 })
 
 const oauthSecretState = reactive({
+  githubTokenSet: false,
+  githubTokenHint: '(****)',
   githubSet: false,
   githubHint: '(****)',
+  gitlabTokenSet: false,
+  gitlabTokenHint: '(****)',
   gitlabSet: false,
   gitlabHint: '(****)',
+  giteaTokenSet: false,
+  giteaTokenHint: '(****)',
   giteaSet: false,
   giteaHint: '(****)',
 })
@@ -406,6 +428,8 @@ const oauthProviders = computed(() => [
     label: 'GitHub',
     icon: 'ri-github-fill',
     hint: 'github.com или GitHub Enterprise Server',
+    tokenKey: 'github' as const,
+    tokenPlaceholder: oauthSecretState.githubTokenSet ? `Сохранен ${oauthSecretState.githubTokenHint}` : 'GitHub API token',
     clientIdKey: 'githubClientId' as const,
     secretKey: 'github' as const,
     secretPlaceholder: oauthSecretState.githubSet ? `Сохранен ${oauthSecretState.githubHint}` : 'GitHub client secret',
@@ -415,6 +439,8 @@ const oauthProviders = computed(() => [
     label: 'GitLab',
     icon: 'ri-gitlab-fill',
     hint: 'gitlab.com или self-managed GitLab',
+    tokenKey: 'gitlab' as const,
+    tokenPlaceholder: oauthSecretState.gitlabTokenSet ? `Сохранен ${oauthSecretState.gitlabTokenHint}` : 'GitLab API token',
     clientIdKey: 'gitlabClientId' as const,
     secretKey: 'gitlab' as const,
     secretPlaceholder: oauthSecretState.gitlabSet ? `Сохранен ${oauthSecretState.gitlabHint}` : 'GitLab client secret',
@@ -424,6 +450,8 @@ const oauthProviders = computed(() => [
     label: 'Gitea',
     icon: 'ri-git-repository-private-line',
     hint: 'gitea.com или self-hosted Gitea',
+    tokenKey: 'gitea' as const,
+    tokenPlaceholder: oauthSecretState.giteaTokenSet ? `Сохранен ${oauthSecretState.giteaTokenHint}` : 'Gitea API token',
     clientIdKey: 'giteaClientId' as const,
     secretKey: 'gitea' as const,
     secretPlaceholder: oauthSecretState.giteaSet ? `Сохранен ${oauthSecretState.giteaHint}` : 'Gitea client secret',
@@ -499,11 +527,20 @@ function applyApiSettings(data: ApiSettings) {
   oauthForm.giteaClientId = data.gitea_oauth_client_id ?? ''
   apiSteamKey.value = ''
   apiFaceitKey.value = ''
+  providerTokens.github = ''
+  providerTokens.gitlab = ''
+  providerTokens.gitea = ''
   oauthSecrets.github = ''
   oauthSecrets.gitlab = ''
   oauthSecrets.gitea = ''
   steamKeyHint.value = data.steam_api_key_hint ?? '(****)'
   faceitKeyHint.value = data.faceit_api_key_hint ?? '(****)'
+  oauthSecretState.githubTokenSet = data.github_api_token_set
+  oauthSecretState.githubTokenHint = data.github_api_token_hint ?? '(****)'
+  oauthSecretState.gitlabTokenSet = data.gitlab_api_token_set
+  oauthSecretState.gitlabTokenHint = data.gitlab_api_token_hint ?? '(****)'
+  oauthSecretState.giteaTokenSet = data.gitea_api_token_set
+  oauthSecretState.giteaTokenHint = data.gitea_api_token_hint ?? '(****)'
   oauthSecretState.githubSet = data.github_oauth_client_secret_set
   oauthSecretState.githubHint = data.github_oauth_client_secret_hint ?? '(****)'
   oauthSecretState.gitlabSet = data.gitlab_oauth_client_secret_set
@@ -557,6 +594,15 @@ async function saveApiSettings() {
     }
     if (apiFaceitKey.value.trim()) {
       body.faceit_api_key = apiFaceitKey.value.trim()
+    }
+    if (providerTokens.github.trim()) {
+      body.github_api_token = providerTokens.github.trim()
+    }
+    if (providerTokens.gitlab.trim()) {
+      body.gitlab_api_token = providerTokens.gitlab.trim()
+    }
+    if (providerTokens.gitea.trim()) {
+      body.gitea_api_token = providerTokens.gitea.trim()
     }
     if (oauthForm.githubClientId.trim()) {
       body.github_oauth_client_id = oauthForm.githubClientId.trim()

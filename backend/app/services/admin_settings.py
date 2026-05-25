@@ -47,6 +47,9 @@ def _base_api_data() -> dict[str, Any]:
     return {
         "steam_api_key": settings.STEAM_API_KEY,
         "faceit_api_key": settings.FACEIT_API_KEY,
+        "github_api_token": settings.GITHUB_API_TOKEN,
+        "gitlab_api_token": settings.GITLAB_API_TOKEN,
+        "gitea_api_token": settings.GITEA_API_TOKEN,
         "github_oauth_client_id": settings.GITHUB_OAUTH_CLIENT_ID,
         "github_oauth_client_secret": settings.GITHUB_OAUTH_CLIENT_SECRET,
         "gitlab_oauth_client_id": settings.GITLAB_OAUTH_CLIENT_ID,
@@ -120,6 +123,9 @@ async def get_api_settings_response(db: AsyncSession) -> ApiSettingsResponse:
     data = await get_api_settings_data(db)
     steam_api_key = _clean_text(data.get("steam_api_key"))
     faceit_api_key = _clean_text(data.get("faceit_api_key"))
+    github_api_token = _clean_text(data.get("github_api_token"))
+    gitlab_api_token = _clean_text(data.get("gitlab_api_token"))
+    gitea_api_token = _clean_text(data.get("gitea_api_token"))
     github_secret = _clean_text(data.get("github_oauth_client_secret"))
     gitlab_secret = _clean_text(data.get("gitlab_oauth_client_secret"))
     gitea_secret = _clean_text(data.get("gitea_oauth_client_secret"))
@@ -128,6 +134,12 @@ async def get_api_settings_response(db: AsyncSession) -> ApiSettingsResponse:
         steam_api_key_hint=_secret_hint(steam_api_key),
         faceit_api_key_set=bool(faceit_api_key),
         faceit_api_key_hint=_secret_hint(faceit_api_key),
+        github_api_token_set=bool(github_api_token),
+        github_api_token_hint=_secret_hint(github_api_token),
+        gitlab_api_token_set=bool(gitlab_api_token),
+        gitlab_api_token_hint=_secret_hint(gitlab_api_token),
+        gitea_api_token_set=bool(gitea_api_token),
+        gitea_api_token_hint=_secret_hint(gitea_api_token),
         github_oauth_client_id=_clean_text(data.get("github_oauth_client_id")),
         github_oauth_client_secret_set=bool(github_secret),
         github_oauth_client_secret_hint=_secret_hint(github_secret),
@@ -157,6 +169,9 @@ async def save_api_settings(
     if body.faceit_api_key is None:
         payload["faceit_api_key"] = current.get("faceit_api_key")
     for key in (
+        "github_api_token",
+        "gitlab_api_token",
+        "gitea_api_token",
         "github_oauth_client_id",
         "github_oauth_client_secret",
         "gitlab_oauth_client_id",
@@ -170,6 +185,9 @@ async def save_api_settings(
     payload["steam_api_key"] = _clean_text(payload.get("steam_api_key"))
     payload["faceit_api_key"] = _clean_text(payload.get("faceit_api_key"))
     for key in (
+        "github_api_token",
+        "gitlab_api_token",
+        "gitea_api_token",
         "github_oauth_client_id",
         "github_oauth_client_secret",
         "gitlab_oauth_client_id",
