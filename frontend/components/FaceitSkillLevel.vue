@@ -16,10 +16,6 @@
         <stop offset="0.4" stop-color="#5D5D5D" />
         <stop offset="1" stop-color="#242424" />
       </radialGradient>
-      <linearGradient :id="fillId" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0.5" stop-color="var(--fill-start)" />
-        <stop offset="1" stop-color="var(--fill-end)" />
-      </linearGradient>
     </defs>
 
     <circle class="background" r="50%" cx="50%" cy="50%" fill="#060606" />
@@ -33,7 +29,7 @@
     <path
       class="progress"
       d="M 6.5, 18.4 A 8.4, 8.4 0 1 1 17.5, 18.4"
-      :stroke="`url(#${fillId})`"
+      :stroke="levelColor"
       stroke-width="2.4"
       stroke-linecap="round"
       pathLength="10"
@@ -43,7 +39,7 @@
       class="level-number"
       :x="normalizedLevel === 10 ? '49%' : numberX"
       y="49%"
-      :fill="`url(#${fillId})`"
+      :fill="levelColor"
     >
       {{ normalizedLevel }}
     </text>
@@ -63,7 +59,19 @@ const props = withDefaults(defineProps<{
 
 const rawId = useId().replace(/[^a-zA-Z0-9_-]/g, '')
 const barBgId = `faceit-bar-bg-${rawId}`
-const fillId = `faceit-fill-${rawId}`
+
+const FACEIT_LEVEL_COLORS: Record<number, string> = {
+  1: '#F1F1F1',
+  2: '#D6D6D6',
+  3: '#B9B9B9',
+  4: '#FFCF33',
+  5: '#FFB400',
+  6: '#FF9A00',
+  7: '#FF7A00',
+  8: '#FF4D1A',
+  9: '#FF1F1F',
+  10: '#E80128',
+}
 
 const normalizedLevel = computed(() => {
   const value = Number.isFinite(props.level) ? Math.round(props.level) : 1
@@ -75,33 +83,13 @@ const accentColor = computed(() => {
   return value && /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value) ? value : ''
 })
 
-const palette = computed(() => {
-  if (accentColor.value) {
-    return {
-      start: `color-mix(in srgb, ${accentColor.value} 72%, white)`,
-      end: `color-mix(in srgb, ${accentColor.value} 88%, black)`,
-    }
-  }
-
-  if (normalizedLevel.value <= 3) {
-    return { start: '#F1F1F1', end: '#686868' }
-  }
-
-  if (normalizedLevel.value <= 7) {
-    return { start: '#FFD15C', end: '#F05A24' }
-  }
-
-  return { start: '#FF7A32', end: '#E80128' }
-})
+const levelColor = computed(() => accentColor.value || FACEIT_LEVEL_COLORS[normalizedLevel.value] || FACEIT_LEVEL_COLORS[1])
 
 const progress = computed(() => normalizedLevel.value === 1 ? 0.99 : normalizedLevel.value)
 const dashOffset = computed(() => Math.max(0, 10 - progress.value))
 const numberX = computed(() => [1, 4, 6].includes(normalizedLevel.value) ? '50%' : '51%')
 
-const levelStyle = computed(() => ({
-  '--fill-start': palette.value.start,
-  '--fill-end': palette.value.end,
-}))
+const levelStyle = computed(() => ({ color: levelColor.value }))
 </script>
 
 <style scoped>
