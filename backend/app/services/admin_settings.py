@@ -47,6 +47,12 @@ def _base_api_data() -> dict[str, Any]:
     return {
         "steam_api_key": settings.STEAM_API_KEY,
         "faceit_api_key": settings.FACEIT_API_KEY,
+        "github_oauth_client_id": settings.GITHUB_OAUTH_CLIENT_ID,
+        "github_oauth_client_secret": settings.GITHUB_OAUTH_CLIENT_SECRET,
+        "gitlab_oauth_client_id": settings.GITLAB_OAUTH_CLIENT_ID,
+        "gitlab_oauth_client_secret": settings.GITLAB_OAUTH_CLIENT_SECRET,
+        "gitea_oauth_client_id": settings.GITEA_OAUTH_CLIENT_ID,
+        "gitea_oauth_client_secret": settings.GITEA_OAUTH_CLIENT_SECRET,
         "steam_inventory_app_id": settings.STEAM_INVENTORY_APP_ID,
         "steam_inventory_context_id": settings.STEAM_INVENTORY_CONTEXT_ID,
     }
@@ -114,11 +120,23 @@ async def get_api_settings_response(db: AsyncSession) -> ApiSettingsResponse:
     data = await get_api_settings_data(db)
     steam_api_key = _clean_text(data.get("steam_api_key"))
     faceit_api_key = _clean_text(data.get("faceit_api_key"))
+    github_secret = _clean_text(data.get("github_oauth_client_secret"))
+    gitlab_secret = _clean_text(data.get("gitlab_oauth_client_secret"))
+    gitea_secret = _clean_text(data.get("gitea_oauth_client_secret"))
     return ApiSettingsResponse(
         steam_api_key_set=bool(steam_api_key),
         steam_api_key_hint=_secret_hint(steam_api_key),
         faceit_api_key_set=bool(faceit_api_key),
         faceit_api_key_hint=_secret_hint(faceit_api_key),
+        github_oauth_client_id=_clean_text(data.get("github_oauth_client_id")),
+        github_oauth_client_secret_set=bool(github_secret),
+        github_oauth_client_secret_hint=_secret_hint(github_secret),
+        gitlab_oauth_client_id=_clean_text(data.get("gitlab_oauth_client_id")),
+        gitlab_oauth_client_secret_set=bool(gitlab_secret),
+        gitlab_oauth_client_secret_hint=_secret_hint(gitlab_secret),
+        gitea_oauth_client_id=_clean_text(data.get("gitea_oauth_client_id")),
+        gitea_oauth_client_secret_set=bool(gitea_secret),
+        gitea_oauth_client_secret_hint=_secret_hint(gitea_secret),
         steam_inventory_app_id=int(data.get("steam_inventory_app_id") or 730),
         steam_inventory_context_id=str(data.get("steam_inventory_context_id") or "2"),
         steam_inventory_price_source=(
@@ -138,9 +156,28 @@ async def save_api_settings(
         payload["steam_api_key"] = current.get("steam_api_key")
     if body.faceit_api_key is None:
         payload["faceit_api_key"] = current.get("faceit_api_key")
+    for key in (
+        "github_oauth_client_id",
+        "github_oauth_client_secret",
+        "gitlab_oauth_client_id",
+        "gitlab_oauth_client_secret",
+        "gitea_oauth_client_id",
+        "gitea_oauth_client_secret",
+    ):
+        if payload.get(key) is None:
+            payload[key] = current.get(key)
 
     payload["steam_api_key"] = _clean_text(payload.get("steam_api_key"))
     payload["faceit_api_key"] = _clean_text(payload.get("faceit_api_key"))
+    for key in (
+        "github_oauth_client_id",
+        "github_oauth_client_secret",
+        "gitlab_oauth_client_id",
+        "gitlab_oauth_client_secret",
+        "gitea_oauth_client_id",
+        "gitea_oauth_client_secret",
+    ):
+        payload[key] = _clean_text(payload.get(key))
     payload["steam_inventory_context_id"] = str(
         payload.get("steam_inventory_context_id") or "2"
     ).strip()

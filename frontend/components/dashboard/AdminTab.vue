@@ -203,6 +203,52 @@
         </form>
       </article>
 
+      <article class="admin-card admin-card-wide">
+        <div class="card-head">
+          <div>
+            <h3>OAuth приложений</h3>
+            <p>GitHub, GitLab и Gitea, включая self-hosted инстансы.</p>
+          </div>
+          <span class="card-icon"><i class="ri-git-branch-line" /></span>
+        </div>
+
+        <form class="admin-form" @submit.prevent="saveApiSettings">
+          <div class="admin-note muted">
+            Callback URL: <strong>{{ oauthCallbackUrl }}</strong>
+          </div>
+
+          <section v-for="provider in oauthProviders" :key="provider.key" class="oauth-provider">
+            <div class="oauth-provider-head">
+              <span class="oauth-provider-icon"><i :class="provider.icon" /></span>
+              <div>
+                <strong>{{ provider.label }}</strong>
+                <span>{{ provider.hint }}</span>
+              </div>
+            </div>
+
+            <div class="admin-row">
+              <label class="admin-field">
+                <span>Client ID</span>
+                <input v-model="oauthForm[provider.clientIdKey]" type="text" autocomplete="off" :placeholder="`${provider.label} client id`">
+              </label>
+
+              <label class="admin-field">
+                <span>Client Secret</span>
+                <input v-model="oauthSecrets[provider.secretKey]" type="password" autocomplete="new-password" :placeholder="provider.secretPlaceholder">
+              </label>
+            </div>
+          </section>
+
+          <button class="outline-btn" type="submit" :disabled="apiSaving">
+            <span v-if="apiSaving" class="admin-spinner dark" />
+            <template v-else>
+              <i class="ri-save-3-line" />
+              <span>Сохранить OAuth</span>
+            </template>
+          </button>
+        </form>
+      </article>
+
       <article class="admin-card">
         <div class="card-head">
           <div>
@@ -260,6 +306,15 @@ interface ApiSettings {
   steam_api_key_hint: string | null
   faceit_api_key_set: boolean
   faceit_api_key_hint: string | null
+  github_oauth_client_id: string | null
+  github_oauth_client_secret_set: boolean
+  github_oauth_client_secret_hint: string | null
+  gitlab_oauth_client_id: string | null
+  gitlab_oauth_client_secret_set: boolean
+  gitlab_oauth_client_secret_hint: string | null
+  gitea_oauth_client_id: string | null
+  gitea_oauth_client_secret_set: boolean
+  gitea_oauth_client_secret_hint: string | null
   steam_inventory_app_id: number
   steam_inventory_context_id: string
   steam_inventory_price_source: string
@@ -281,6 +336,11 @@ const faceitKeyHint = ref('(****)')
 const smtpPassword = ref('')
 const apiSteamKey = ref('')
 const apiFaceitKey = ref('')
+const oauthSecrets = reactive({
+  github: '',
+  gitlab: '',
+  gitea: '',
+})
 const testEmail = ref('')
 const saveNotice = ref('')
 const testNotice = ref('')
@@ -309,6 +369,21 @@ const apiForm = reactive({
   steam_inventory_context_id: '2',
 })
 
+const oauthForm = reactive({
+  githubClientId: '',
+  gitlabClientId: '',
+  giteaClientId: '',
+})
+
+const oauthSecretState = reactive({
+  githubSet: false,
+  githubHint: '(****)',
+  gitlabSet: false,
+  gitlabHint: '(****)',
+  giteaSet: false,
+  giteaHint: '(****)',
+})
+
 const encryptionMode = computed({
   get() {
     if (form.use_ssl) return 'ssl'
@@ -324,6 +399,36 @@ const encryptionMode = computed({
 const passwordPlaceholder = computed(() => passwordSet.value ? 'Пароль сохранен' : 'SMTP пароль')
 const steamKeyPlaceholder = computed(() => steamKeySet.value ? `Сохранен ${steamKeyHint.value}` : 'Введите ключ Steam')
 const faceitKeyPlaceholder = computed(() => faceitKeySet.value ? `Сохранен ${faceitKeyHint.value}` : 'Введите ключ FACEIT')
+const oauthCallbackUrl = computed(() => `${form.frontend_base_url.replace(/\/$/, '')}/api/integrations/code/oauth/callback`)
+const oauthProviders = computed(() => [
+  {
+    key: 'github',
+    label: 'GitHub',
+    icon: 'ri-github-fill',
+    hint: 'github.com или GitHub Enterprise Server',
+    clientIdKey: 'githubClientId' as const,
+    secretKey: 'github' as const,
+    secretPlaceholder: oauthSecretState.githubSet ? `Сохранен ${oauthSecretState.githubHint}` : 'GitHub client secret',
+  },
+  {
+    key: 'gitlab',
+    label: 'GitLab',
+    icon: 'ri-gitlab-fill',
+    hint: 'gitlab.com или self-managed GitLab',
+    clientIdKey: 'gitlabClientId' as const,
+    secretKey: 'gitlab' as const,
+    secretPlaceholder: oauthSecretState.gitlabSet ? `Сохранен ${oauthSecretState.gitlabHint}` : 'GitLab client secret',
+  },
+  {
+    key: 'gitea',
+    label: 'Gitea',
+    icon: 'ri-git-repository-private-line',
+    hint: 'gitea.com или self-hosted Gitea',
+    clientIdKey: 'giteaClientId' as const,
+    secretKey: 'gitea' as const,
+    secretPlaceholder: oauthSecretState.giteaSet ? `Сохранен ${oauthSecretState.giteaHint}` : 'Gitea client secret',
+  },
+])
 const smtpStatus = computed(() => {
   if (!form.enabled) return 'Письма выключены, ссылки будут только в логах.'
   if (!form.host) return 'Host не задан, письма будут записываться в лог backend.'
@@ -389,10 +494,22 @@ function applyApiSettings(data: ApiSettings) {
   faceitKeySet.value = data.faceit_api_key_set
   apiForm.steam_inventory_app_id = data.steam_inventory_app_id
   apiForm.steam_inventory_context_id = data.steam_inventory_context_id
+  oauthForm.githubClientId = data.github_oauth_client_id ?? ''
+  oauthForm.gitlabClientId = data.gitlab_oauth_client_id ?? ''
+  oauthForm.giteaClientId = data.gitea_oauth_client_id ?? ''
   apiSteamKey.value = ''
   apiFaceitKey.value = ''
+  oauthSecrets.github = ''
+  oauthSecrets.gitlab = ''
+  oauthSecrets.gitea = ''
   steamKeyHint.value = data.steam_api_key_hint ?? '(****)'
   faceitKeyHint.value = data.faceit_api_key_hint ?? '(****)'
+  oauthSecretState.githubSet = data.github_oauth_client_secret_set
+  oauthSecretState.githubHint = data.github_oauth_client_secret_hint ?? '(****)'
+  oauthSecretState.gitlabSet = data.gitlab_oauth_client_secret_set
+  oauthSecretState.gitlabHint = data.gitlab_oauth_client_secret_hint ?? '(****)'
+  oauthSecretState.giteaSet = data.gitea_oauth_client_secret_set
+  oauthSecretState.giteaHint = data.gitea_oauth_client_secret_hint ?? '(****)'
 }
 
 async function loadAllSettings() {
@@ -440,6 +557,24 @@ async function saveApiSettings() {
     }
     if (apiFaceitKey.value.trim()) {
       body.faceit_api_key = apiFaceitKey.value.trim()
+    }
+    if (oauthForm.githubClientId.trim()) {
+      body.github_oauth_client_id = oauthForm.githubClientId.trim()
+    }
+    if (oauthSecrets.github.trim()) {
+      body.github_oauth_client_secret = oauthSecrets.github.trim()
+    }
+    if (oauthForm.gitlabClientId.trim()) {
+      body.gitlab_oauth_client_id = oauthForm.gitlabClientId.trim()
+    }
+    if (oauthSecrets.gitlab.trim()) {
+      body.gitlab_oauth_client_secret = oauthSecrets.gitlab.trim()
+    }
+    if (oauthForm.giteaClientId.trim()) {
+      body.gitea_oauth_client_id = oauthForm.giteaClientId.trim()
+    }
+    if (oauthSecrets.gitea.trim()) {
+      body.gitea_oauth_client_secret = oauthSecrets.gitea.trim()
     }
 
     const data = await auth.authorizedFetch<ApiSettings>(`${config.public.apiBase}/admin/api-settings`, {
@@ -674,6 +809,52 @@ async function sendTestEmail() {
   gap: 12px;
 }
 
+.oauth-provider {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 84%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--dash-surface-soft, #F2F4F8) 72%, transparent);
+}
+
+.oauth-provider-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.oauth-provider-icon {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
+  color: var(--dash-accent-strong, #163E86);
+  font-size: 18px;
+}
+
+.oauth-provider-head strong,
+.oauth-provider-head span {
+  display: block;
+}
+
+.oauth-provider-head strong {
+  color: var(--dash-text-1, #10182b);
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.oauth-provider-head span {
+  margin-top: 2px;
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .admin-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(150px, 0.45fr);
@@ -800,6 +981,11 @@ async function sendTestEmail() {
   color: var(--dash-text-2, #475778);
   font-size: 13px;
   line-height: 1.45;
+}
+
+.admin-note strong {
+  color: var(--dash-text-1, #10182b);
+  overflow-wrap: anywhere;
 }
 
 .admin-note.muted {

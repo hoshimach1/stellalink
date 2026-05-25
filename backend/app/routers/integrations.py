@@ -6,15 +6,23 @@ from app.database import get_db
 from app.deps import get_current_user
 from app.models.user import User
 from app.schemas.integration import (
+    CodeProviderOAuthStartRequest,
+    CodeProviderTokenConnectRequest,
     IntegrationsResponse,
+    OAuthStartResponse,
     SteamOpenIdStartResponse,
 )
 from app.services.external_integrations import (
     ExternalApiError,
+    connect_code_provider_oauth_response,
+    connect_code_provider_token,
     connect_steam_openid_response,
+    create_code_provider_oauth_url,
     create_steam_openid_auth_url,
+    disconnect_code_provider_account,
     disconnect_steam_account,
     integrations_response,
+    sync_code_provider_account,
     sync_steam_account,
 )
 
@@ -53,6 +61,47 @@ async def steam_openid_callback(
     return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
 
 
+@router.post("/code/token", response_model=IntegrationsResponse)
+async def connect_code_provider_by_token(
+    body: CodeProviderTokenConnectRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await connect_code_provider_token(
+            db, current_user.id, body.provider, body.access_token, body.base_url
+        )
+    except ExternalApiError as exc:
+        _raise_api_error(exc)
+    return await integrations_response(db, current_user.id)
+
+
+@router.post("/code/oauth/start", response_model=OAuthStartResponse)
+async def start_code_provider_oauth(
+    body: CodeProviderOAuthStartRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        auth_url = await create_code_provider_oauth_url(
+            db, current_user.id, body.provider, body.base_url
+        )
+    except ExternalApiError as exc:
+        _raise_api_error(exc)
+    return OAuthStartResponse(auth_url=auth_url)
+
+
+@router.get("/code/oauth/callback")
+async def code_provider_oauth_callback(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    redirect_url = await connect_code_provider_oauth_response(
+        db, dict(request.query_params.multi_items())
+    )
+    return RedirectResponse(redirect_url, status_code=status.HTTP_302_FOUND)
+
+
 @router.post("/steam/sync", response_model=IntegrationsResponse)
 async def sync_steam(
     current_user: User = Depends(get_current_user),
@@ -65,9 +114,34 @@ async def sync_steam(
     return await integrations_response(db, current_user.id)
 
 
+@router.post("/code/{provider}/sync", response_model=IntegrationsResponse)
+async def sync_code_provider(
+    provider: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await sync_code_provider_account(db, current_user.id, provider)
+    except ExternalApiError as exc:
+        _raise_api_error(exc)
+    return await integrations_response(db, current_user.id)
+
+
 @router.delete("/steam", status_code=status.HTTP_204_NO_CONTENT)
 async def disconnect_steam(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     await disconnect_steam_account(db, current_user.id)
+
+
+@router.delete("/code/{provider}", status_code=status.HTTP_204_NO_CONTENT)
+async def disconnect_code_provider(
+    provider: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await disconnect_code_provider_account(db, current_user.id, provider)
+    except ExternalApiError as exc:
+        _raise_api_error(exc)

@@ -58,6 +58,15 @@ class ApiSettingsResponse(BaseModel):
     steam_api_key_hint: Optional[str] = None
     faceit_api_key_set: bool
     faceit_api_key_hint: Optional[str] = None
+    github_oauth_client_id: Optional[str] = None
+    github_oauth_client_secret_set: bool = False
+    github_oauth_client_secret_hint: Optional[str] = None
+    gitlab_oauth_client_id: Optional[str] = None
+    gitlab_oauth_client_secret_set: bool = False
+    gitlab_oauth_client_secret_hint: Optional[str] = None
+    gitea_oauth_client_id: Optional[str] = None
+    gitea_oauth_client_secret_set: bool = False
+    gitea_oauth_client_secret_hint: Optional[str] = None
     steam_inventory_app_id: int
     steam_inventory_context_id: str
     steam_inventory_price_source: str
@@ -66,11 +75,26 @@ class ApiSettingsResponse(BaseModel):
 class ApiSettingsUpdate(BaseModel):
     steam_api_key: Optional[str] = None
     faceit_api_key: Optional[str] = None
+    github_oauth_client_id: Optional[str] = None
+    github_oauth_client_secret: Optional[str] = None
+    gitlab_oauth_client_id: Optional[str] = None
+    gitlab_oauth_client_secret: Optional[str] = None
+    gitea_oauth_client_id: Optional[str] = None
+    gitea_oauth_client_secret: Optional[str] = None
     steam_inventory_app_id: int = Field(default=730, ge=1)
     steam_inventory_context_id: str = Field(default="2", min_length=1, max_length=32)
 
     @field_validator(
-        "steam_api_key", "faceit_api_key", "steam_inventory_context_id", mode="before"
+        "steam_api_key",
+        "faceit_api_key",
+        "github_oauth_client_id",
+        "github_oauth_client_secret",
+        "gitlab_oauth_client_id",
+        "gitlab_oauth_client_secret",
+        "gitea_oauth_client_id",
+        "gitea_oauth_client_secret",
+        "steam_inventory_context_id",
+        mode="before",
     )
     @classmethod
     def empty_api_string_to_none(cls, value: object) -> object:

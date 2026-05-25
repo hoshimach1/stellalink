@@ -93,7 +93,7 @@ const DEFAULT_CONFIGS: Record<string, Record<string, unknown>> = {
     show_inventory_highlight: true,
   },
   widget_lastfm: { username: '', show_now_playing: true },
-  widget_github: { username: '', show_contributions: true, show_pinned_repos: true },
+  widget_github: { username: '', use_connected_account: true, show_contributions: true, show_pinned_repos: true },
   widget_faceit: { game: 'cs2' },
   pc_config: { title: 'My Rig', components: [] },
 }

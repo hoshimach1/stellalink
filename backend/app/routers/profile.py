@@ -48,6 +48,8 @@ def _display_name_from_metadata(account, metadata: dict, provider: str) -> str |
             return steam_profile.get("personaname")
     if provider == "faceit":
         return metadata.get("nickname") or metadata.get("game_player_name")
+    if provider in {"github", "gitlab", "gitea"}:
+        return metadata.get("display_name") or metadata.get("username")
     return None
 
 
@@ -74,6 +76,13 @@ def _sanitize_block_config(block_type: str, config: dict | None) -> dict:
             "faceit_sync_error",
             "faceit_last_synced_at",
         ),
+        "widget_github": (
+            "github_display_name",
+            "connected_account_id",
+            "github_profile",
+            "github_sync_error",
+            "github_last_synced_at",
+        ),
     }
     for key in synced_keys.get(block_type, ()):
         clean.pop(key, None)
@@ -84,8 +93,10 @@ def _enriched_block_config(profile, block) -> dict:
     config = dict(block.config or {})
     steam_account = _account_by_provider(profile, "steam")
     faceit_account = _account_by_provider(profile, "faceit")
+    github_account = _account_by_provider(profile, "github")
     steam_metadata = _account_metadata(steam_account)
     faceit_metadata = _account_metadata(faceit_account)
+    github_metadata = _account_metadata(github_account)
 
     if block.block_type == "widget_steam":
         if steam_account:
@@ -148,6 +159,33 @@ def _enriched_block_config(profile, block) -> dict:
                 "faceit_profile",
                 "faceit_sync_error",
                 "faceit_last_synced_at",
+            ):
+                config.pop(key, None)
+
+    if block.block_type == "widget_github":
+        if github_account:
+            username = github_metadata.get("username")
+            display_name = _display_name_from_metadata(
+                github_account, github_metadata, "github"
+            )
+            if username:
+                config["username"] = username
+            config["github_display_name"] = display_name
+            config["connected_account_id"] = str(github_account.id)
+            config["github_profile"] = github_metadata
+            config["github_sync_error"] = github_account.sync_error
+            config["github_last_synced_at"] = (
+                github_account.last_synced_at.isoformat()
+                if github_account.last_synced_at
+                else None
+            )
+        else:
+            for key in (
+                "github_display_name",
+                "connected_account_id",
+                "github_profile",
+                "github_sync_error",
+                "github_last_synced_at",
             ):
                 config.pop(key, None)
 

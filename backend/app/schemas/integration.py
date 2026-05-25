@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -20,6 +20,9 @@ class IntegrationCapabilities(BaseModel):
     steam_api_key_set: bool
     faceit_api_key_set: bool
     steam_inventory_prices_supported: bool = False
+    github_oauth_ready: bool = False
+    gitlab_oauth_ready: bool = False
+    gitea_oauth_ready: bool = False
 
 
 class IntegrationsResponse(BaseModel):
@@ -28,4 +31,22 @@ class IntegrationsResponse(BaseModel):
 
 
 class SteamOpenIdStartResponse(BaseModel):
+    auth_url: str
+
+
+CodeProvider = Literal["github", "gitlab", "gitea"]
+
+
+class CodeProviderTokenConnectRequest(BaseModel):
+    provider: CodeProvider
+    access_token: str = Field(min_length=1, max_length=5000)
+    base_url: Optional[str] = Field(default=None, max_length=500)
+
+
+class CodeProviderOAuthStartRequest(BaseModel):
+    provider: CodeProvider
+    base_url: Optional[str] = Field(default=None, max_length=500)
+
+
+class OAuthStartResponse(BaseModel):
     auth_url: str

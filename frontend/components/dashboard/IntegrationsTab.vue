@@ -78,6 +78,74 @@
             <span v-else class="service-hint">Найдется после Steam, если ключ FACEIT настроен.</span>
           </div>
 
+          <div v-else-if="service.provider" class="code-provider-block">
+            <div v-if="codeProviderAccount(service.provider)" class="code-provider-summary">
+              <div>
+                <strong>{{ codeProviderUsername(service.provider) }}</strong>
+                <span>{{ codeProviderBaseUrl(service.provider) }}</span>
+              </div>
+              <div class="steam-actions">
+                <button class="service-action primary" type="button" :disabled="codeBusy === `${service.provider}:sync`" @click="syncCodeProvider(service.provider)">
+                  <span v-if="codeBusy === `${service.provider}:sync`" class="integration-spinner" />
+                  <template v-else>
+                    <i class="ri-refresh-line" />
+                    <span>Синхронизировать</span>
+                  </template>
+                </button>
+                <button class="service-action danger" type="button" :disabled="codeBusy === `${service.provider}:disconnect`" @click="disconnectCodeProvider(service.provider)">
+                  <i class="ri-link-unlink-m" />
+                  <span>Отключить</span>
+                </button>
+              </div>
+            </div>
+
+            <div v-else class="code-provider-form">
+              <div class="auth-mode-tabs" role="group" :aria-label="`${service.label} auth mode`">
+                <button
+                  type="button"
+                  :class="{ active: codeProviderInputs[service.provider].mode === 'token' }"
+                  @click="codeProviderInputs[service.provider].mode = 'token'"
+                >
+                  Token
+                </button>
+                <button
+                  type="button"
+                  :class="{ active: codeProviderInputs[service.provider].mode === 'oauth' }"
+                  @click="codeProviderInputs[service.provider].mode = 'oauth'"
+                >
+                  OAuth
+                </button>
+              </div>
+
+              <label class="provider-field">
+                <span>Base URL</span>
+                <input v-model="codeProviderInputs[service.provider].base_url" type="url" :placeholder="service.defaultBaseUrl">
+              </label>
+
+              <label v-if="codeProviderInputs[service.provider].mode === 'token'" class="provider-field">
+                <span>Access token</span>
+                <input v-model="codeProviderInputs[service.provider].token" type="password" autocomplete="new-password" placeholder="ghp_ / glpat_ / token">
+              </label>
+
+              <span v-else-if="!codeProviderOAuthReady(service.provider)" class="service-hint">
+                OAuth app не настроен в админке.
+              </span>
+
+              <button
+                class="service-action primary"
+                type="button"
+                :disabled="!canSubmitCodeProvider(service.provider) || codeBusy === `${service.provider}:connect`"
+                @click="connectCodeProvider(service.provider)"
+              >
+                <span v-if="codeBusy === `${service.provider}:connect`" class="integration-spinner" />
+                <template v-else>
+                  <i :class="codeProviderInputs[service.provider].mode === 'oauth' ? 'ri-login-circle-line' : 'ri-key-2-line'" />
+                  <span>{{ codeProviderInputs[service.provider].mode === 'oauth' ? 'Войти через OAuth' : 'Сохранить token' }}</span>
+                </template>
+              </button>
+            </div>
+          </div>
+
           <button
             v-else
             class="service-action"
@@ -97,7 +165,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { BLOCK_LIBRARY, createDefaultBlockConfig } from '~/utils/dashboard-studio'
 import { useProfileStore, type Block } from '~/stores/profile'
 import { useAuthStore } from '~/stores/auth'
@@ -109,8 +177,10 @@ const config = useRuntimeConfig()
 const route = useRoute()
 const { pushToast } = useAppToast()
 
-type IntegrationType = 'widget_steam' | 'widget_lastfm' | 'widget_github' | 'widget_faceit'
+type CodeProvider = 'github' | 'gitlab' | 'gitea'
+type IntegrationType = 'widget_steam' | 'widget_lastfm' | 'widget_faceit'
 type NoticeTone = 'success' | 'error'
+type CodeProviderMode = 'token' | 'oauth'
 type ConnectedAccount = {
   id: string
   provider: string
@@ -127,17 +197,52 @@ type IntegrationsResponse = {
     steam_api_key_set: boolean
     faceit_api_key_set: boolean
     steam_inventory_prices_supported: boolean
+    github_oauth_ready: boolean
+    gitlab_oauth_ready: boolean
+    gitea_oauth_ready: boolean
   }
 }
 
-const integrationTypes = new Set<IntegrationType>(['widget_steam', 'widget_lastfm', 'widget_github', 'widget_faceit'])
-const integrationOrder: IntegrationType[] = ['widget_steam', 'widget_faceit', 'widget_github', 'widget_lastfm']
-const connectableTypes = new Set<IntegrationType>(['widget_lastfm', 'widget_github'])
+const integrationTypes = new Set<IntegrationType>(['widget_steam', 'widget_lastfm', 'widget_faceit'])
+const integrationOrder: IntegrationType[] = ['widget_steam', 'widget_faceit', 'widget_lastfm']
+const connectableTypes = new Set<IntegrationType>(['widget_lastfm'])
+const codeProviderDefinitions = [
+  {
+    type: 'code_github',
+    provider: 'github' as const,
+    icon: 'ri-github-fill',
+    label: 'GitHub',
+    defaultBaseUrl: 'https://github.com',
+    description: 'Подключите GitHub через personal access token или OAuth, включая GitHub Enterprise Server.',
+  },
+  {
+    type: 'code_gitlab',
+    provider: 'gitlab' as const,
+    icon: 'ri-gitlab-fill',
+    label: 'GitLab',
+    defaultBaseUrl: 'https://gitlab.com',
+    description: 'Подключите GitLab.com или self-managed GitLab через token/OAuth.',
+  },
+  {
+    type: 'code_gitea',
+    provider: 'gitea' as const,
+    icon: 'ri-git-repository-private-line',
+    label: 'Gitea',
+    defaultBaseUrl: 'https://gitea.com',
+    description: 'Подключите Gitea.com или self-hosted Gitea через token/OAuth.',
+  },
+]
 const integrations = ref<IntegrationsResponse | null>(null)
 const loading = ref(false)
 const steamBusy = ref(false)
 const steamOauthBusy = ref(false)
 const connectingType = ref<IntegrationType | null>(null)
+const codeBusy = ref<string | null>(null)
+const codeProviderInputs = reactive<Record<CodeProvider, { mode: CodeProviderMode; base_url: string; token: string }>>({
+  github: { mode: 'token', base_url: '', token: '' },
+  gitlab: { mode: 'token', base_url: '', token: '' },
+  gitea: { mode: 'token', base_url: '', token: '' },
+})
 
 const steamAccount = computed(() => integrations.value?.accounts.find(account => account.provider === 'steam' && account.is_active) ?? null)
 const faceitAccount = computed(() => integrations.value?.accounts.find(account => account.provider === 'faceit' && account.is_active) ?? null)
@@ -146,14 +251,16 @@ const faceitElo = computed(() => faceitAccount.value?.metadata?.faceit_elo ?? nu
 const blockConnectedTypes = computed(() => new Set(profile.profile?.blocks.map(block => block.block_type) ?? []))
 const connectedTypes = computed(() => {
   const set = new Set<string>()
-  if (blockConnectedTypes.value.has('widget_github')) set.add('widget_github')
   if (blockConnectedTypes.value.has('widget_lastfm')) set.add('widget_lastfm')
   if (steamAccount.value) set.add('widget_steam')
   if (faceitAccount.value) set.add('widget_faceit')
+  for (const provider of codeProviderDefinitions) {
+    if (codeProviderAccount(provider.provider)) set.add(provider.type)
+  }
   return set
 })
-const serviceCards = computed(() =>
-  BLOCK_LIBRARY
+const serviceCards = computed(() => {
+  const baseCards = BLOCK_LIBRARY
     .filter(item => integrationTypes.has(item.type as IntegrationType))
     .sort((a, b) => integrationOrder.indexOf(a.type as IntegrationType) - integrationOrder.indexOf(b.type as IntegrationType))
     .map((item) => {
@@ -186,13 +293,30 @@ const serviceCards = computed(() =>
         statusIcon: connected ? 'ri-checkbox-circle-line' : type === 'widget_faceit' ? 'ri-link-m' : 'ri-add-circle-line',
         statusLabel: connected ? (type === 'widget_faceit' ? 'Через Steam' : 'Подключён') : type === 'widget_faceit' ? 'Автопоиск' : 'Доступно',
       }
-    }),
-)
+    })
+  const codeCards = codeProviderDefinitions.map((item) => {
+    const connected = Boolean(codeProviderAccount(item.provider))
+    return {
+      ...item,
+      actionIcon: connected ? 'ri-checkbox-circle-line' : 'ri-key-2-line',
+      actionLabel: connected ? 'Подключено' : 'Подключиться',
+      canConnect: !connected,
+      connected,
+      statusIcon: connected ? 'ri-checkbox-circle-line' : 'ri-key-2-line',
+      statusLabel: connected ? 'Подключён' : 'Token / OAuth',
+    }
+  })
+  const byType = new Map([...baseCards, ...codeCards].map(card => [card.type, card]))
+  return ['widget_steam', 'widget_faceit', 'code_github', 'code_gitlab', 'code_gitea', 'widget_lastfm']
+    .map(type => byType.get(type))
+    .filter(Boolean)
+})
 const connectedCount = computed(() => serviceCards.value.filter(service => service.connected).length)
 const inactiveCount = computed(() => Math.max(serviceCards.value.length - connectedCount.value, 0))
 
 onMounted(() => {
   readSteamRedirectResult()
+  readIntegrationRedirectResult()
   void loadIntegrations()
 })
 
@@ -205,6 +329,18 @@ function readSteamRedirectResult() {
     setIntegrationNotice(typeof route.query.steam_error === 'string'
       ? route.query.steam_error
       : 'Не удалось завершить вход через Steam.', 'error')
+  }
+}
+
+function readIntegrationRedirectResult() {
+  if (route.query.integration_status === 'connected' && typeof route.query.integration === 'string') {
+    setIntegrationNotice(`${codeProviderLabel(route.query.integration)} подключён через OAuth.`, 'success')
+    return
+  }
+  if (route.query.integration_status === 'error') {
+    setIntegrationNotice(typeof route.query.integration_error === 'string'
+      ? route.query.integration_error
+      : 'Не удалось завершить OAuth-подключение.', 'error')
   }
 }
 
@@ -224,11 +360,48 @@ async function loadIntegrations() {
     if (steamAccount.value) {
       await ensureSteamBlock()
     }
+    if (codeProviderAccount('github')) {
+      await ensureGitHubBlock()
+    }
   } catch (error) {
     setIntegrationNotice(extractAuthError(error, 'Не удалось загрузить подключения.'), 'error')
   } finally {
     loading.value = false
   }
+}
+
+async function ensureGitHubBlock() {
+  if (!profile.profile) return
+  const account = codeProviderAccount('github')
+  if (!account) return
+  const existing = profile.profile?.blocks.find((block: Block) => block.block_type === 'widget_github')
+  const currentConfig = existing ? sanitizedGitHubBlockConfig(existing.config) : null
+  const username = account.metadata?.username || account.display_name || ''
+  const nextConfig: Record<string, unknown> = {
+    ...(currentConfig ?? createDefaultBlockConfig('widget_github')),
+    use_connected_account: true,
+    username,
+    show_contributions: currentConfig?.show_contributions ?? true,
+    show_pinned_repos: currentConfig?.show_pinned_repos ?? true,
+  }
+
+  if (existing) {
+    if (JSON.stringify(currentConfig) !== JSON.stringify(nextConfig)) {
+      await profile.updateBlock(existing.id, { config: nextConfig })
+    }
+  } else {
+    await profile.createBlock('widget_github', nextConfig)
+  }
+}
+
+function sanitizedGitHubBlockConfig(value: Record<string, unknown>) {
+  const clean = { ...value }
+  delete clean.connected_account_id
+  delete clean.github_display_name
+  delete clean.github_profile
+  delete clean.github_sync_error
+  delete clean.github_last_synced_at
+  return clean
 }
 
 async function ensureSteamBlock() {
@@ -308,6 +481,126 @@ async function disconnectSteamConnection() {
     setIntegrationNotice(extractAuthError(error, 'Не удалось отключить Steam.'), 'error')
   } finally {
     steamBusy.value = false
+  }
+}
+
+function codeProviderLabel(provider: string) {
+  const labels: Record<string, string> = {
+    github: 'GitHub',
+    gitlab: 'GitLab',
+    gitea: 'Gitea',
+    code: 'Интеграция',
+  }
+  return labels[provider] ?? provider
+}
+
+function codeProviderAccount(provider: CodeProvider): ConnectedAccount | null {
+  return integrations.value?.accounts.find(account => account.provider === provider && account.is_active) ?? null
+}
+
+function codeProviderUsername(provider: CodeProvider): string {
+  const account = codeProviderAccount(provider)
+  return String(account?.metadata?.username || account?.display_name || account?.provider_uid || codeProviderLabel(provider))
+}
+
+function codeProviderBaseUrl(provider: CodeProvider): string {
+  const account = codeProviderAccount(provider)
+  const definition = codeProviderDefinitions.find(item => item.provider === provider)
+  return String(account?.metadata?.base_url || definition?.defaultBaseUrl || '')
+}
+
+function codeProviderOAuthReady(provider: CodeProvider): boolean {
+  const capabilities = integrations.value?.capabilities
+  if (provider === 'github') return Boolean(capabilities?.github_oauth_ready)
+  if (provider === 'gitlab') return Boolean(capabilities?.gitlab_oauth_ready)
+  return Boolean(capabilities?.gitea_oauth_ready)
+}
+
+function canSubmitCodeProvider(provider: CodeProvider): boolean {
+  const input = codeProviderInputs[provider]
+  if (input.mode === 'oauth') {
+    return codeProviderOAuthReady(provider)
+  }
+  return Boolean(input.token.trim())
+}
+
+function codeProviderBaseInput(provider: CodeProvider): string | null {
+  const value = codeProviderInputs[provider].base_url.trim()
+  return value || null
+}
+
+async function connectCodeProvider(provider: CodeProvider) {
+  if (!canSubmitCodeProvider(provider)) return
+  codeBusy.value = `${provider}:connect`
+  try {
+    const input = codeProviderInputs[provider]
+    if (input.mode === 'oauth') {
+      const response = await auth.authorizedFetch<{ auth_url: string }>(
+        `${config.public.apiBase}/integrations/code/oauth/start`,
+        {
+          method: 'POST',
+          body: {
+            provider,
+            base_url: codeProviderBaseInput(provider),
+          },
+        },
+      )
+      window.location.assign(response.auth_url)
+      return
+    }
+
+    const data = await auth.authorizedFetch<IntegrationsResponse>(`${config.public.apiBase}/integrations/code/token`, {
+      method: 'POST',
+      body: {
+        provider,
+        access_token: input.token.trim(),
+        base_url: codeProviderBaseInput(provider),
+      },
+    })
+    input.token = ''
+    applyIntegrations(data)
+    if (provider === 'github') {
+      await ensureGitHubBlock()
+    }
+    await profile.fetch()
+    setIntegrationNotice(`${codeProviderLabel(provider)} подключён через token.`, 'success')
+  } catch (error) {
+    setIntegrationNotice(extractAuthError(error, `Не удалось подключить ${codeProviderLabel(provider)}.`), 'error')
+  } finally {
+    codeBusy.value = null
+  }
+}
+
+async function syncCodeProvider(provider: CodeProvider) {
+  codeBusy.value = `${provider}:sync`
+  try {
+    const data = await auth.authorizedFetch<IntegrationsResponse>(`${config.public.apiBase}/integrations/code/${provider}/sync`, {
+      method: 'POST',
+    })
+    applyIntegrations(data)
+    if (provider === 'github') {
+      await ensureGitHubBlock()
+    }
+    await profile.fetch()
+    setIntegrationNotice(`${codeProviderLabel(provider)} синхронизирован.`, 'success')
+  } catch (error) {
+    setIntegrationNotice(extractAuthError(error, `Не удалось синхронизировать ${codeProviderLabel(provider)}.`), 'error')
+  } finally {
+    codeBusy.value = null
+  }
+}
+
+async function disconnectCodeProvider(provider: CodeProvider) {
+  codeBusy.value = `${provider}:disconnect`
+  try {
+    await auth.authorizedFetch(`${config.public.apiBase}/integrations/code/${provider}`, { method: 'DELETE' })
+    await loadIntegrations()
+    await profile.fetch()
+    setIntegrationNotice(`${codeProviderLabel(provider)} отключён от аккаунта.`, 'success')
+  } catch (error) {
+    setIntegrationNotice(extractAuthError(error, `Не удалось отключить ${codeProviderLabel(provider)}.`), 'error')
+  } finally {
+    codeBusy.value = null
   }
 }
 
@@ -520,7 +813,8 @@ async function connectService(type: IntegrationType) {
 
 .service-controls,
 .steam-connect,
-.faceit-block {
+.faceit-block,
+.code-provider-block {
   display: grid;
   justify-items: end;
   gap: 8px;
@@ -598,6 +892,98 @@ async function connectService(type: IntegrationType) {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.code-provider-summary,
+.code-provider-form {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+  min-width: 280px;
+}
+
+.code-provider-summary > div:first-child {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border-radius: 16px;
+  background: var(--dash-surface-soft, #F2F4F8);
+}
+
+.code-provider-summary strong {
+  color: var(--dash-text-1, #10182b);
+  font-size: 13px;
+  font-weight: 950;
+  overflow-wrap: anywhere;
+}
+
+.code-provider-summary span {
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.auth-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  padding: 3px;
+  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border-radius: 999px;
+  background: var(--dash-surface-soft, #F2F4F8);
+}
+
+.auth-mode-tabs button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dash-text-2, #475778);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.auth-mode-tabs button.active {
+  background: var(--dash-surface-strong, #fff);
+  color: var(--dash-accent-strong, #163E86);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--dash-text-1, #10182b) 8%, transparent);
+}
+
+.provider-field {
+  display: grid;
+  width: 100%;
+  gap: 6px;
+}
+
+.provider-field span {
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.provider-field input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border-radius: 16px;
+  background: var(--dash-surface-strong, #fff);
+  color: var(--dash-text-1, #10182b);
+  font: inherit;
+  outline: none;
+  padding: 0 12px;
+  transition:
+    border-color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    box-shadow 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.provider-field input:focus {
+  border-color: var(--dash-accent, #345EA8);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent, #345EA8) 15%, transparent);
 }
 
 .faceit-summary span,
@@ -694,7 +1080,10 @@ async function connectService(type: IntegrationType) {
 
   .service-controls,
   .steam-connect,
-  .faceit-block {
+  .faceit-block,
+  .code-provider-block,
+  .code-provider-summary,
+  .code-provider-form {
     justify-items: stretch;
     min-width: 0;
   }
@@ -707,6 +1096,10 @@ async function connectService(type: IntegrationType) {
   .service-action,
   .steam-login {
     width: 100%;
+  }
+
+  .code-provider-summary > div:first-child {
+    justify-items: start;
   }
 
   .service-hint {

@@ -5,7 +5,7 @@ import secrets
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from uuid import UUID
 
@@ -31,6 +31,23 @@ STEAM_OPENID_LOGIN_URL = "https://steamcommunity.com/openid/login"
 STEAM_OPENID_STATE_TTL_SECONDS = 600
 FACEIT_API_BASE = "https://open.faceit.com/data/v4"
 FACEIT_GAME_ID = "cs2"
+CODE_OAUTH_STATE_TTL_SECONDS = 600
+CODE_PROVIDERS = {"github", "gitlab", "gitea"}
+CODE_PROVIDER_DEFAULT_BASE_URLS = {
+    "github": "https://github.com",
+    "gitlab": "https://gitlab.com",
+    "gitea": "https://gitea.com",
+}
+CODE_PROVIDER_LABELS = {
+    "github": "GitHub",
+    "gitlab": "GitLab",
+    "gitea": "Gitea",
+}
+CODE_PROVIDER_SCOPES = {
+    "github": "read:user",
+    "gitlab": "read_user",
+    "gitea": "read:user read:repository",
+}
 
 
 class ExternalApiError(Exception):
@@ -120,6 +137,50 @@ async def _post_text(
     return await asyncio.to_thread(_read_text_post, url, data, service, timeout)
 
 
+def _read_json_post(
+    url: str,
+    data: dict[str, str],
+    service: str,
+    headers: Optional[dict[str, str]] = None,
+    timeout: int = 12,
+) -> dict[str, Any]:
+    encoded = urllib.parse.urlencode(data).encode("utf-8")
+    request_headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json",
+        **(headers or {}),
+    }
+    request = urllib.request.Request(
+        url, data=encoded, headers=request_headers, method="POST"
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 - OAuth endpoints are selected from configured provider hosts
+            raw = response.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise _hinted_error(service, exc.code, body) from exc
+    except urllib.error.URLError as exc:
+        raise ExternalApiError(f"{service}: network request failed.") from exc
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ExternalApiError(f"{service}: returned invalid JSON.") from exc
+    if not isinstance(parsed, dict):
+        raise ExternalApiError(f"{service}: returned an unexpected payload.")
+    return parsed
+
+
+async def _post_json(
+    url: str,
+    data: dict[str, str],
+    service: str,
+    headers: Optional[dict[str, str]] = None,
+    timeout: int = 12,
+) -> dict[str, Any]:
+    return await asyncio.to_thread(_read_json_post, url, data, service, headers, timeout)
+
+
 def _steam_url(path: str, params: dict[str, Any]) -> str:
     query = urllib.parse.urlencode({k: v for k, v in params.items() if v is not None})
     return f"{STEAM_API_BASE}{path}?{query}"
@@ -171,6 +232,143 @@ def _steam_openid_result_url(
     if detail and not success:
         query["steam_error"] = detail[:160]
     return f"{frontend_base_url}/dashboard?{urllib.parse.urlencode(query)}"
+
+
+def _code_oauth_state_key(state: str) -> str:
+    return f"integration:code_oauth:{state}"
+
+
+def _provider_label(provider: str) -> str:
+    return CODE_PROVIDER_LABELS.get(provider, provider)
+
+
+def _normalize_code_provider(provider: str) -> str:
+    provider = provider.strip().lower()
+    if provider not in CODE_PROVIDERS:
+        raise ExternalApiError("Unsupported code provider.", 400)
+    return provider
+
+
+def _normalize_base_url(provider: str, raw_base_url: Optional[str]) -> str:
+    base_url = _clean_text(raw_base_url) or CODE_PROVIDER_DEFAULT_BASE_URLS[provider]
+    parsed = urllib.parse.urlparse(base_url)
+    if not parsed.scheme:
+        parsed = urllib.parse.urlparse(f"https://{base_url}")
+
+    host = parsed.hostname or ""
+    is_local = host in {"localhost", "127.0.0.1", "::1"}
+    if parsed.scheme not in {"http", "https"}:
+        raise ExternalApiError("Provider URL must start with http:// or https://.", 400)
+    if parsed.scheme != "https" and not is_local:
+        raise ExternalApiError("Self-hosted provider URL must use HTTPS.", 400)
+
+    normalized = urllib.parse.urlunparse(
+        (parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), "", "", "")
+    ).rstrip("/")
+    return normalized or CODE_PROVIDER_DEFAULT_BASE_URLS[provider]
+
+
+def _code_provider_urls(provider: str, base_url: str) -> dict[str, str]:
+    if provider == "github":
+        api_base = (
+            "https://api.github.com"
+            if base_url == CODE_PROVIDER_DEFAULT_BASE_URLS["github"]
+            else f"{base_url}/api/v3"
+        )
+        return {
+            "authorize": f"{base_url}/login/oauth/authorize",
+            "token": f"{base_url}/login/oauth/access_token",
+            "api": api_base,
+        }
+    if provider == "gitlab":
+        return {
+            "authorize": f"{base_url}/oauth/authorize",
+            "token": f"{base_url}/oauth/token",
+            "api": f"{base_url}/api/v4",
+        }
+    return {
+        "authorize": f"{base_url}/login/oauth/authorize",
+        "token": f"{base_url}/login/oauth/access_token",
+        "api": f"{base_url}/api/v1",
+    }
+
+
+def _code_oauth_callback_url(frontend_base_url: str) -> str:
+    return f"{frontend_base_url}/api/integrations/code/oauth/callback"
+
+
+def _code_provider_result_url(
+    frontend_base_url: str,
+    provider: str,
+    success: bool,
+    detail: Optional[str] = None,
+) -> str:
+    query = {
+        "tab": "integrations",
+        "integration": provider,
+        "integration_status": "connected" if success else "error",
+    }
+    if detail and not success:
+        query["integration_error"] = detail[:160]
+    return f"{frontend_base_url}/dashboard?{urllib.parse.urlencode(query)}"
+
+
+def _token_expires_at(expires_in: Any) -> Optional[datetime]:
+    seconds = _to_int(expires_in)
+    if seconds <= 0:
+        return None
+    return datetime.now(timezone.utc) + timedelta(seconds=seconds)
+
+
+def _code_provider_auth_headers(
+    provider: str, access_token: str, auth_method: str
+) -> dict[str, str]:
+    headers = {"Accept": "application/json"}
+    if provider == "github":
+        headers.update(
+            {
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            }
+        )
+    elif provider == "gitlab" and auth_method == "token":
+        headers["PRIVATE-TOKEN"] = access_token
+    elif provider == "gitea" and auth_method == "token":
+        headers["Authorization"] = f"token {access_token}"
+    else:
+        headers["Authorization"] = f"Bearer {access_token}"
+    return headers
+
+
+def _summarize_code_provider_user(
+    provider: str, base_url: str, api_base: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    if provider == "github":
+        username = _clean_text(payload.get("login"))
+        profile_url = _clean_text(payload.get("html_url"))
+    elif provider == "gitlab":
+        username = _clean_text(payload.get("username"))
+        profile_url = _clean_text(payload.get("web_url"))
+    else:
+        username = _clean_text(payload.get("login") or payload.get("username"))
+        profile_url = _clean_text(payload.get("html_url") or payload.get("website"))
+
+    name = _clean_text(payload.get("name") or payload.get("full_name")) or username
+    return {
+        "available": True,
+        "provider": provider,
+        "base_url": base_url,
+        "api_base": api_base,
+        "uid": str(payload.get("id") or username or ""),
+        "username": username,
+        "display_name": name,
+        "profile_url": profile_url,
+        "avatar_url": _clean_text(payload.get("avatar_url")),
+        "public_repos": payload.get("public_repos"),
+        "followers": payload.get("followers"),
+        "following": payload.get("following"),
+    }
 
 
 async def create_steam_openid_auth_url(db: AsyncSession, user_id: UUID) -> str:
@@ -257,6 +455,213 @@ async def connect_steam_openid_response(db: AsyncSession, query: dict[str, str])
         return _steam_openid_result_url(frontend_base_url, False, str(exc))
 
     return _steam_openid_result_url(frontend_base_url, True)
+
+
+async def _get_code_oauth_config(
+    db: AsyncSession, provider: str
+) -> tuple[str, str]:
+    api_settings = await get_api_settings_data(db)
+    client_id = _clean_text(api_settings.get(f"{provider}_oauth_client_id"))
+    client_secret = _clean_text(api_settings.get(f"{provider}_oauth_client_secret"))
+    if not client_id or not client_secret:
+        raise ExternalApiError(
+            f"{_provider_label(provider)} OAuth app is not configured.", 400
+        )
+    return client_id, client_secret
+
+
+async def create_code_provider_oauth_url(
+    db: AsyncSession,
+    user_id: UUID,
+    provider: str,
+    raw_base_url: Optional[str] = None,
+) -> str:
+    provider = _normalize_code_provider(provider)
+    base_url = _normalize_base_url(provider, raw_base_url)
+    client_id, _ = await _get_code_oauth_config(db, provider)
+    frontend_base_url = await get_public_frontend_base_url(db)
+    redirect_uri = _code_oauth_callback_url(frontend_base_url)
+    state = secrets.token_urlsafe(32)
+    urls = _code_provider_urls(provider, base_url)
+
+    redis = await get_redis()
+    await redis.setex(
+        _code_oauth_state_key(state),
+        CODE_OAUTH_STATE_TTL_SECONDS,
+        json.dumps(
+            {
+                "user_id": str(user_id),
+                "provider": provider,
+                "base_url": base_url,
+                "redirect_uri": redirect_uri,
+            }
+        ),
+    )
+
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "state": state,
+        "scope": CODE_PROVIDER_SCOPES[provider],
+    }
+    return f"{urls['authorize']}?{urllib.parse.urlencode(params)}"
+
+
+async def _consume_code_oauth_state(state: str) -> Optional[dict[str, str]]:
+    redis = await get_redis()
+    key = _code_oauth_state_key(state)
+    raw = await redis.get(key)
+    if not raw:
+        return None
+    await redis.delete(key)
+    if isinstance(raw, bytes):
+        raw = raw.decode("utf-8", errors="replace")
+    try:
+        parsed = json.loads(str(raw))
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+async def fetch_code_provider_profile(
+    provider: str,
+    access_token: str,
+    raw_base_url: Optional[str] = None,
+    auth_method: str = "token",
+) -> dict[str, Any]:
+    provider = _normalize_code_provider(provider)
+    base_url = _normalize_base_url(provider, raw_base_url)
+    urls = _code_provider_urls(provider, base_url)
+    payload = await _fetch_json(
+        f"{urls['api']}/user",
+        _provider_label(provider),
+        headers=_code_provider_auth_headers(provider, access_token, auth_method),
+    )
+    return _summarize_code_provider_user(provider, base_url, urls["api"], payload)
+
+
+async def connect_code_provider_token(
+    db: AsyncSession,
+    user_id: UUID,
+    provider: str,
+    access_token: str,
+    raw_base_url: Optional[str] = None,
+) -> ConnectedAccount:
+    provider = _normalize_code_provider(provider)
+    access_token = _clean_text(access_token) or ""
+    if not access_token:
+        raise ExternalApiError("Access token is required.", 400)
+
+    metadata = await fetch_code_provider_profile(
+        provider, access_token, raw_base_url, auth_method="token"
+    )
+    metadata["auth_method"] = "token"
+    metadata["scopes"] = []
+
+    account = await upsert_single_provider_account(
+        db,
+        user_id,
+        provider,
+        metadata["uid"],
+        _clean_text(metadata.get("display_name")) or metadata["uid"],
+        metadata,
+        None,
+        access_token=access_token,
+        refresh_token=None,
+        scopes=[],
+    )
+    account.refresh_token = None
+    account.token_expires_at = None
+    account.scopes = []
+    db.add(account)
+    await db.commit()
+    await db.refresh(account)
+    return account
+
+
+async def connect_code_provider_oauth_response(
+    db: AsyncSession, query: dict[str, str]
+) -> str:
+    frontend_base_url = await get_public_frontend_base_url(db)
+    state = _clean_text(query.get("state"))
+    code = _clean_text(query.get("code"))
+    if not state or not code:
+        return _code_provider_result_url(
+            frontend_base_url, "code", False, "Missing OAuth callback data."
+        )
+
+    state_data = await _consume_code_oauth_state(state)
+    if not state_data:
+        return _code_provider_result_url(
+            frontend_base_url, "code", False, "OAuth sign-in expired. Try again."
+        )
+
+    provider = _normalize_code_provider(str(state_data.get("provider") or ""))
+    base_url = _normalize_base_url(provider, state_data.get("base_url"))
+    user_id_raw = str(state_data.get("user_id") or "")
+    redirect_uri = str(state_data.get("redirect_uri") or "")
+
+    try:
+        user_id = UUID(user_id_raw)
+    except ValueError:
+        return _code_provider_result_url(
+            frontend_base_url, provider, False, "OAuth state is invalid."
+        )
+
+    try:
+        client_id, client_secret = await _get_code_oauth_config(db, provider)
+        urls = _code_provider_urls(provider, base_url)
+        token_payload = await _post_json(
+            urls["token"],
+            {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": redirect_uri,
+            },
+            f"{_provider_label(provider)} OAuth",
+        )
+        access_token = _clean_text(token_payload.get("access_token"))
+        if not access_token:
+            raise ExternalApiError(
+                f"{_provider_label(provider)} OAuth did not return an access token.",
+                400,
+            )
+        metadata = await fetch_code_provider_profile(
+            provider, access_token, base_url, auth_method="oauth"
+        )
+        metadata["auth_method"] = "oauth"
+        metadata["scopes"] = [
+            scope
+            for scope in str(token_payload.get("scope") or "").split()
+            if scope.strip()
+        ]
+        refresh_token = _clean_text(token_payload.get("refresh_token"))
+        expires_at = _token_expires_at(token_payload.get("expires_in"))
+        account = await upsert_single_provider_account(
+            db,
+            user_id,
+            provider,
+            metadata["uid"],
+            _clean_text(metadata.get("display_name")) or metadata["uid"],
+            metadata,
+            None,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_expires_at=expires_at,
+            scopes=metadata["scopes"],
+        )
+        account.refresh_token = refresh_token
+        account.token_expires_at = expires_at
+        db.add(account)
+        await db.commit()
+        await db.refresh(account)
+    except ExternalApiError as exc:
+        return _code_provider_result_url(frontend_base_url, provider, False, str(exc))
+
+    return _code_provider_result_url(frontend_base_url, provider, True)
 
 
 def _extract_steam_identifier(raw: str) -> str:
@@ -629,6 +1034,10 @@ async def upsert_single_provider_account(
     display_name: Optional[str],
     metadata: dict[str, Any],
     sync_error: Optional[str],
+    access_token: Optional[str] = None,
+    refresh_token: Optional[str] = None,
+    token_expires_at: Optional[datetime] = None,
+    scopes: Optional[list[str]] = None,
 ) -> ConnectedAccount:
     result = await db.execute(
         select(ConnectedAccount).where(
@@ -654,6 +1063,14 @@ async def upsert_single_provider_account(
     account.provider_uid = provider_uid
     account.display_name = display_name
     account.account_metadata = metadata
+    if access_token is not None:
+        account.access_token = access_token
+    if refresh_token is not None:
+        account.refresh_token = refresh_token
+    if token_expires_at is not None:
+        account.token_expires_at = token_expires_at
+    if scopes is not None:
+        account.scopes = scopes
     account.is_active = True
     account.last_synced_at = now
     account.sync_error = sync_error
@@ -722,6 +1139,60 @@ async def disconnect_steam_account(db: AsyncSession, user_id: UUID) -> None:
     await db.commit()
 
 
+async def sync_code_provider_account(
+    db: AsyncSession, user_id: UUID, provider: str
+) -> ConnectedAccount:
+    provider = _normalize_code_provider(provider)
+    account = await get_connected_account(db, user_id, provider)
+    if not account or not account.access_token:
+        raise ExternalApiError(f"{_provider_label(provider)} account is not connected.", 404)
+
+    metadata = (
+        dict(account.account_metadata)
+        if isinstance(account.account_metadata, dict)
+        else {}
+    )
+    auth_method = str(metadata.get("auth_method") or "token")
+    base_url = _clean_text(metadata.get("base_url"))
+    next_metadata = await fetch_code_provider_profile(
+        provider, account.access_token, base_url, auth_method=auth_method
+    )
+    next_metadata["auth_method"] = auth_method
+    next_metadata["scopes"] = list(account.scopes or [])
+
+    account = await upsert_single_provider_account(
+        db,
+        user_id,
+        provider,
+        next_metadata["uid"],
+        _clean_text(next_metadata.get("display_name")) or next_metadata["uid"],
+        next_metadata,
+        None,
+        access_token=account.access_token,
+        refresh_token=account.refresh_token,
+        token_expires_at=account.token_expires_at,
+        scopes=list(account.scopes or []),
+    )
+    await db.commit()
+    await db.refresh(account)
+    return account
+
+
+async def disconnect_code_provider_account(
+    db: AsyncSession, user_id: UUID, provider: str
+) -> None:
+    provider = _normalize_code_provider(provider)
+    result = await db.execute(
+        select(ConnectedAccount).where(
+            ConnectedAccount.user_id == user_id,
+            ConnectedAccount.provider == provider,
+        )
+    )
+    for account in result.scalars().all():
+        await db.delete(account)
+    await db.commit()
+
+
 def account_to_response(account: ConnectedAccount) -> ConnectedAccountResponse:
     metadata = (
         account.account_metadata if isinstance(account.account_metadata, dict) else {}
@@ -749,5 +1220,17 @@ async def integrations_response(
             steam_api_key_set=bool(_clean_text(api_settings.get("steam_api_key"))),
             faceit_api_key_set=bool(_clean_text(api_settings.get("faceit_api_key"))),
             steam_inventory_prices_supported=False,
+            github_oauth_ready=bool(
+                _clean_text(api_settings.get("github_oauth_client_id"))
+                and _clean_text(api_settings.get("github_oauth_client_secret"))
+            ),
+            gitlab_oauth_ready=bool(
+                _clean_text(api_settings.get("gitlab_oauth_client_id"))
+                and _clean_text(api_settings.get("gitlab_oauth_client_secret"))
+            ),
+            gitea_oauth_ready=bool(
+                _clean_text(api_settings.get("gitea_oauth_client_id"))
+                and _clean_text(api_settings.get("gitea_oauth_client_secret"))
+            ),
         ),
     )
