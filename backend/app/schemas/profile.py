@@ -20,6 +20,7 @@ class ProfileUpdate(BaseModel):
     bio: Optional[str] = None
     tags: Optional[List[str]] = None
     theme_preset: Optional[str] = Field(None, max_length=50)
+    theme_tokens: Optional[Dict[str, Any]] = None
     accent_color: Optional[str] = Field(None, max_length=9)
 
 
@@ -56,6 +57,7 @@ class ProfileResponse(BaseModel):
     tags: List[str]
     blocks: List[BlockResponse]
     theme_preset: str
+    theme_tokens: Optional[Dict[str, Any]]
     accent_color: Optional[str]
     avatar_url: Optional[str]
 

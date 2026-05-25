@@ -8,7 +8,7 @@
 
   <div v-if="profile.profile" class="studio-shell">
     <section class="studio-preview-pane" aria-label="Живое превью профиля">
-      <article class="public-card" :class="`theme-${currentTheme}`" :style="{ '--profile-accent': currentAccent }">
+      <article class="public-card" :class="previewCardClasses" :data-color-mode="currentColorMode" :style="profileAccentStyle">
         <header class="public-header">
           <div class="avatar-wrap">
             <div class="public-avatar">
@@ -163,6 +163,7 @@
                       v-if="faceitPreviewData(previewConfig(block))"
                       class="faceit-level"
                       :level="faceitPreviewData(previewConfig(block))?.level || 0"
+                      :accent-color="faceitAccentColor"
                     />
                   </div>
                   <div v-if="faceitPreviewData(previewConfig(block))" class="stat-grid">
@@ -298,7 +299,7 @@
                 type="button"
                 @click="setTheme(theme.id)"
               >
-                <span class="theme-swatch" :class="`theme-${theme.id}`" :style="{ '--profile-accent': currentAccent }" />
+                <span class="theme-swatch" :class="`theme-${theme.id}`" :style="theme.id === 'material3' ? { '--profile-accent': currentAccent } : undefined" />
                 <span>
                   <strong>{{ theme.label }}</strong>
                   <small>{{ theme.sub }}</small>
@@ -307,23 +308,63 @@
             </div>
 
             <div class="section-subhead">
-              <strong>Акцент</strong>
+              <strong>Тон темы</strong>
             </div>
-            <div class="accent-row">
+            <button
+              class="switch-setting"
+              type="button"
+              role="switch"
+              :aria-checked="currentColorMode === 'dark'"
+              @click="setColorMode(currentColorMode === 'dark' ? 'light' : 'dark')"
+            >
+              <span class="switch-setting-copy">
+                <strong>{{ currentColorMode === 'dark' ? 'Темная' : 'Светлая' }}</strong>
+                <small>{{ currentColorMode === 'dark' ? 'Глубокие поверхности и мягкий контраст.' : 'Чистые поверхности и спокойный контраст.' }}</small>
+              </span>
+              <span class="custom-switch" :class="{ active: currentColorMode === 'dark' }" aria-hidden="true">
+                <span><i :class="currentColorMode === 'dark' ? 'ri-moon-clear-line' : 'ri-sun-line'" /></span>
+              </span>
+            </button>
+
+            <div v-if="currentTheme === 'material3'" class="material3-theme-controls">
+              <div class="section-subhead">
+                <strong>Акцент Material 3</strong>
+              </div>
+              <div class="accent-row">
+                <button
+                  v-for="color in ACCENT_COLORS"
+                  :key="color.value"
+                  class="accent-dot"
+                  :class="{ active: currentAccent === color.value }"
+                  :style="{ background: color.value }"
+                  :title="color.label"
+                  type="button"
+                  @click="setAccent(color.value)"
+                />
+                <label class="accent-dot custom" title="Свой цвет">
+                  <i class="ri-add-line" />
+                  <input type="color" :value="currentAccent" hidden @input="setAccent(($event.target as HTMLInputElement).value)">
+                </label>
+              </div>
+
+              <div class="section-subhead">
+                <strong>Формат Material 3</strong>
+              </div>
               <button
-                v-for="color in ACCENT_COLORS"
-                :key="color.value"
-                class="accent-dot"
-                :class="{ active: currentAccent === color.value }"
-                :style="{ background: color.value }"
-                :title="color.label"
+                class="switch-setting"
                 type="button"
-                @click="setAccent(color.value)"
-              />
-              <label class="accent-dot custom" title="Свой цвет">
-                <i class="ri-add-line" />
-                <input type="color" :value="currentAccent" hidden @input="setAccent(($event.target as HTMLInputElement).value)">
-              </label>
+                role="switch"
+                :aria-checked="isMaterial3Wide"
+                @click="setMaterial3Wide(!isMaterial3Wide)"
+              >
+                <span class="switch-setting-copy">
+                  <strong>{{ isMaterial3Wide ? 'Широкий' : 'Компактный' }}</strong>
+                  <small>{{ isMaterial3Wide ? 'Профиль раскрывается в две колонки.' : 'Классический вертикальный профиль.' }}</small>
+                </span>
+                <span class="custom-switch wide-switch" :class="{ active: isMaterial3Wide }" aria-hidden="true">
+                  <span><i :class="isMaterial3Wide ? 'ri-layout-column-line' : 'ri-smartphone-line'" /></span>
+                </span>
+              </button>
             </div>
           </section>
 
@@ -472,6 +513,14 @@ interface SteamGame {
 
 type NoticeTone = 'success' | 'info' | 'error'
 type Panel = 'profile' | 'blocks'
+type ThemeColorMode = 'light' | 'dark'
+type Material3Layout = 'compact' | 'wide'
+
+interface ProfileThemeTokens {
+  colorMode?: ThemeColorMode
+  material3Layout?: Material3Layout
+  [key: string]: unknown
+}
 
 const profile = useProfileStore()
 const auth = useAuthStore()
@@ -524,6 +573,27 @@ const currentTheme = computed<DashboardThemeId>(() => {
   return preset === 'glass' || preset === 'fluent' ? preset : 'material3'
 })
 const currentAccent = computed(() => profile.profile?.accent_color || '#345EA8')
+const themeTokens = computed<ProfileThemeTokens>(() => {
+  const tokens = profile.profile?.theme_tokens
+  return tokens && typeof tokens === 'object' ? tokens as ProfileThemeTokens : {}
+})
+const currentColorMode = computed<ThemeColorMode>(() => {
+  const mode = themeTokens.value.colorMode
+  if (mode === 'light' || mode === 'dark') return mode
+  return currentTheme.value === 'material3' ? 'light' : 'dark'
+})
+const isMaterial3Wide = computed(() =>
+  currentTheme.value === 'material3' && themeTokens.value.material3Layout === 'wide',
+)
+const profileAccentStyle = computed<Record<string, string>>(() => {
+  const fallbackAccent = currentTheme.value === 'glass' ? '#a8d8ff' : '#60cdff'
+  return { '--profile-accent': currentTheme.value === 'material3' ? currentAccent.value : fallbackAccent }
+})
+const previewCardClasses = computed(() => [
+  `theme-${currentTheme.value}`,
+  { 'layout-wide': isMaterial3Wide.value },
+])
+const faceitAccentColor = computed(() => currentTheme.value === 'material3' ? currentAccent.value : null)
 const publicPath = computed(() => profile.profile ? `/${profile.profile.slug}` : '/')
 const publicUrl = computed(() => new URL(publicPath.value, requestOrigin).toString())
 const publicUrlLabel = computed(() => profile.profile ? `${requestHost}/${profile.profile.slug}` : requestHost)
@@ -789,7 +859,29 @@ async function setTheme(id: DashboardThemeId) {
   }
 }
 
+function mergeThemeTokens(patch: Partial<ProfileThemeTokens>): ProfileThemeTokens {
+  return { ...themeTokens.value, ...patch }
+}
+
+async function setColorMode(mode: ThemeColorMode) {
+  try {
+    await profile.update({ theme_tokens: mergeThemeTokens({ colorMode: mode }) })
+  } catch (error) {
+    setNotice(extractAuthError(error, 'Не удалось изменить тон темы.'), 'error')
+  }
+}
+
+async function setMaterial3Wide(enabled: boolean) {
+  if (currentTheme.value !== 'material3') return
+  try {
+    await profile.update({ theme_tokens: mergeThemeTokens({ material3Layout: enabled ? 'wide' : 'compact' }) })
+  } catch (error) {
+    setNotice(extractAuthError(error, 'Не удалось изменить формат профиля.'), 'error')
+  }
+}
+
 async function setAccent(color: string) {
+  if (currentTheme.value !== 'material3') return
   try {
     await profile.update({ accent_color: color })
   } catch (error) {
@@ -978,6 +1070,71 @@ async function onAvatarCropSave(blob: Blob) {
 .public-card.theme-fluent {
   --card-bg: linear-gradient(145deg, #15171D, #0F1117);
   --card-panel: rgba(255, 255, 255, 0.055);
+}
+
+.public-card[data-color-mode="light"] {
+  --card-bg: #fffbff;
+  --card-text: #1d1b20;
+  --card-muted: #5f5a66;
+  --card-panel: color-mix(in srgb, var(--profile-accent, #345EA8) 9%, #ffffff);
+  --card-line: rgba(73, 69, 79, 0.16);
+}
+
+.public-card.theme-material3[data-color-mode="light"] {
+  --card-bg: linear-gradient(145deg, color-mix(in srgb, var(--profile-accent) 18%, #fffbff), #ffffff 64%, #f7f2fa);
+}
+
+.public-card.theme-glass[data-color-mode="light"] {
+  --card-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(236, 244, 255, 0.9));
+  --card-panel: rgba(255, 255, 255, 0.7);
+}
+
+.public-card.theme-fluent[data-color-mode="light"] {
+  --card-bg: linear-gradient(145deg, #fafafa, #f3f6fb);
+  --card-panel: rgba(255, 255, 255, 0.76);
+}
+
+.public-card[data-color-mode="light"] .bio {
+  color: #49454f;
+}
+
+.public-card[data-color-mode="light"] .tag-row span,
+.public-card[data-color-mode="light"] .repo-row span,
+.public-card[data-color-mode="light"] .tiny-action {
+  color: #49454f;
+}
+
+.public-card.theme-material3.layout-wide {
+  width: min(100%, 980px);
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.public-card.theme-material3.layout-wide .public-header {
+  position: sticky;
+  top: 0;
+  flex-direction: column;
+  padding: 14px;
+  border: 1px solid var(--card-line);
+  border-radius: 22px;
+  background: var(--card-panel);
+}
+
+.public-card.theme-material3.layout-wide .public-copy h2 {
+  font-size: clamp(32px, 3.6vw, 52px);
+}
+
+.public-card.theme-material3.layout-wide .bio {
+  max-width: 100%;
+}
+
+.public-card.theme-material3.layout-wide .public-blocks {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+}
+
+.public-card.theme-material3.layout-wide .public-block:first-child {
+  grid-column: 1 / -1;
 }
 
 .public-header {
@@ -1671,6 +1828,98 @@ async function onAvatarCropSave(blob: Blob) {
   color: var(--dash-text-2, #475778);
 }
 
+.material3-theme-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.switch-setting {
+  width: 100%;
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border-radius: 18px;
+  background: var(--dash-surface-strong, #fff);
+  color: var(--dash-text-1, #10182b);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 260ms var(--m3-spring, cubic-bezier(0.2, 0, 0, 1)),
+    border-color 180ms cubic-bezier(0.2, 0, 0, 1),
+    background 180ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.switch-setting-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.switch-setting-copy strong,
+.switch-setting-copy small {
+  overflow-wrap: anywhere;
+}
+
+.switch-setting-copy strong {
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.switch-setting-copy small {
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.custom-switch {
+  width: 64px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--dash-outline, rgba(82, 103, 138, 0.18)) 82%, transparent);
+  border-radius: 999px;
+  background: var(--dash-surface-soft, #F2F4F8);
+  transition:
+    background 220ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.custom-switch span {
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--dash-surface-strong, #fff);
+  color: var(--dash-text-2, #475778);
+  box-shadow: 0 3px 9px color-mix(in srgb, var(--dash-text-1, #10182b) 12%, transparent);
+  transform: translateX(0);
+  transition:
+    transform 280ms var(--m3-spring, cubic-bezier(0.2, 0, 0, 1)),
+    color 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.custom-switch.active {
+  border-color: transparent;
+  background: var(--dash-accent, #345EA8);
+}
+
+.custom-switch.active span {
+  color: var(--dash-accent-strong, #163E86);
+  transform: translateX(28px);
+}
+
+.wide-switch.active {
+  background: linear-gradient(135deg, var(--dash-accent, #345EA8), color-mix(in srgb, var(--dash-accent, #345EA8) 54%, #F59E0B));
+}
+
 .mini-block-list,
 .mini-drag,
 .library-grid {
@@ -1805,7 +2054,8 @@ async function onAvatarCropSave(blob: Blob) {
   .mini-block:hover,
   .empty-add:hover,
   .back-btn:hover,
-  .avatar-upload:hover {
+  .avatar-upload:hover,
+  .switch-setting:hover {
     transform: translateY(-1px);
   }
 
@@ -2414,6 +2664,18 @@ async function onAvatarCropSave(blob: Blob) {
   .public-card {
     border-radius: 22px;
     padding: 14px;
+  }
+
+  .public-card.theme-material3.layout-wide {
+    grid-template-columns: 1fr;
+  }
+
+  .public-card.theme-material3.layout-wide .public-header {
+    position: relative;
+  }
+
+  .public-card.theme-material3.layout-wide .public-blocks {
+    grid-template-columns: 1fr;
   }
 
   .studio-inspector {

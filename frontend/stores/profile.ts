@@ -18,6 +18,7 @@ export interface Profile {
   tags: string[]
   blocks: Block[]
   theme_preset: string
+  theme_tokens: Record<string, unknown> | null
   accent_color: string | null
   avatar_url: string | null
 }
@@ -59,7 +60,7 @@ export const useProfileStore = defineStore('profile', {
       })
     },
 
-    async update(data: Partial<{ slug: string; status: string; display_name: string; bio: string | null; tags: string[]; theme_preset: string; accent_color: string | null }>) {
+    async update(data: Partial<{ slug: string; status: string; display_name: string; bio: string | null; tags: string[]; theme_preset: string; theme_tokens: Record<string, unknown> | null; accent_color: string | null }>) {
       const config = useRuntimeConfig()
       const auth = useAuthStore()
       this.profile = await auth.authorizedFetch<Profile>(`${config.public.apiBase}/profiles/me`, {

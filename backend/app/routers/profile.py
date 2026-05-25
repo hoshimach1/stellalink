@@ -175,6 +175,7 @@ def _to_response(profile) -> ProfileResponse:
         tags=trans.tags if trans else [],
         blocks=[_block_to_response(profile, b) for b in profile.blocks],
         theme_preset=profile.theme_preset,
+        theme_tokens=profile.theme_tokens or {},
         accent_color=profile.accent_color,
         avatar_url=profile.user.avatar_url if profile.user else None,
     )
@@ -238,6 +239,7 @@ async def update_profile(
         bio=body.bio,
         tags=body.tags,
         theme_preset=body.theme_preset,
+        theme_tokens=body.theme_tokens,
         accent_color=body.accent_color,
     )
     return _to_response(profile)

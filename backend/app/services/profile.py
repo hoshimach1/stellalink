@@ -75,6 +75,7 @@ async def update_profile(
     bio: Optional[str] = None,
     tags: Optional[List[str]] = None,
     theme_preset: Optional[str] = None,
+    theme_tokens: Optional[dict] = None,
     accent_color: Optional[str] = None,
 ) -> Profile:
     now = datetime.now(timezone.utc)
@@ -84,6 +85,8 @@ async def update_profile(
         profile.status = status
     if theme_preset is not None:
         profile.theme_preset = theme_preset
+    if theme_tokens is not None:
+        profile.theme_tokens = theme_tokens
     if accent_color is not None:
         profile.accent_color = accent_color
     profile.updated_at = now

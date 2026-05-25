@@ -12,6 +12,7 @@
     v-else
     class="pub-page"
     :data-theme="theme"
+    :data-mode="themeMode"
     :style="accentVars"
   >
     <!-- Background effects -->
@@ -27,6 +28,7 @@
     <section
       v-if="theme === 'material3'"
       class="pub-card pub-card-m3"
+      :class="{ 'pub-card-m3-wide': isMaterial3Wide }"
       aria-label="Публичный профиль Stellalink"
     >
       <header class="pub-m3-hero">
@@ -234,6 +236,7 @@
                   v-if="faceitDataForBlock(block)"
                   class="pub-faceit-lvl"
                   :level="faceitDataForBlock(block)?.level || 0"
+                  :accent-color="material3AccentColor"
                 />
               </div>
               <template v-if="faceitDataForBlock(block)">
@@ -761,6 +764,15 @@ interface SteamGame {
   hours?: number
 }
 
+type ThemeColorMode = 'light' | 'dark'
+type Material3Layout = 'compact' | 'wide'
+
+interface ProfileThemeTokens {
+  colorMode?: ThemeColorMode
+  material3Layout?: Material3Layout
+  [key: string]: unknown
+}
+
 definePageMeta({ layout: 'landing' })
 
 const route = useRoute()
@@ -779,6 +791,7 @@ const { data: profile, pending } = await useFetch<{
   blocks: Block[]
   avatar_url: string | null
   theme_preset: string | null
+  theme_tokens: Record<string, unknown> | null
   accent_color: string | null
 } | null>(`${config.public.apiBase}/u/${slug}`, {
   default: () => null,
@@ -792,6 +805,19 @@ const pageTitle = computed(() => {
 useHead({ title: pageTitle })
 
 const theme = computed(() => profile.value?.theme_preset || 'material3')
+const themeTokens = computed<ProfileThemeTokens>(() => {
+  const tokens = profile.value?.theme_tokens
+  return tokens && typeof tokens === 'object' ? tokens as ProfileThemeTokens : {}
+})
+const themeMode = computed<ThemeColorMode>(() => {
+  const mode = themeTokens.value.colorMode
+  if (mode === 'light' || mode === 'dark') return mode
+  return theme.value === 'material3' ? 'light' : 'dark'
+})
+const isMaterial3Wide = computed(() =>
+  theme.value === 'material3' && themeTokens.value.material3Layout === 'wide',
+)
+const material3AccentColor = computed(() => theme.value === 'material3' ? (profile.value?.accent_color || '#6750a4') : null)
 const initial = computed(() => profile.value?.display_name?.[0]?.toUpperCase() ?? '?')
 const visibleBlocks = computed(() => profile.value?.blocks.filter(b => b.is_visible) ?? [])
 const avatarSrc = computed(() =>
@@ -801,6 +827,7 @@ const avatarSrc = computed(() =>
 )
 
 const accentVars = computed(() => {
+  if (theme.value !== 'material3') return ''
   const c = profile.value?.accent_color
   if (!c) return ''
   return `--t-accent:${c};--t-accent20:${c}20;--t-accent30:${c}30;--t-accent12:${c}1e`
@@ -1098,6 +1125,69 @@ function faceitStatsList(block: Block) {
     linear-gradient(180deg, #19171f 0%, #111014 100%);
 }
 
+[data-theme="material3"][data-mode="light"].pub-page {
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--t-accent) 14%, transparent) 0%, transparent 44%),
+    linear-gradient(180deg, #fffbff 0%, #f4eff7 100%);
+}
+
+[data-theme="material3"][data-mode="dark"].pub-page {
+  --t-bg: #111014;
+  --t-surface: #211f26;
+  --t-card-bg: #1d1b20;
+  --t-card-border: rgba(230, 224, 233, 0.16);
+  --t-text: #f4eff7;
+  --t-muted: rgba(244, 239, 247, 0.72);
+  --t-dim: rgba(244, 239, 247, 0.48);
+  --t-border: rgba(230, 224, 233, 0.14);
+  --t-tag-bg: color-mix(in srgb, var(--t-accent) 22%, #211f26);
+  --t-tag-c: color-mix(in srgb, var(--t-accent) 40%, #ffffff);
+  --m3-primary: color-mix(in srgb, var(--t-accent) 78%, #ffffff);
+  --m3-on-primary: #1d1b20;
+  --m3-primary-container: color-mix(in srgb, var(--t-accent) 28%, #211f26);
+  --m3-on-primary-container: color-mix(in srgb, var(--t-accent) 34%, #ffffff);
+  --m3-secondary-container: #0d4f47;
+  --m3-on-secondary-container: #c6fff0;
+  --m3-tertiary-container: #63372b;
+  --m3-on-tertiary-container: #ffdad0;
+  --m3-surface: #1d1b20;
+  --m3-surface-container-low: #211f26;
+  --m3-surface-container: #2b2930;
+  --m3-surface-container-high: #36343b;
+  --m3-outline: rgba(230, 224, 233, 0.18);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--t-accent) 16%, transparent) 0%, transparent 44%),
+    linear-gradient(180deg, #19171f 0%, #111014 100%);
+}
+
+[data-theme="glass"][data-mode="light"] {
+  --t-bg: #eff6ff;
+  --t-surface: rgba(255,255,255,0.48);
+  --t-card-bg: rgba(255,255,255,0.42);
+  --t-card-border: rgba(50,70,110,0.18);
+  --t-text: #172033;
+  --t-muted: rgba(23,32,51,0.68);
+  --t-dim: rgba(23,32,51,0.46);
+  --t-border: rgba(50,70,110,0.14);
+  --t-tag-bg: rgba(255,255,255,0.54);
+  --t-tag-c: #24527a;
+  --t-card-shadow: 0 28px 70px rgba(57,78,120,0.2), inset 0 1px 0 rgba(255,255,255,0.42);
+}
+
+[data-theme="fluent"][data-mode="light"] {
+  --t-bg: #f6f8fb;
+  --t-surface: rgba(255,255,255,0.76);
+  --t-card-bg: rgba(255,255,255,0.82);
+  --t-card-border: rgba(17,24,39,0.10);
+  --t-text: #1f1f1f;
+  --t-muted: rgba(31,31,31,0.68);
+  --t-dim: rgba(31,31,31,0.46);
+  --t-border: rgba(31,31,31,0.10);
+  --t-tag-bg: rgba(96,205,255,0.13);
+  --t-tag-c: #006aa6;
+  --t-card-shadow: 0 18px 48px rgba(17,24,39,0.16);
+}
+
 /* ── Background effects ────────────────────────────────────────────────────── */
 .pub-bg-effects {
   position: fixed; inset: 0; pointer-events: none; z-index: 0;
@@ -1182,6 +1272,68 @@ function faceitStatsList(block: Block) {
   z-index: 1;
 }
 
+[data-theme="material3"][data-mode="dark"] .pub-card-m3 {
+  background:
+    linear-gradient(180deg, rgba(33,31,38,0.96), rgba(29,27,32,0.98)),
+    var(--m3-surface);
+  border-color: rgba(230,224,233,0.12);
+}
+
+[data-theme="material3"][data-mode="dark"] .pub-card-m3::before {
+  opacity: 0.54;
+}
+
+.pub-card-m3-wide {
+  max-width: min(980px, calc(100vw - 32px));
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.pub-card-m3-wide .pub-m3-hero {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  min-height: 0;
+  border-right: 1px solid var(--m3-outline);
+  border-bottom: 0;
+}
+
+.pub-card-m3-wide .pub-m3-hero-row {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.pub-card-m3-wide .pub-tags-m3 {
+  justify-content: flex-start;
+}
+
+.pub-card-m3-wide > .pub-m3-divider {
+  display: none;
+}
+
+.pub-card-m3-wide > .pub-blocks {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.pub-card-m3-wide .pub-blocks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+}
+
+.pub-card-m3-wide .pub-block-links {
+  grid-column: 1 / -1;
+}
+
+.pub-card-m3-wide > .pub-footer {
+  grid-column: 2;
+  grid-row: 2;
+}
+
 .pub-m3-hero {
   display: flex;
   flex-direction: column;
@@ -1192,6 +1344,20 @@ function faceitStatsList(block: Block) {
     linear-gradient(225deg, var(--m3-tertiary-container), transparent 58%);
   border-bottom: 1px solid rgba(73,69,79,0.10);
 }
+
+[data-theme="material3"][data-mode="dark"] .pub-m3-hero {
+  background:
+    linear-gradient(135deg, var(--m3-primary-container), color-mix(in srgb, var(--m3-surface-container) 72%, transparent) 52%),
+    linear-gradient(225deg, var(--m3-tertiary-container), transparent 58%);
+  border-color: var(--m3-outline);
+}
+
+[data-theme="material3"][data-mode="dark"] .pub-card-m3 .pub-avatar-m3 {
+  box-shadow:
+    0 12px 32px color-mix(in srgb, var(--t-accent) 30%, transparent),
+    0 0 0 6px rgba(33,31,38,0.78);
+}
+
 .pub-m3-hero-row {
   display: flex;
   align-items: center;
@@ -1991,6 +2157,34 @@ function faceitStatsList(block: Block) {
 .pub-footer-logo { width: 18px; opacity: 0.4; mix-blend-mode: screen; }
 
 /* ── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .pub-card-m3-wide {
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pub-card-m3-wide .pub-m3-hero {
+    border-right: 0;
+    border-bottom: 1px solid var(--m3-outline);
+  }
+
+  .pub-card-m3-wide .pub-m3-hero-row {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .pub-card-m3-wide .pub-blocks {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .pub-card-m3-wide > .pub-footer {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
 @media (max-width: 540px) {
   .pub-page { padding: 12px 8px 32px; }
   .pub-card { border-radius: calc(var(--t-radius) * 0.7); max-height: calc(96vh - 24px); }

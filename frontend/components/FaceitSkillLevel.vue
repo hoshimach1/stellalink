@@ -55,8 +55,10 @@ import { computed, useId } from 'vue'
 
 const props = withDefaults(defineProps<{
   level: number
+  accentColor?: string | null
 }>(), {
   level: 1,
+  accentColor: null,
 })
 
 const rawId = useId().replace(/[^a-zA-Z0-9_-]/g, '')
@@ -68,7 +70,19 @@ const normalizedLevel = computed(() => {
   return Math.min(10, Math.max(1, value))
 })
 
+const accentColor = computed(() => {
+  const value = props.accentColor?.trim()
+  return value && /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value) ? value : ''
+})
+
 const palette = computed(() => {
+  if (accentColor.value) {
+    return {
+      start: `color-mix(in srgb, ${accentColor.value} 72%, white)`,
+      end: `color-mix(in srgb, ${accentColor.value} 88%, black)`,
+    }
+  }
+
   if (normalizedLevel.value <= 3) {
     return { start: '#F1F1F1', end: '#686868' }
   }
