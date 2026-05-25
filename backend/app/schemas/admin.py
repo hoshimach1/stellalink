@@ -58,12 +58,6 @@ class ApiSettingsResponse(BaseModel):
     steam_api_key_hint: Optional[str] = None
     faceit_api_key_set: bool
     faceit_api_key_hint: Optional[str] = None
-    github_api_token_set: bool = False
-    github_api_token_hint: Optional[str] = None
-    gitlab_api_token_set: bool = False
-    gitlab_api_token_hint: Optional[str] = None
-    gitea_api_token_set: bool = False
-    gitea_api_token_hint: Optional[str] = None
     github_oauth_client_id: Optional[str] = None
     github_oauth_client_secret_set: bool = False
     github_oauth_client_secret_hint: Optional[str] = None
@@ -81,9 +75,6 @@ class ApiSettingsResponse(BaseModel):
 class ApiSettingsUpdate(BaseModel):
     steam_api_key: Optional[str] = None
     faceit_api_key: Optional[str] = None
-    github_api_token: Optional[str] = None
-    gitlab_api_token: Optional[str] = None
-    gitea_api_token: Optional[str] = None
     github_oauth_client_id: Optional[str] = None
     github_oauth_client_secret: Optional[str] = None
     gitlab_oauth_client_id: Optional[str] = None
@@ -96,9 +87,6 @@ class ApiSettingsUpdate(BaseModel):
     @field_validator(
         "steam_api_key",
         "faceit_api_key",
-        "github_api_token",
-        "gitlab_api_token",
-        "gitea_api_token",
         "github_oauth_client_id",
         "github_oauth_client_secret",
         "gitlab_oauth_client_id",

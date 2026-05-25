@@ -22,9 +22,6 @@ class Settings(BaseSettings):
 
     STEAM_API_KEY: str | None = None
     FACEIT_API_KEY: str | None = None
-    GITHUB_API_TOKEN: str | None = None
-    GITLAB_API_TOKEN: str | None = None
-    GITEA_API_TOKEN: str | None = None
     GITHUB_OAUTH_CLIENT_ID: str | None = None
     GITHUB_OAUTH_CLIENT_SECRET: str | None = None
     GITLAB_OAUTH_CLIENT_ID: str | None = None
