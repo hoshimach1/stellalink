@@ -220,14 +220,7 @@
             <input v-model="apiForm.code_provider_token_auth_enabled" type="checkbox">
             <span>
               <strong>Token auth</strong>
-              <small>Показывать пользователям вариант подключения через personal access token. Если выключено, кнопка подключения сразу ведет в OAuth.</small>
-            </span>
-          </label>
-          <label class="admin-switch compact">
-            <input v-model="apiForm.self_hosted_git_oauth_enabled" type="checkbox">
-            <span>
-              <strong>Self-hosted OAuth</strong>
-              <small>Разрешить OAuth для кастомных GitHub Enterprise, GitLab и Gitea инстансов. Если выключено, self-hosted пользователи подключаются через token.</small>
+              <small>Показывать пользователям вариант подключения через personal access token. Self-hosted Git-среды подключаются только так; если выключено, кнопка сразу ведет в OAuth публичного провайдера.</small>
             </span>
           </label>
 
@@ -333,7 +326,6 @@ interface ApiSettings {
   gitea_oauth_client_secret_set: boolean
   gitea_oauth_client_secret_hint: string | null
   code_provider_token_auth_enabled: boolean
-  self_hosted_git_oauth_enabled: boolean
   steam_inventory_app_id: number
   steam_inventory_context_id: string
   steam_inventory_price_source: string
@@ -387,7 +379,6 @@ const apiForm = reactive({
   steam_inventory_app_id: 730,
   steam_inventory_context_id: '2',
   code_provider_token_auth_enabled: true,
-  self_hosted_git_oauth_enabled: false,
 })
 
 const oauthForm = reactive({
@@ -516,7 +507,6 @@ function applyApiSettings(data: ApiSettings) {
   apiForm.steam_inventory_app_id = data.steam_inventory_app_id
   apiForm.steam_inventory_context_id = data.steam_inventory_context_id
   apiForm.code_provider_token_auth_enabled = data.code_provider_token_auth_enabled
-  apiForm.self_hosted_git_oauth_enabled = data.self_hosted_git_oauth_enabled
   oauthForm.githubClientId = data.github_oauth_client_id ?? ''
   oauthForm.gitlabClientId = data.gitlab_oauth_client_id ?? ''
   oauthForm.giteaClientId = data.gitea_oauth_client_id ?? ''
@@ -575,7 +565,6 @@ async function saveApiSettings() {
       steam_inventory_app_id: apiForm.steam_inventory_app_id,
       steam_inventory_context_id: apiForm.steam_inventory_context_id.trim() || '2',
       code_provider_token_auth_enabled: apiForm.code_provider_token_auth_enabled,
-      self_hosted_git_oauth_enabled: apiForm.self_hosted_git_oauth_enabled,
     }
     if (apiSteamKey.value.trim()) {
       body.steam_api_key = apiSteamKey.value.trim()

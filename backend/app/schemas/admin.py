@@ -68,7 +68,6 @@ class ApiSettingsResponse(BaseModel):
     gitea_oauth_client_secret_set: bool = False
     gitea_oauth_client_secret_hint: Optional[str] = None
     code_provider_token_auth_enabled: bool = True
-    self_hosted_git_oauth_enabled: bool = False
     steam_inventory_app_id: int
     steam_inventory_context_id: str
     steam_inventory_price_source: str
@@ -84,7 +83,6 @@ class ApiSettingsUpdate(BaseModel):
     gitea_oauth_client_id: Optional[str] = None
     gitea_oauth_client_secret: Optional[str] = None
     code_provider_token_auth_enabled: Optional[bool] = None
-    self_hosted_git_oauth_enabled: Optional[bool] = None
     steam_inventory_app_id: int = Field(default=730, ge=1)
     steam_inventory_context_id: str = Field(default="2", min_length=1, max_length=32)
 

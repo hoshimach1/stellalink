@@ -182,7 +182,6 @@
                   type="text"
                   inputmode="url"
                   placeholder="git.example.com"
-                  @input="resetTokenGuide(activeCodeProvider.provider)"
                 >
               </label>
 
@@ -271,7 +270,6 @@ type IntegrationsResponse = {
     gitlab_oauth_ready: boolean
     gitea_oauth_ready: boolean
     code_provider_token_auth_enabled: boolean
-    self_hosted_git_oauth_enabled: boolean
   }
 }
 
@@ -620,20 +618,8 @@ function normalizedCodeProviderBaseUrl(provider: CodeProvider, rawValue?: string
   }
 }
 
-function isSelfHostedCodeProvider(provider: CodeProvider): boolean {
-  return normalizedCodeProviderBaseUrl(provider) !== normalizedCodeProviderBaseUrl(
-    provider,
-    codeProviderDefinitions.find(item => item.provider === provider)?.defaultBaseUrl,
-  )
-}
-
-function codeProviderSelfHostedOAuthAllowed(provider: CodeProvider): boolean {
-  if (!isSelfHostedCodeProvider(provider)) return true
-  return Boolean(integrations.value?.capabilities.self_hosted_git_oauth_enabled)
-}
-
 function canStartCodeProviderOAuth(provider: CodeProvider): boolean {
-  return codeProviderOAuthReady(provider) && codeProviderSelfHostedOAuthAllowed(provider)
+  return codeProviderOAuthReady(provider)
 }
 
 function closeCodeProviderModal() {
@@ -666,12 +652,6 @@ function showCodeProviderTokenServer(provider: CodeProvider) {
   codeProviderModal.step = 'server'
 }
 
-function resetTokenGuide(provider: CodeProvider) {
-  if (codeProviderInputs[provider].mode === 'oauth' && !codeProviderSelfHostedOAuthAllowed(provider)) {
-    codeProviderInputs[provider].mode = 'token'
-  }
-}
-
 function codeProviderTokenCreateUrl(provider: CodeProvider): string {
   const baseUrl = normalizedCodeProviderBaseUrl(provider)
   const name = encodeURIComponent(TOKEN_NAME)
@@ -696,7 +676,7 @@ function openTokenCreateUrl(provider: CodeProvider) {
 function canSubmitCodeProvider(provider: CodeProvider): boolean {
   const input = codeProviderInputs[provider]
   if (input.mode === 'oauth') {
-    return codeProviderOAuthReady(provider) && codeProviderSelfHostedOAuthAllowed(provider)
+    return codeProviderOAuthReady(provider)
   }
   return Boolean(input.token.trim())
 }

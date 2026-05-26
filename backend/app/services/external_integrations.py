@@ -482,12 +482,9 @@ async def create_code_provider_oauth_url(
 ) -> str:
     provider = _normalize_code_provider(provider)
     base_url = _normalize_base_url(provider, raw_base_url)
-    api_settings = await get_api_settings_data(db)
-    if not _is_default_code_provider_base_url(provider, base_url) and not bool(
-        api_settings.get("self_hosted_git_oauth_enabled")
-    ):
+    if not _is_default_code_provider_base_url(provider, base_url):
         raise ExternalApiError(
-            "OAuth is disabled for self-hosted Git providers. Use an access token.",
+            "OAuth is not supported for self-hosted Git providers. Use an access token.",
             400,
         )
     client_id, _ = await _get_code_oauth_config(db, provider)
@@ -1252,9 +1249,6 @@ async def integrations_response(
             ),
             code_provider_token_auth_enabled=bool(
                 api_settings.get("code_provider_token_auth_enabled", True)
-            ),
-            self_hosted_git_oauth_enabled=bool(
-                api_settings.get("self_hosted_git_oauth_enabled")
             ),
         ),
     )

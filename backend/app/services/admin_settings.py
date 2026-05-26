@@ -54,7 +54,6 @@ def _base_api_data() -> dict[str, Any]:
         "gitea_oauth_client_id": settings.GITEA_OAUTH_CLIENT_ID,
         "gitea_oauth_client_secret": settings.GITEA_OAUTH_CLIENT_SECRET,
         "code_provider_token_auth_enabled": settings.CODE_PROVIDER_TOKEN_AUTH_ENABLED,
-        "self_hosted_git_oauth_enabled": settings.SELF_HOSTED_GIT_OAUTH_ENABLED,
         "steam_inventory_app_id": settings.STEAM_INVENTORY_APP_ID,
         "steam_inventory_context_id": settings.STEAM_INVENTORY_CONTEXT_ID,
     }
@@ -142,7 +141,6 @@ async def get_api_settings_response(db: AsyncSession) -> ApiSettingsResponse:
         code_provider_token_auth_enabled=bool(
             data.get("code_provider_token_auth_enabled", True)
         ),
-        self_hosted_git_oauth_enabled=bool(data.get("self_hosted_git_oauth_enabled")),
         steam_inventory_app_id=int(data.get("steam_inventory_app_id") or 730),
         steam_inventory_context_id=str(data.get("steam_inventory_context_id") or "2"),
         steam_inventory_price_source=(
@@ -166,10 +164,6 @@ async def save_api_settings(
         payload["code_provider_token_auth_enabled"] = current.get(
             "code_provider_token_auth_enabled", True
         )
-    if body.self_hosted_git_oauth_enabled is None:
-        payload["self_hosted_git_oauth_enabled"] = current.get(
-            "self_hosted_git_oauth_enabled"
-        )
     for key in (
         "github_oauth_client_id",
         "github_oauth_client_secret",
@@ -185,9 +179,6 @@ async def save_api_settings(
     payload["faceit_api_key"] = _clean_text(payload.get("faceit_api_key"))
     payload["code_provider_token_auth_enabled"] = bool(
         payload.get("code_provider_token_auth_enabled", True)
-    )
-    payload["self_hosted_git_oauth_enabled"] = bool(
-        payload.get("self_hosted_git_oauth_enabled")
     )
     for key in (
         "github_oauth_client_id",
