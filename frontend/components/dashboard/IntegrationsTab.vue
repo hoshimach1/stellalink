@@ -100,67 +100,19 @@
               </div>
             </div>
 
-            <div v-else class="code-provider-form">
-              <div class="auth-mode-tabs" role="group" :aria-label="`${service.label} auth mode`">
-                <button
-                  type="button"
-                  :class="{ active: codeProviderInputs[service.provider].mode === 'token' }"
-                  @click="selectCodeProviderMode(service.provider, 'token')"
-                >
-                  Token
-                </button>
-                <button
-                  type="button"
-                  :class="{ active: codeProviderInputs[service.provider].mode === 'oauth' }"
-                  :disabled="!codeProviderSelfHostedOAuthAllowed(service.provider)"
-                  @click="selectCodeProviderMode(service.provider, 'oauth')"
-                >
-                  OAuth
-                </button>
-              </div>
-
-              <label class="provider-field">
-                <span>Base URL</span>
-                <input v-model="codeProviderInputs[service.provider].base_url" type="text" inputmode="url" :placeholder="service.defaultBaseUrl" @input="resetTokenGuide(service.provider)">
-              </label>
-
-              <div
-                v-if="codeProviderInputs[service.provider].mode === 'token' && isSelfHostedCodeProvider(service.provider) && !tokenHelpOpened[service.provider]"
-                class="token-guide"
-              >
-                <span>{{ codeProviderTokenHint(service.provider) }}</span>
-                <button class="service-action primary" type="button" @click="openTokenCreateUrl(service.provider)">
-                  <i class="ri-external-link-line" />
-                  <span>Создать access token</span>
-                </button>
-              </div>
-
-              <label v-if="codeProviderInputs[service.provider].mode === 'token' && shouldShowTokenInput(service.provider)" class="provider-field">
-                <span>Access token</span>
-                <input v-model="codeProviderInputs[service.provider].token" type="password" autocomplete="new-password" placeholder="ghp_ / glpat_ / token">
-              </label>
-
-              <span v-else-if="codeProviderInputs[service.provider].mode === 'oauth' && !codeProviderOAuthReady(service.provider)" class="service-hint">
-                OAuth app не настроен в админке.
-              </span>
-              <span v-else-if="codeProviderInputs[service.provider].mode === 'oauth' && !codeProviderSelfHostedOAuthAllowed(service.provider)" class="service-hint">
-                OAuth для self-hosted выключен. Используйте token.
-              </span>
-
-              <button
-                v-if="codeProviderInputs[service.provider].mode !== 'token' || shouldShowTokenInput(service.provider)"
-                class="service-action primary"
-                type="button"
-                :disabled="!canSubmitCodeProvider(service.provider) || codeBusy === `${service.provider}:connect`"
-                @click="connectCodeProvider(service.provider)"
-              >
-                <span v-if="codeBusy === `${service.provider}:connect`" class="integration-spinner" />
-                <template v-else>
-                  <i :class="codeProviderInputs[service.provider].mode === 'oauth' ? 'ri-login-circle-line' : 'ri-key-2-line'" />
-                  <span>{{ codeProviderInputs[service.provider].mode === 'oauth' ? 'Войти через OAuth' : 'Сохранить token' }}</span>
-                </template>
-              </button>
-            </div>
+            <button
+              v-else
+              class="service-action primary"
+              type="button"
+              :disabled="codeBusy === `${service.provider}:connect`"
+              @click="startCodeProviderConnect(service.provider)"
+            >
+              <span v-if="codeBusy === `${service.provider}:connect`" class="integration-spinner" />
+              <template v-else>
+                <i class="ri-link-m" />
+                <span>Подключить</span>
+              </template>
+            </button>
           </div>
 
           <button
@@ -178,6 +130,101 @@
         </div>
       </article>
     </section>
+
+    <Teleport to="body">
+      <Transition name="integration-modal">
+        <div v-if="codeProviderModal.provider && activeCodeProvider" class="integration-modal-overlay" @click.self="closeCodeProviderModal">
+          <section class="integration-modal" role="dialog" aria-modal="true" :aria-labelledby="`code-provider-title-${activeCodeProvider.provider}`">
+            <button class="integration-modal-close" type="button" aria-label="Закрыть" @click="closeCodeProviderModal">
+              <i class="ri-close-line" />
+            </button>
+
+            <div class="integration-modal-head">
+              <span class="integration-modal-icon">
+                <GiteaLogo v-if="activeCodeProvider.provider === 'gitea'" class="gitea-logo" />
+                <i v-else :class="activeCodeProvider.icon" />
+              </span>
+              <h2 :id="`code-provider-title-${activeCodeProvider.provider}`">
+                {{ codeProviderModal.step === 'choice' ? activeCodeProvider.label : 'Через token' }}
+              </h2>
+              <p>{{ codeProviderModalSubtitle }}</p>
+            </div>
+
+            <div v-if="codeProviderModal.step === 'choice'" class="integration-modal-actions">
+              <button
+                class="modal-auth-button primary"
+                type="button"
+                :disabled="!canStartCodeProviderOAuth(activeCodeProvider.provider) || codeBusy === `${activeCodeProvider.provider}:connect`"
+                @click="startCodeProviderOAuth(activeCodeProvider.provider)"
+              >
+                <span v-if="codeBusy === `${activeCodeProvider.provider}:connect`" class="integration-spinner dark" />
+                <template v-else>
+                  <span>Авторизоваться {{ activeCodeProvider.label }}</span>
+                  <i :class="activeCodeProvider.provider === 'gitea' ? 'ri-login-circle-line' : activeCodeProvider.icon" />
+                </template>
+              </button>
+
+              <button class="modal-auth-button secondary" type="button" @click="showCodeProviderTokenServer(activeCodeProvider.provider)">
+                <i class="ri-key-2-line" />
+                <span>Привязать через token</span>
+              </button>
+
+              <span v-if="!codeProviderOAuthReady(activeCodeProvider.provider)" class="modal-hint">
+                OAuth app не настроен в админке.
+              </span>
+            </div>
+
+            <div v-else-if="codeProviderModal.step === 'server'" class="integration-modal-form">
+              <label class="provider-field modal-field">
+                <span>Git server</span>
+                <input
+                  v-model="codeProviderInputs[activeCodeProvider.provider].base_url"
+                  type="text"
+                  inputmode="url"
+                  placeholder="git.example.com"
+                  @input="resetTokenGuide(activeCodeProvider.provider)"
+                >
+              </label>
+
+              <button
+                class="modal-auth-button secondary"
+                type="button"
+                :disabled="!codeProviderBaseInput(activeCodeProvider.provider)"
+                @click="openTokenCreateUrl(activeCodeProvider.provider)"
+              >
+                <i class="ri-external-link-line" />
+                <span>Создать token</span>
+              </button>
+            </div>
+
+            <div v-else class="integration-modal-form">
+              <label class="provider-field modal-field">
+                <span>Access token</span>
+                <input v-model="codeProviderInputs[activeCodeProvider.provider].token" type="password" autocomplete="new-password" placeholder="...">
+              </label>
+
+              <button
+                class="modal-auth-button secondary"
+                type="button"
+                :disabled="!canSubmitCodeProvider(activeCodeProvider.provider) || codeBusy === `${activeCodeProvider.provider}:connect`"
+                @click="connectCodeProvider(activeCodeProvider.provider)"
+              >
+                <span v-if="codeBusy === `${activeCodeProvider.provider}:connect`" class="integration-spinner dark" />
+                <template v-else>
+                  <i class="ri-link-m" />
+                  <span>Привязать</span>
+                </template>
+              </button>
+            </div>
+
+            <button v-if="codeProviderModal.step !== 'choice'" class="integration-modal-back" type="button" @click="codeProviderModal.step = 'choice'">
+              <i class="ri-arrow-left-line" />
+              <span>Назад</span>
+            </button>
+          </section>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -223,6 +270,7 @@ type IntegrationsResponse = {
     github_oauth_ready: boolean
     gitlab_oauth_ready: boolean
     gitea_oauth_ready: boolean
+    code_provider_token_auth_enabled: boolean
     self_hosted_git_oauth_enabled: boolean
   }
 }
@@ -267,10 +315,10 @@ const codeProviderInputs = reactive<Record<CodeProvider, { mode: CodeProviderMod
   gitlab: { mode: 'token', base_url: '', token: '' },
   gitea: { mode: 'token', base_url: '', token: '' },
 })
-const tokenHelpOpened = reactive<Record<CodeProvider, boolean>>({
-  github: false,
-  gitlab: false,
-  gitea: false,
+type CodeProviderModalStep = 'choice' | 'server' | 'token'
+const codeProviderModal = reactive<{ provider: CodeProvider | null; step: CodeProviderModalStep }>({
+  provider: null,
+  step: 'choice',
 })
 
 const steamAccount = computed(() => integrations.value?.accounts.find(account => account.provider === 'steam' && account.is_active) ?? null)
@@ -342,6 +390,17 @@ const serviceCards = computed(() => {
 })
 const connectedCount = computed(() => serviceCards.value.filter(service => service.connected).length)
 const inactiveCount = computed(() => Math.max(serviceCards.value.length - connectedCount.value, 0))
+const activeCodeProvider = computed(() => (
+  codeProviderModal.provider
+    ? codeProviderDefinitions.find(item => item.provider === codeProviderModal.provider) ?? null
+    : null
+))
+const codeProviderModalSubtitle = computed(() => {
+  if (!codeProviderModal.provider) return ''
+  if (codeProviderModal.step === 'server') return `Введите ссылку на ваш ${codeProviderLabel(codeProviderModal.provider)} Server`
+  if (codeProviderModal.step === 'token') return 'Введите token, который вы получили'
+  return 'Выберите вариант авторизации'
+})
 
 onMounted(() => {
   readSteamRedirectResult()
@@ -545,6 +604,10 @@ function codeProviderOAuthReady(provider: CodeProvider): boolean {
   return Boolean(capabilities?.gitea_oauth_ready)
 }
 
+function codeProviderTokenAuthEnabled(): boolean {
+  return integrations.value?.capabilities.code_provider_token_auth_enabled ?? true
+}
+
 function normalizedCodeProviderBaseUrl(provider: CodeProvider, rawValue?: string): string {
   const definition = codeProviderDefinitions.find(item => item.provider === provider)
   const fallback = definition?.defaultBaseUrl ?? ''
@@ -569,28 +632,44 @@ function codeProviderSelfHostedOAuthAllowed(provider: CodeProvider): boolean {
   return Boolean(integrations.value?.capabilities.self_hosted_git_oauth_enabled)
 }
 
-function selectCodeProviderMode(provider: CodeProvider, mode: CodeProviderMode) {
-  if (mode === 'oauth' && !codeProviderSelfHostedOAuthAllowed(provider)) {
-    setIntegrationNotice('OAuth для self-hosted Git-сред выключен. Подключите token.', 'error')
-    codeProviderInputs[provider].mode = 'token'
+function canStartCodeProviderOAuth(provider: CodeProvider): boolean {
+  return codeProviderOAuthReady(provider) && codeProviderSelfHostedOAuthAllowed(provider)
+}
+
+function closeCodeProviderModal() {
+  codeProviderModal.provider = null
+  codeProviderModal.step = 'choice'
+}
+
+function startCodeProviderConnect(provider: CodeProvider) {
+  if (codeProviderTokenAuthEnabled()) {
+    codeProviderInputs[provider].mode = 'oauth'
+    codeProviderModal.provider = provider
+    codeProviderModal.step = 'choice'
     return
   }
-  codeProviderInputs[provider].mode = mode
+
+  if (!canStartCodeProviderOAuth(provider)) {
+    setIntegrationNotice(`OAuth для ${codeProviderLabel(provider)} не готов.`, 'error')
+    return
+  }
+  void startCodeProviderOAuth(provider)
+}
+
+function startCodeProviderOAuth(provider: CodeProvider) {
+  codeProviderInputs[provider].mode = 'oauth'
+  void connectCodeProvider(provider)
+}
+
+function showCodeProviderTokenServer(provider: CodeProvider) {
+  codeProviderInputs[provider].mode = 'token'
+  codeProviderModal.step = 'server'
 }
 
 function resetTokenGuide(provider: CodeProvider) {
-  tokenHelpOpened[provider] = false
   if (codeProviderInputs[provider].mode === 'oauth' && !codeProviderSelfHostedOAuthAllowed(provider)) {
     codeProviderInputs[provider].mode = 'token'
   }
-}
-
-function shouldShowTokenInput(provider: CodeProvider): boolean {
-  return !isSelfHostedCodeProvider(provider) || tokenHelpOpened[provider]
-}
-
-function codeProviderTokenHint(provider: CodeProvider): string {
-  return `Откроем страницу создания token для ${normalizedCodeProviderBaseUrl(provider)}. Название: ${TOKEN_NAME}. Scopes: ${TOKEN_SCOPES[provider].join(', ')}.`
 }
 
 function codeProviderTokenCreateUrl(provider: CodeProvider): string {
@@ -609,7 +688,9 @@ function codeProviderTokenCreateUrl(provider: CodeProvider): string {
 
 function openTokenCreateUrl(provider: CodeProvider) {
   window.open(codeProviderTokenCreateUrl(provider), '_blank', 'noopener,noreferrer')
-  tokenHelpOpened[provider] = true
+  if (codeProviderModal.provider === provider) {
+    codeProviderModal.step = 'token'
+  }
 }
 
 function canSubmitCodeProvider(provider: CodeProvider): boolean {
@@ -660,6 +741,7 @@ async function connectCodeProvider(provider: CodeProvider) {
     }
     await profile.fetch()
     setIntegrationNotice(`${codeProviderLabel(provider)} подключён через token.`, 'success')
+    closeCodeProviderModal()
   } catch (error) {
     setIntegrationNotice(extractAuthError(error, `Не удалось подключить ${codeProviderLabel(provider)}.`), 'error')
   } finally {
@@ -996,8 +1078,7 @@ async function connectService(type: IntegrationType) {
   gap: 8px;
 }
 
-.code-provider-summary,
-.code-provider-form {
+.code-provider-summary {
   display: grid;
   gap: 10px;
   justify-items: end;
@@ -1026,54 +1107,6 @@ async function connectService(type: IntegrationType) {
   font-size: 12px;
   font-weight: 800;
   overflow-wrap: anywhere;
-}
-
-.auth-mode-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: 100%;
-  padding: 3px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
-  border-radius: 999px;
-  background: var(--dash-surface-soft, #F2F4F8);
-}
-
-.auth-mode-tabs button {
-  min-height: 34px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--dash-text-2, #475778);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 950;
-  cursor: pointer;
-}
-
-.auth-mode-tabs button.active {
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-accent-strong, #163E86);
-  box-shadow: 0 6px 14px color-mix(in srgb, var(--dash-text-1, #10182b) 8%, transparent);
-}
-
-.auth-mode-tabs button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-.token-guide {
-  display: grid;
-  justify-items: end;
-  gap: 8px;
-  width: 100%;
-}
-
-.token-guide > span {
-  color: var(--dash-text-2, #475778);
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.35;
-  text-align: right;
 }
 
 .provider-field {
@@ -1106,6 +1139,176 @@ async function connectService(type: IntegrationType) {
 .provider-field input:focus {
   border-color: var(--dash-accent, #345EA8);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent, #345EA8) 15%, transparent);
+}
+
+.integration-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: color-mix(in srgb, #05070c 54%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.integration-modal {
+  position: relative;
+  width: min(100%, 460px);
+  display: grid;
+  gap: 18px;
+  padding: 28px;
+  border: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 64%, transparent);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 96%, transparent);
+  box-shadow: 0 24px 70px color-mix(in srgb, #05070c 32%, transparent);
+}
+
+.integration-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 38px;
+  height: 38px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--dash-surface-soft, #F2F4F8);
+  color: var(--dash-text-2, #475778);
+  cursor: pointer;
+  font: inherit;
+  font-size: 20px;
+}
+
+.integration-modal-head {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 10px 28px 0;
+  text-align: center;
+}
+
+.integration-modal-icon {
+  width: 56px;
+  height: 56px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 20px;
+  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
+  color: var(--dash-accent-strong, #163E86);
+  font-size: 29px;
+}
+
+.integration-modal-head h2,
+.integration-modal-head p {
+  margin: 0;
+}
+
+.integration-modal-head h2 {
+  color: var(--dash-text-1, #10182b);
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.integration-modal-head p {
+  color: var(--dash-text-2, #475778);
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.integration-modal-actions,
+.integration-modal-form {
+  display: grid;
+  gap: 12px;
+}
+
+.modal-auth-button {
+  min-height: 58px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  padding: 0 18px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    transform 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    background 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    border-color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.modal-auth-button.primary {
+  border-color: var(--dash-outline, rgba(82, 103, 138, 0.18));
+  background: var(--dash-surface-strong, #fff);
+  color: var(--dash-text-1, #10182b);
+}
+
+.modal-auth-button.secondary {
+  background: var(--dash-accent, #345EA8);
+  color: #fff;
+}
+
+.modal-auth-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.modal-field input {
+  min-height: 58px;
+  border-radius: 18px;
+  font-size: 18px;
+}
+
+.modal-hint {
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.integration-modal-back {
+  justify-self: center;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dash-text-2, #475778);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.integration-modal-enter-active,
+.integration-modal-leave-active {
+  transition: opacity 200ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.integration-modal-enter-active .integration-modal,
+.integration-modal-leave-active .integration-modal {
+  transition:
+    transform 220ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
+    opacity 220ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.integration-modal-enter-from,
+.integration-modal-leave-to {
+  opacity: 0;
+}
+
+.integration-modal-enter-from .integration-modal,
+.integration-modal-leave-to .integration-modal {
+  opacity: 0;
+  transform: translateY(14px) scale(0.98);
 }
 
 .faceit-summary span,
@@ -1159,7 +1362,10 @@ async function connectService(type: IntegrationType) {
 }
 
 .steam-login:focus-visible,
-.service-action:focus-visible {
+.service-action:focus-visible,
+.integration-modal-close:focus-visible,
+.modal-auth-button:focus-visible,
+.integration-modal-back:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--dash-accent, #345EA8) 32%, transparent);
   outline-offset: 2px;
 }
@@ -1172,7 +1378,8 @@ async function connectService(type: IntegrationType) {
   }
 
   .service-action.primary:hover:not(:disabled),
-  .steam-login:hover:not(:disabled) {
+  .steam-login:hover:not(:disabled),
+  .modal-auth-button:hover:not(:disabled) {
     transform: translateY(-1px);
   }
 }
@@ -1204,8 +1411,7 @@ async function connectService(type: IntegrationType) {
   .steam-connect,
   .faceit-block,
   .code-provider-block,
-  .code-provider-summary,
-  .code-provider-form {
+  .code-provider-summary {
     justify-items: stretch;
     min-width: 0;
   }
@@ -1227,6 +1433,23 @@ async function connectService(type: IntegrationType) {
   .service-hint {
     max-width: none;
     text-align: left;
+  }
+
+  .integration-modal {
+    padding: 24px 18px;
+    border-radius: 24px;
+  }
+
+  .integration-modal-head {
+    padding-inline: 24px;
+  }
+
+  .integration-modal-head h2 {
+    font-size: 26px;
+  }
+
+  .integration-modal-head p {
+    font-size: 16px;
   }
 }
 

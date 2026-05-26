@@ -53,6 +53,7 @@ def _base_api_data() -> dict[str, Any]:
         "gitlab_oauth_client_secret": settings.GITLAB_OAUTH_CLIENT_SECRET,
         "gitea_oauth_client_id": settings.GITEA_OAUTH_CLIENT_ID,
         "gitea_oauth_client_secret": settings.GITEA_OAUTH_CLIENT_SECRET,
+        "code_provider_token_auth_enabled": settings.CODE_PROVIDER_TOKEN_AUTH_ENABLED,
         "self_hosted_git_oauth_enabled": settings.SELF_HOSTED_GIT_OAUTH_ENABLED,
         "steam_inventory_app_id": settings.STEAM_INVENTORY_APP_ID,
         "steam_inventory_context_id": settings.STEAM_INVENTORY_CONTEXT_ID,
@@ -138,6 +139,9 @@ async def get_api_settings_response(db: AsyncSession) -> ApiSettingsResponse:
         gitea_oauth_client_id=_clean_text(data.get("gitea_oauth_client_id")),
         gitea_oauth_client_secret_set=bool(gitea_secret),
         gitea_oauth_client_secret_hint=_secret_hint(gitea_secret),
+        code_provider_token_auth_enabled=bool(
+            data.get("code_provider_token_auth_enabled", True)
+        ),
         self_hosted_git_oauth_enabled=bool(data.get("self_hosted_git_oauth_enabled")),
         steam_inventory_app_id=int(data.get("steam_inventory_app_id") or 730),
         steam_inventory_context_id=str(data.get("steam_inventory_context_id") or "2"),
@@ -158,6 +162,10 @@ async def save_api_settings(
         payload["steam_api_key"] = current.get("steam_api_key")
     if body.faceit_api_key is None:
         payload["faceit_api_key"] = current.get("faceit_api_key")
+    if body.code_provider_token_auth_enabled is None:
+        payload["code_provider_token_auth_enabled"] = current.get(
+            "code_provider_token_auth_enabled", True
+        )
     if body.self_hosted_git_oauth_enabled is None:
         payload["self_hosted_git_oauth_enabled"] = current.get(
             "self_hosted_git_oauth_enabled"
@@ -175,6 +183,9 @@ async def save_api_settings(
 
     payload["steam_api_key"] = _clean_text(payload.get("steam_api_key"))
     payload["faceit_api_key"] = _clean_text(payload.get("faceit_api_key"))
+    payload["code_provider_token_auth_enabled"] = bool(
+        payload.get("code_provider_token_auth_enabled", True)
+    )
     payload["self_hosted_git_oauth_enabled"] = bool(
         payload.get("self_hosted_git_oauth_enabled")
     )

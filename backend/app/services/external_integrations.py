@@ -561,6 +561,10 @@ async def connect_code_provider_token(
     raw_base_url: Optional[str] = None,
 ) -> ConnectedAccount:
     provider = _normalize_code_provider(provider)
+    api_settings = await get_api_settings_data(db)
+    if not bool(api_settings.get("code_provider_token_auth_enabled", True)):
+        raise ExternalApiError("Token auth is disabled for Git providers.", 400)
+
     access_token = _clean_text(access_token) or ""
     if not access_token:
         raise ExternalApiError("Access token is required.", 400)
@@ -1245,6 +1249,9 @@ async def integrations_response(
             gitea_oauth_ready=bool(
                 _clean_text(api_settings.get("gitea_oauth_client_id"))
                 and _clean_text(api_settings.get("gitea_oauth_client_secret"))
+            ),
+            code_provider_token_auth_enabled=bool(
+                api_settings.get("code_provider_token_auth_enabled", True)
             ),
             self_hosted_git_oauth_enabled=bool(
                 api_settings.get("self_hosted_git_oauth_enabled")

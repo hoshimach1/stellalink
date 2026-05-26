@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     GITLAB_OAUTH_CLIENT_SECRET: str | None = None
     GITEA_OAUTH_CLIENT_ID: str | None = None
     GITEA_OAUTH_CLIENT_SECRET: str | None = None
+    CODE_PROVIDER_TOKEN_AUTH_ENABLED: bool = True
     SELF_HOSTED_GIT_OAUTH_ENABLED: bool = False
     STEAM_INVENTORY_APP_ID: int = 730
     STEAM_INVENTORY_CONTEXT_ID: str = "2"

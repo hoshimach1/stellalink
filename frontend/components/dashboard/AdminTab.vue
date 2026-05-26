@@ -217,6 +217,13 @@
             Callback URL: <strong>{{ oauthCallbackUrl }}</strong>
           </div>
           <label class="admin-switch compact">
+            <input v-model="apiForm.code_provider_token_auth_enabled" type="checkbox">
+            <span>
+              <strong>Token auth</strong>
+              <small>Показывать пользователям вариант подключения через personal access token. Если выключено, кнопка подключения сразу ведет в OAuth.</small>
+            </span>
+          </label>
+          <label class="admin-switch compact">
             <input v-model="apiForm.self_hosted_git_oauth_enabled" type="checkbox">
             <span>
               <strong>Self-hosted OAuth</strong>
@@ -325,6 +332,7 @@ interface ApiSettings {
   gitea_oauth_client_id: string | null
   gitea_oauth_client_secret_set: boolean
   gitea_oauth_client_secret_hint: string | null
+  code_provider_token_auth_enabled: boolean
   self_hosted_git_oauth_enabled: boolean
   steam_inventory_app_id: number
   steam_inventory_context_id: string
@@ -378,6 +386,7 @@ const form = reactive({
 const apiForm = reactive({
   steam_inventory_app_id: 730,
   steam_inventory_context_id: '2',
+  code_provider_token_auth_enabled: true,
   self_hosted_git_oauth_enabled: false,
 })
 
@@ -506,6 +515,7 @@ function applyApiSettings(data: ApiSettings) {
   faceitKeySet.value = data.faceit_api_key_set
   apiForm.steam_inventory_app_id = data.steam_inventory_app_id
   apiForm.steam_inventory_context_id = data.steam_inventory_context_id
+  apiForm.code_provider_token_auth_enabled = data.code_provider_token_auth_enabled
   apiForm.self_hosted_git_oauth_enabled = data.self_hosted_git_oauth_enabled
   oauthForm.githubClientId = data.github_oauth_client_id ?? ''
   oauthForm.gitlabClientId = data.gitlab_oauth_client_id ?? ''
@@ -564,6 +574,7 @@ async function saveApiSettings() {
     const body: Record<string, unknown> = {
       steam_inventory_app_id: apiForm.steam_inventory_app_id,
       steam_inventory_context_id: apiForm.steam_inventory_context_id.trim() || '2',
+      code_provider_token_auth_enabled: apiForm.code_provider_token_auth_enabled,
       self_hosted_git_oauth_enabled: apiForm.self_hosted_git_oauth_enabled,
     }
     if (apiSteamKey.value.trim()) {
