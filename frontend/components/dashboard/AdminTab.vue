@@ -216,10 +216,20 @@
           <div class="admin-note muted">
             Callback URL: <strong>{{ oauthCallbackUrl }}</strong>
           </div>
+          <label class="admin-switch compact">
+            <input v-model="apiForm.self_hosted_git_oauth_enabled" type="checkbox">
+            <span>
+              <strong>Self-hosted OAuth</strong>
+              <small>Разрешить OAuth для кастомных GitHub Enterprise, GitLab и Gitea инстансов. Если выключено, self-hosted пользователи подключаются через token.</small>
+            </span>
+          </label>
 
           <section v-for="provider in oauthProviders" :key="provider.key" class="oauth-provider">
             <div class="oauth-provider-head">
-              <span class="oauth-provider-icon"><i :class="provider.icon" /></span>
+              <span class="oauth-provider-icon">
+                <GiteaLogo v-if="provider.key === 'gitea'" class="gitea-logo" />
+                <i v-else :class="provider.icon" />
+              </span>
               <div>
                 <strong>{{ provider.label }}</strong>
                 <span>{{ provider.hint }}</span>
@@ -315,6 +325,7 @@ interface ApiSettings {
   gitea_oauth_client_id: string | null
   gitea_oauth_client_secret_set: boolean
   gitea_oauth_client_secret_hint: string | null
+  self_hosted_git_oauth_enabled: boolean
   steam_inventory_app_id: number
   steam_inventory_context_id: string
   steam_inventory_price_source: string
@@ -367,6 +378,7 @@ const form = reactive({
 const apiForm = reactive({
   steam_inventory_app_id: 730,
   steam_inventory_context_id: '2',
+  self_hosted_git_oauth_enabled: false,
 })
 
 const oauthForm = reactive({
@@ -422,7 +434,7 @@ const oauthProviders = computed(() => [
   {
     key: 'gitea',
     label: 'Gitea',
-    icon: 'ri-git-repository-private-line',
+    icon: '',
     hint: 'gitea.com или self-hosted Gitea',
     clientIdKey: 'giteaClientId' as const,
     secretKey: 'gitea' as const,
@@ -494,6 +506,7 @@ function applyApiSettings(data: ApiSettings) {
   faceitKeySet.value = data.faceit_api_key_set
   apiForm.steam_inventory_app_id = data.steam_inventory_app_id
   apiForm.steam_inventory_context_id = data.steam_inventory_context_id
+  apiForm.self_hosted_git_oauth_enabled = data.self_hosted_git_oauth_enabled
   oauthForm.githubClientId = data.github_oauth_client_id ?? ''
   oauthForm.gitlabClientId = data.gitlab_oauth_client_id ?? ''
   oauthForm.giteaClientId = data.gitea_oauth_client_id ?? ''
@@ -551,6 +564,7 @@ async function saveApiSettings() {
     const body: Record<string, unknown> = {
       steam_inventory_app_id: apiForm.steam_inventory_app_id,
       steam_inventory_context_id: apiForm.steam_inventory_context_id.trim() || '2',
+      self_hosted_git_oauth_enabled: apiForm.self_hosted_git_oauth_enabled,
     }
     if (apiSteamKey.value.trim()) {
       body.steam_api_key = apiSteamKey.value.trim()
@@ -835,6 +849,12 @@ async function sendTestEmail() {
   background: var(--dash-accent-soft, rgba(52,94,168,0.12));
   color: var(--dash-accent-strong, #163E86);
   font-size: 18px;
+}
+
+.gitea-logo {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 
 .oauth-provider-head strong,

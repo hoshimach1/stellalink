@@ -23,6 +23,7 @@ class IntegrationCapabilities(BaseModel):
     github_oauth_ready: bool = False
     gitlab_oauth_ready: bool = False
     gitea_oauth_ready: bool = False
+    self_hosted_git_oauth_enabled: bool = False
 
 
 class IntegrationsResponse(BaseModel):

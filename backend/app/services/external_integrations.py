@@ -270,6 +270,10 @@ def _normalize_base_url(provider: str, raw_base_url: Optional[str]) -> str:
     return normalized or CODE_PROVIDER_DEFAULT_BASE_URLS[provider]
 
 
+def _is_default_code_provider_base_url(provider: str, base_url: str) -> bool:
+    return base_url == CODE_PROVIDER_DEFAULT_BASE_URLS[provider]
+
+
 def _code_provider_urls(provider: str, base_url: str) -> dict[str, str]:
     if provider == "github":
         api_base = (
@@ -478,6 +482,14 @@ async def create_code_provider_oauth_url(
 ) -> str:
     provider = _normalize_code_provider(provider)
     base_url = _normalize_base_url(provider, raw_base_url)
+    api_settings = await get_api_settings_data(db)
+    if not _is_default_code_provider_base_url(provider, base_url) and not bool(
+        api_settings.get("self_hosted_git_oauth_enabled")
+    ):
+        raise ExternalApiError(
+            "OAuth is disabled for self-hosted Git providers. Use an access token.",
+            400,
+        )
     client_id, _ = await _get_code_oauth_config(db, provider)
     frontend_base_url = await get_public_frontend_base_url(db)
     redirect_uri = _code_oauth_callback_url(frontend_base_url)
@@ -1233,6 +1245,9 @@ async def integrations_response(
             gitea_oauth_ready=bool(
                 _clean_text(api_settings.get("gitea_oauth_client_id"))
                 and _clean_text(api_settings.get("gitea_oauth_client_secret"))
+            ),
+            self_hosted_git_oauth_enabled=bool(
+                api_settings.get("self_hosted_git_oauth_enabled")
             ),
         ),
     )

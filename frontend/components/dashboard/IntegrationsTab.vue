@@ -32,6 +32,7 @@
         <div class="service-main">
           <span class="service-icon">
             <FaceitLogo v-if="service.type === 'widget_faceit'" class="faceit-logo" />
+            <GiteaLogo v-else-if="service.type === 'code_gitea'" class="gitea-logo" />
             <i v-else :class="service.icon" />
           </span>
 
@@ -104,14 +105,15 @@
                 <button
                   type="button"
                   :class="{ active: codeProviderInputs[service.provider].mode === 'token' }"
-                  @click="codeProviderInputs[service.provider].mode = 'token'"
+                  @click="selectCodeProviderMode(service.provider, 'token')"
                 >
                   Token
                 </button>
                 <button
                   type="button"
                   :class="{ active: codeProviderInputs[service.provider].mode === 'oauth' }"
-                  @click="codeProviderInputs[service.provider].mode = 'oauth'"
+                  :disabled="!codeProviderSelfHostedOAuthAllowed(service.provider)"
+                  @click="selectCodeProviderMode(service.provider, 'oauth')"
                 >
                   OAuth
                 </button>
@@ -119,19 +121,34 @@
 
               <label class="provider-field">
                 <span>Base URL</span>
-                <input v-model="codeProviderInputs[service.provider].base_url" type="url" :placeholder="service.defaultBaseUrl">
+                <input v-model="codeProviderInputs[service.provider].base_url" type="text" inputmode="url" :placeholder="service.defaultBaseUrl" @input="resetTokenGuide(service.provider)">
               </label>
 
-              <label v-if="codeProviderInputs[service.provider].mode === 'token'" class="provider-field">
+              <div
+                v-if="codeProviderInputs[service.provider].mode === 'token' && isSelfHostedCodeProvider(service.provider) && !tokenHelpOpened[service.provider]"
+                class="token-guide"
+              >
+                <span>{{ codeProviderTokenHint(service.provider) }}</span>
+                <button class="service-action primary" type="button" @click="openTokenCreateUrl(service.provider)">
+                  <i class="ri-external-link-line" />
+                  <span>Создать access token</span>
+                </button>
+              </div>
+
+              <label v-if="codeProviderInputs[service.provider].mode === 'token' && shouldShowTokenInput(service.provider)" class="provider-field">
                 <span>Access token</span>
                 <input v-model="codeProviderInputs[service.provider].token" type="password" autocomplete="new-password" placeholder="ghp_ / glpat_ / token">
               </label>
 
-              <span v-else-if="!codeProviderOAuthReady(service.provider)" class="service-hint">
+              <span v-else-if="codeProviderInputs[service.provider].mode === 'oauth' && !codeProviderOAuthReady(service.provider)" class="service-hint">
                 OAuth app не настроен в админке.
+              </span>
+              <span v-else-if="codeProviderInputs[service.provider].mode === 'oauth' && !codeProviderSelfHostedOAuthAllowed(service.provider)" class="service-hint">
+                OAuth для self-hosted выключен. Используйте token.
               </span>
 
               <button
+                v-if="codeProviderInputs[service.provider].mode !== 'token' || shouldShowTokenInput(service.provider)"
                 class="service-action primary"
                 type="button"
                 :disabled="!canSubmitCodeProvider(service.provider) || codeBusy === `${service.provider}:connect`"
@@ -181,6 +198,12 @@ type CodeProvider = 'github' | 'gitlab' | 'gitea'
 type IntegrationType = 'widget_steam' | 'widget_lastfm' | 'widget_faceit'
 type NoticeTone = 'success' | 'error'
 type CodeProviderMode = 'token' | 'oauth'
+const TOKEN_NAME = 'Stellalink'
+const TOKEN_SCOPES: Record<CodeProvider, string[]> = {
+  github: ['read:user'],
+  gitlab: ['read_user'],
+  gitea: ['read:user', 'read:repository'],
+}
 type ConnectedAccount = {
   id: string
   provider: string
@@ -200,6 +223,7 @@ type IntegrationsResponse = {
     github_oauth_ready: boolean
     gitlab_oauth_ready: boolean
     gitea_oauth_ready: boolean
+    self_hosted_git_oauth_enabled: boolean
   }
 }
 
@@ -226,7 +250,7 @@ const codeProviderDefinitions = [
   {
     type: 'code_gitea',
     provider: 'gitea' as const,
-    icon: 'ri-git-repository-private-line',
+    icon: '',
     label: 'Gitea',
     defaultBaseUrl: 'https://gitea.com',
     description: 'Подключите Gitea.com или self-hosted Gitea через token/OAuth.',
@@ -242,6 +266,11 @@ const codeProviderInputs = reactive<Record<CodeProvider, { mode: CodeProviderMod
   github: { mode: 'token', base_url: '', token: '' },
   gitlab: { mode: 'token', base_url: '', token: '' },
   gitea: { mode: 'token', base_url: '', token: '' },
+})
+const tokenHelpOpened = reactive<Record<CodeProvider, boolean>>({
+  github: false,
+  gitlab: false,
+  gitea: false,
 })
 
 const steamAccount = computed(() => integrations.value?.accounts.find(account => account.provider === 'steam' && account.is_active) ?? null)
@@ -516,10 +545,77 @@ function codeProviderOAuthReady(provider: CodeProvider): boolean {
   return Boolean(capabilities?.gitea_oauth_ready)
 }
 
+function normalizedCodeProviderBaseUrl(provider: CodeProvider, rawValue?: string): string {
+  const definition = codeProviderDefinitions.find(item => item.provider === provider)
+  const fallback = definition?.defaultBaseUrl ?? ''
+  const raw = (rawValue ?? codeProviderInputs[provider].base_url).trim() || fallback
+  try {
+    const url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`)
+    return `${url.protocol}//${url.host}${url.pathname.replace(/\/+$/, '')}`.replace(/\/+$/, '')
+  } catch {
+    return raw.replace(/\/+$/, '')
+  }
+}
+
+function isSelfHostedCodeProvider(provider: CodeProvider): boolean {
+  return normalizedCodeProviderBaseUrl(provider) !== normalizedCodeProviderBaseUrl(
+    provider,
+    codeProviderDefinitions.find(item => item.provider === provider)?.defaultBaseUrl,
+  )
+}
+
+function codeProviderSelfHostedOAuthAllowed(provider: CodeProvider): boolean {
+  if (!isSelfHostedCodeProvider(provider)) return true
+  return Boolean(integrations.value?.capabilities.self_hosted_git_oauth_enabled)
+}
+
+function selectCodeProviderMode(provider: CodeProvider, mode: CodeProviderMode) {
+  if (mode === 'oauth' && !codeProviderSelfHostedOAuthAllowed(provider)) {
+    setIntegrationNotice('OAuth для self-hosted Git-сред выключен. Подключите token.', 'error')
+    codeProviderInputs[provider].mode = 'token'
+    return
+  }
+  codeProviderInputs[provider].mode = mode
+}
+
+function resetTokenGuide(provider: CodeProvider) {
+  tokenHelpOpened[provider] = false
+  if (codeProviderInputs[provider].mode === 'oauth' && !codeProviderSelfHostedOAuthAllowed(provider)) {
+    codeProviderInputs[provider].mode = 'token'
+  }
+}
+
+function shouldShowTokenInput(provider: CodeProvider): boolean {
+  return !isSelfHostedCodeProvider(provider) || tokenHelpOpened[provider]
+}
+
+function codeProviderTokenHint(provider: CodeProvider): string {
+  return `Откроем страницу создания token для ${normalizedCodeProviderBaseUrl(provider)}. Название: ${TOKEN_NAME}. Scopes: ${TOKEN_SCOPES[provider].join(', ')}.`
+}
+
+function codeProviderTokenCreateUrl(provider: CodeProvider): string {
+  const baseUrl = normalizedCodeProviderBaseUrl(provider)
+  const name = encodeURIComponent(TOKEN_NAME)
+  if (provider === 'gitlab') {
+    const scopes = encodeURIComponent(TOKEN_SCOPES.gitlab.join(','))
+    return `${baseUrl}/-/user_settings/personal_access_tokens?name=${name}&scopes=${scopes}`
+  }
+  if (provider === 'github') {
+    const scopes = encodeURIComponent(TOKEN_SCOPES.github.join(','))
+    return `${baseUrl}/settings/tokens/new?description=${name}&scopes=${scopes}`
+  }
+  return `${baseUrl}/user/settings/applications`
+}
+
+function openTokenCreateUrl(provider: CodeProvider) {
+  window.open(codeProviderTokenCreateUrl(provider), '_blank', 'noopener,noreferrer')
+  tokenHelpOpened[provider] = true
+}
+
 function canSubmitCodeProvider(provider: CodeProvider): boolean {
   const input = codeProviderInputs[provider]
   if (input.mode === 'oauth') {
-    return codeProviderOAuthReady(provider)
+    return codeProviderOAuthReady(provider) && codeProviderSelfHostedOAuthAllowed(provider)
   }
   return Boolean(input.token.trim())
 }
@@ -762,6 +858,12 @@ async function connectService(type: IntegrationType) {
   display: block;
 }
 
+.gitea-logo {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+
 .service-copy {
   min-width: 0;
 }
@@ -952,6 +1054,26 @@ async function connectService(type: IntegrationType) {
   background: var(--dash-surface-strong, #fff);
   color: var(--dash-accent-strong, #163E86);
   box-shadow: 0 6px 14px color-mix(in srgb, var(--dash-text-1, #10182b) 8%, transparent);
+}
+
+.auth-mode-tabs button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.token-guide {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  width: 100%;
+}
+
+.token-guide > span {
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: right;
 }
 
 .provider-field {
