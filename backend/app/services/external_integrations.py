@@ -421,6 +421,18 @@ def _code_provider_auth_headers(
     return headers
 
 
+def _alternate_code_provider_auth_method(
+    provider: str, auth_method: str
+) -> Optional[str]:
+    if provider in {"gitlab", "gitea"}:
+        return "oauth" if auth_method == "token" else "token"
+    return None
+
+
+def _looks_like_auth_rejection(exc: ExternalApiError) -> bool:
+    return exc.status_code == 502 and "API key was rejected" in str(exc)
+
+
 def _summarize_code_provider_user(
     provider: str, base_url: str, api_base: str, payload: dict[str, Any]
 ) -> dict[str, Any]:
@@ -890,12 +902,32 @@ async def fetch_code_provider_profile(
     provider = _normalize_code_provider(provider)
     base_url = _normalize_base_url(provider, raw_base_url)
     urls = _code_provider_urls(provider, base_url)
-    payload = await _fetch_json(
-        f"{urls['api']}/user",
-        _provider_label(provider),
-        headers=_code_provider_auth_headers(provider, access_token, auth_method),
-    )
+    effective_auth_method = auth_method
+    try:
+        payload = await _fetch_json(
+            f"{urls['api']}/user",
+            _provider_label(provider),
+            headers=_code_provider_auth_headers(
+                provider, access_token, effective_auth_method
+            ),
+        )
+    except ExternalApiError as exc:
+        alternate_auth_method = _alternate_code_provider_auth_method(
+            provider, effective_auth_method
+        )
+        if not alternate_auth_method or not _looks_like_auth_rejection(exc):
+            raise
+        payload = await _fetch_json(
+            f"{urls['api']}/user",
+            _provider_label(provider),
+            headers=_code_provider_auth_headers(
+                provider, access_token, alternate_auth_method
+            ),
+        )
+        effective_auth_method = alternate_auth_method
+
     metadata = _summarize_code_provider_user(provider, base_url, urls["api"], payload)
+    metadata["auth_method"] = effective_auth_method
     try:
         metadata.update(
             await fetch_code_provider_repositories(
@@ -905,7 +937,7 @@ async def fetch_code_provider_profile(
                 urls["api"],
                 str(metadata.get("username") or ""),
                 str(metadata.get("uid") or ""),
-                auth_method=auth_method,
+                auth_method=effective_auth_method,
             )
         )
         metadata["repository_sync_error"] = None
@@ -936,7 +968,7 @@ async def connect_code_provider_token(
     metadata = await fetch_code_provider_profile(
         provider, access_token, raw_base_url, auth_method="token"
     )
-    metadata["auth_method"] = "token"
+    metadata["auth_method"] = str(metadata.get("auth_method") or "token")
     metadata["scopes"] = []
 
     account = await upsert_single_provider_account(
@@ -1539,7 +1571,7 @@ async def sync_code_provider_account(
     next_metadata = await fetch_code_provider_profile(
         provider, account.access_token, base_url, auth_method=auth_method
     )
-    next_metadata["auth_method"] = auth_method
+    next_metadata["auth_method"] = str(next_metadata.get("auth_method") or auth_method)
     next_metadata["scopes"] = list(account.scopes or [])
 
     account = await upsert_single_provider_account(
