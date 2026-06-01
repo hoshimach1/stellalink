@@ -44,8 +44,8 @@ CODE_PROVIDER_LABELS = {
     "gitea": "Gitea",
 }
 CODE_PROVIDER_SCOPES = {
-    "github": "read:user",
-    "gitlab": "read_user",
+    "github": "read:user repo",
+    "gitlab": "read_user read_repository",
     "gitea": "read:user read:repository",
 }
 
@@ -102,6 +102,25 @@ def _read_json(
     return parsed
 
 
+def _read_json_value(
+    url: str, service: str, headers: Optional[dict[str, str]] = None, timeout: int = 12
+) -> Any:
+    request = urllib.request.Request(url, headers=headers or {})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 - fixed trusted API hosts
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise _hinted_error(service, exc.code, body) from exc
+    except urllib.error.URLError as exc:
+        raise ExternalApiError(f"{service}: network request failed.") from exc
+
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ExternalApiError(f"{service}: returned invalid JSON.") from exc
+
+
 async def _fetch_json(
     url: str,
     service: str,
@@ -109,6 +128,15 @@ async def _fetch_json(
     timeout: int = 12,
 ) -> dict[str, Any]:
     return await asyncio.to_thread(_read_json, url, service, headers, timeout)
+
+
+async def _fetch_json_value(
+    url: str,
+    service: str,
+    headers: Optional[dict[str, str]] = None,
+    timeout: int = 12,
+) -> Any:
+    return await asyncio.to_thread(_read_json_value, url, service, headers, timeout)
 
 
 def _read_text_post(
@@ -180,6 +208,52 @@ async def _post_json(
 ) -> dict[str, Any]:
     return await asyncio.to_thread(
         _read_json_post, url, data, service, headers, timeout
+    )
+
+
+def _read_json_body_post(
+    url: str,
+    payload: dict[str, Any],
+    service: str,
+    headers: Optional[dict[str, str]] = None,
+    timeout: int = 12,
+) -> dict[str, Any]:
+    encoded = json.dumps(payload).encode("utf-8")
+    request_headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        **(headers or {}),
+    }
+    request = urllib.request.Request(
+        url, data=encoded, headers=request_headers, method="POST"
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 - fixed trusted API hosts
+            raw = response.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise _hinted_error(service, exc.code, body) from exc
+    except urllib.error.URLError as exc:
+        raise ExternalApiError(f"{service}: network request failed.") from exc
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ExternalApiError(f"{service}: returned invalid JSON.") from exc
+    if not isinstance(parsed, dict):
+        raise ExternalApiError(f"{service}: returned an unexpected payload.")
+    return parsed
+
+
+async def _post_json_body(
+    url: str,
+    payload: dict[str, Any],
+    service: str,
+    headers: Optional[dict[str, str]] = None,
+    timeout: int = 12,
+) -> dict[str, Any]:
+    return await asyncio.to_thread(
+        _read_json_body_post, url, payload, service, headers, timeout
     )
 
 
@@ -377,6 +451,269 @@ def _summarize_code_provider_user(
     }
 
 
+def _code_repos_url(provider: str, api_base: str, user_id: str) -> str:
+    if provider == "github":
+        query = urllib.parse.urlencode(
+            {
+                "per_page": 100,
+                "sort": "updated",
+                "affiliation": "owner,collaborator,organization_member",
+            }
+        )
+        return f"{api_base}/user/repos?{query}"
+    if provider == "gitlab":
+        query = urllib.parse.urlencode(
+            {
+                "membership": "true",
+                "per_page": 100,
+                "order_by": "last_activity_at",
+                "sort": "desc",
+            }
+        )
+        return f"{api_base}/projects?{query}"
+    query = urllib.parse.urlencode({"limit": 100})
+    return f"{api_base}/user/repos?{query}"
+
+
+def _github_graphql_url(base_url: str) -> str:
+    if base_url == CODE_PROVIDER_DEFAULT_BASE_URLS["github"]:
+        return "https://api.github.com/graphql"
+    return f"{base_url}/api/graphql"
+
+
+def _repo_number(repo: dict[str, Any], *keys: str) -> int:
+    for key in keys:
+        value = repo.get(key)
+        if value is not None:
+            return _to_int(value)
+    return 0
+
+
+def _repo_bool(repo: dict[str, Any], *keys: str) -> bool:
+    return any(bool(repo.get(key)) for key in keys)
+
+
+def _repo_timestamp(repo: dict[str, Any], provider: str) -> Optional[str]:
+    if provider == "github":
+        return _clean_text(repo.get("pushed_at") or repo.get("updated_at"))
+    if provider == "gitlab":
+        return _clean_text(repo.get("last_activity_at"))
+    return _clean_text(repo.get("updated_at") or repo.get("created_at"))
+
+
+def _summarize_repo(provider: str, repo: dict[str, Any]) -> dict[str, Any]:
+    namespace = repo.get("namespace") if isinstance(repo.get("namespace"), dict) else {}
+    owner = repo.get("owner") if isinstance(repo.get("owner"), dict) else {}
+    full_name = _clean_text(repo.get("full_name") or repo.get("path_with_namespace"))
+    name = _clean_text(repo.get("name") or repo.get("path")) or full_name or "repository"
+    if not full_name:
+        owner_name = _clean_text(owner.get("login") or owner.get("username"))
+        namespace_name = _clean_text(namespace.get("full_path") or namespace.get("path"))
+        full_name = (
+            f"{owner_name or namespace_name}/{name}"
+            if (owner_name or namespace_name)
+            else name
+        )
+
+    return {
+        "id": str(repo.get("id") or full_name),
+        "name": name,
+        "full_name": full_name,
+        "url": _clean_text(repo.get("html_url") or repo.get("web_url")),
+        "description": _clean_text(repo.get("description")),
+        "language": _clean_text(repo.get("language")),
+        "stars": _repo_number(repo, "stargazers_count", "star_count", "stars_count"),
+        "forks": _repo_number(repo, "forks_count", "forks"),
+        "open_issues": _repo_number(repo, "open_issues_count", "open_issues"),
+        "is_private": _repo_bool(repo, "private"),
+        "is_fork": _repo_bool(repo, "fork"),
+        "is_archived": _repo_bool(repo, "archived"),
+        "updated_at": _repo_timestamp(repo, provider),
+    }
+
+
+def _repository_stats(repositories: list[dict[str, Any]]) -> dict[str, Any]:
+    language_counts: dict[str, int] = {}
+    for repo in repositories:
+        language = _clean_text(repo.get("language"))
+        if language:
+            language_counts[language] = language_counts.get(language, 0) + 1
+
+    top_languages = [
+        {"language": language, "repositories": count}
+        for language, count in sorted(
+            language_counts.items(), key=lambda item: (-item[1], item[0].lower())
+        )[:6]
+    ]
+    last_activity_at = max(
+        (str(repo["updated_at"]) for repo in repositories if repo.get("updated_at")),
+        default=None,
+    )
+    return {
+        "total_repositories": len(repositories),
+        "public_repositories": sum(1 for repo in repositories if not repo.get("is_private")),
+        "private_repositories": sum(1 for repo in repositories if repo.get("is_private")),
+        "forked_repositories": sum(1 for repo in repositories if repo.get("is_fork")),
+        "archived_repositories": sum(1 for repo in repositories if repo.get("is_archived")),
+        "stars": sum(_to_int(repo.get("stars")) for repo in repositories),
+        "forks": sum(_to_int(repo.get("forks")) for repo in repositories),
+        "top_languages": top_languages,
+        "last_activity_at": last_activity_at,
+    }
+
+
+def _select_pinned_repositories(
+    repositories: list[dict[str, Any]], limit: int = 6
+) -> list[dict[str, Any]]:
+    candidates = [repo for repo in repositories if not repo.get("is_archived")]
+    if not candidates:
+        candidates = repositories
+    return sorted(
+        candidates,
+        key=lambda repo: (
+            _to_int(repo.get("stars")),
+            str(repo.get("updated_at") or ""),
+            str(repo.get("name") or "").lower(),
+        ),
+        reverse=True,
+    )[:limit]
+
+
+async def fetch_github_pinned_repositories(
+    base_url: str,
+    access_token: str,
+    username: str,
+    auth_method: str,
+    repositories: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if not username:
+        return []
+
+    payload = await _post_json_body(
+        _github_graphql_url(base_url),
+        {
+            "query": """
+query($login: String!) {
+  user(login: $login) {
+    pinnedItems(first: 6, types: REPOSITORY) {
+      nodes {
+        ... on Repository {
+          id
+          name
+          nameWithOwner
+          url
+          description
+          primaryLanguage { name }
+          stargazerCount
+          forkCount
+          isPrivate
+          isFork
+          isArchived
+          updatedAt
+          pushedAt
+        }
+      }
+    }
+  }
+}
+""",
+            "variables": {"login": username},
+        },
+        "GitHub",
+        headers=_code_provider_auth_headers("github", access_token, auth_method),
+    )
+    if payload.get("errors"):
+        raise ExternalApiError("GitHub: pinned repositories request failed.")
+
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    user = data.get("user")
+    pinned_items = user.get("pinnedItems") if isinstance(user, dict) else {}
+    nodes = pinned_items.get("nodes") if isinstance(pinned_items, dict) else []
+    if not isinstance(nodes, list):
+        return []
+
+    by_full_name = {repo.get("full_name"): repo for repo in repositories}
+    result = []
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        full_name = _clean_text(node.get("nameWithOwner"))
+        repo = by_full_name.get(full_name)
+        if repo:
+            result.append(repo)
+            continue
+        language = (
+            node.get("primaryLanguage")
+            if isinstance(node.get("primaryLanguage"), dict)
+            else {}
+        )
+        result.append(
+            {
+                "id": str(node.get("id") or full_name or node.get("name")),
+                "name": _clean_text(node.get("name")) or "repository",
+                "full_name": full_name,
+                "url": _clean_text(node.get("url")),
+                "description": _clean_text(node.get("description")),
+                "language": _clean_text(language.get("name")),
+                "stars": _to_int(node.get("stargazerCount")),
+                "forks": _to_int(node.get("forkCount")),
+                "open_issues": 0,
+                "is_private": bool(node.get("isPrivate")),
+                "is_fork": bool(node.get("isFork")),
+                "is_archived": bool(node.get("isArchived")),
+                "updated_at": _clean_text(
+                    node.get("pushedAt") or node.get("updatedAt")
+                ),
+            }
+        )
+    return result
+
+
+async def fetch_code_provider_repositories(
+    provider: str,
+    access_token: str,
+    base_url: str,
+    api_base: str,
+    username: str,
+    user_id: str,
+    auth_method: str = "token",
+) -> dict[str, Any]:
+    repos_url = _code_repos_url(provider, api_base, user_id)
+    payload = await _fetch_json_value(
+        repos_url,
+        _provider_label(provider),
+        headers=_code_provider_auth_headers(provider, access_token, auth_method),
+    )
+    if not isinstance(payload, list):
+        raise ExternalApiError(
+            f"{_provider_label(provider)}: returned an unexpected repositories payload."
+        )
+
+    repositories = [
+        _summarize_repo(provider, repo) for repo in payload if isinstance(repo, dict)
+    ]
+    stats = _repository_stats(repositories)
+    pinned_source = "selected_by_stars_and_activity"
+    pinned_repositories = _select_pinned_repositories(repositories)
+    if provider == "github":
+        try:
+            github_pinned = await fetch_github_pinned_repositories(
+                base_url, access_token, username, auth_method, repositories
+            )
+            if github_pinned:
+                pinned_repositories = github_pinned
+                pinned_source = "github_pinned_items"
+        except ExternalApiError:
+            pinned_source = "selected_by_stars_and_activity"
+    return {
+        "repositories": repositories,
+        "pinned_repositories": pinned_repositories,
+        "repository_stats": stats,
+        "repositories_synced_at": datetime.now(timezone.utc).isoformat(),
+        "pinned_source": pinned_source,
+    }
+
+
 async def create_steam_openid_auth_url(db: AsyncSession, user_id: UUID) -> str:
     frontend_base_url = await get_public_frontend_base_url(db)
     state = secrets.token_urlsafe(32)
@@ -547,7 +884,26 @@ async def fetch_code_provider_profile(
         _provider_label(provider),
         headers=_code_provider_auth_headers(provider, access_token, auth_method),
     )
-    return _summarize_code_provider_user(provider, base_url, urls["api"], payload)
+    metadata = _summarize_code_provider_user(provider, base_url, urls["api"], payload)
+    try:
+        metadata.update(
+            await fetch_code_provider_repositories(
+                provider,
+                access_token,
+                base_url,
+                urls["api"],
+                str(metadata.get("username") or ""),
+                str(metadata.get("uid") or ""),
+                auth_method=auth_method,
+            )
+        )
+        metadata["repository_sync_error"] = None
+    except ExternalApiError as exc:
+        metadata["repositories"] = []
+        metadata["pinned_repositories"] = []
+        metadata["repository_stats"] = {}
+        metadata["repository_sync_error"] = str(exc)
+    return metadata
 
 
 async def connect_code_provider_token(

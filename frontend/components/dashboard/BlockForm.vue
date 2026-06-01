@@ -114,8 +114,28 @@
     </template>
 
     <template v-else-if="type === 'widget_github'">
+      <div class="bf-readonly">
+        <span>Git-профиль</span>
+        <strong>{{ gitDisplayName() }}</strong>
+        <small>{{ gitSubLabel() }}</small>
+      </div>
+      <div class="bf-field">
+        <span>Провайдер</span>
+        <div class="bf-segments" role="group" aria-label="Git provider">
+          <button
+            v-for="provider in GIT_PROVIDERS"
+            :key="provider.value"
+            class="bf-segment"
+            :class="{ active: gitProvider() === provider.value }"
+            type="button"
+            @click="config.provider = provider.value"
+          >
+            {{ provider.label }}
+          </button>
+        </div>
+      </div>
       <label class="bf-field">
-        <span>GitHub username</span>
+        <span>Username</span>
         <input v-model="config.username" type="text" placeholder="octocat">
       </label>
       <label class="bf-check">
@@ -123,9 +143,20 @@
         <span>Показывать активность</span>
       </label>
       <label class="bf-check">
+        <input v-model="config.show_repository_stats" type="checkbox">
+        <span>Показывать статистику репозиториев</span>
+      </label>
+      <label class="bf-check">
         <input v-model="config.show_pinned_repos" type="checkbox">
         <span>Показывать закрепленные репозитории</span>
       </label>
+      <label class="bf-check">
+        <input v-model="config.include_private_repositories" type="checkbox">
+        <span>Учитывать приватные репозитории в публичном блоке</span>
+      </label>
+      <div class="bf-note">
+        По умолчанию публичный профиль не раскрывает приватные репозитории даже при подключенном token с доступом к ним.
+      </div>
     </template>
 
     <template v-else-if="type === 'widget_faceit'">
@@ -228,6 +259,12 @@ const POPULAR_ICONS = [
   'dribbble',
 ]
 
+const GIT_PROVIDERS = [
+  { value: 'github', label: 'GitHub' },
+  { value: 'gitlab', label: 'GitLab' },
+  { value: 'gitea', label: 'Gitea' },
+] as const
+
 function linkGroups(): Group[] {
   if (!Array.isArray(config.groups)) {
     config.groups = [{ title: '', links: [] }]
@@ -283,6 +320,25 @@ function faceitSubLabel(): string {
   const elo = profile?.faceit_elo ? `${profile.faceit_elo} ELO` : ''
   const level = profile?.skill_level ? `уровень ${profile.skill_level}` : ''
   return [level, elo].filter(Boolean).join(' · ') || 'FACEIT подтягивается автоматически через Steam'
+}
+
+function gitProvider(): string {
+  const provider = String(config.provider || config.git_provider || 'github')
+  return ['github', 'gitlab', 'gitea'].includes(provider) ? provider : 'github'
+}
+
+function gitDisplayName(): string {
+  const profile = config.git_profile as Record<string, unknown> | undefined
+  return String(config.git_display_name || config.github_display_name || profile?.display_name || profile?.username || config.username || 'Git-профиль не привязан')
+}
+
+function gitSubLabel(): string {
+  const provider = String(config.git_provider_label || GIT_PROVIDERS.find(item => item.value === gitProvider())?.label || 'Git')
+  const stats = config.git_repository_stats as Record<string, unknown> | undefined
+  const total = stats?.total_repositories
+  return total !== undefined && total !== null
+    ? `${provider} · ${total} репозиториев`
+    : `Подключите ${provider} в разделе интеграций`
 }
 </script>
 

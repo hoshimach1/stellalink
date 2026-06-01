@@ -53,6 +53,34 @@ def _display_name_from_metadata(account, metadata: dict, provider: str) -> str |
     return None
 
 
+def _git_repository_stats(repositories: list[dict]) -> dict:
+    languages: dict[str, int] = {}
+    for repo in repositories:
+        language = repo.get("language")
+        if isinstance(language, str) and language:
+            languages[language] = languages.get(language, 0) + 1
+    last_activity_at = max(
+        (str(repo["updated_at"]) for repo in repositories if repo.get("updated_at")),
+        default=None,
+    )
+    return {
+        "total_repositories": len(repositories),
+        "public_repositories": sum(1 for repo in repositories if not repo.get("is_private")),
+        "private_repositories": sum(1 for repo in repositories if repo.get("is_private")),
+        "forked_repositories": sum(1 for repo in repositories if repo.get("is_fork")),
+        "archived_repositories": sum(1 for repo in repositories if repo.get("is_archived")),
+        "stars": sum(int(repo.get("stars") or 0) for repo in repositories),
+        "forks": sum(int(repo.get("forks") or 0) for repo in repositories),
+        "top_languages": [
+            {"language": language, "repositories": count}
+            for language, count in sorted(
+                languages.items(), key=lambda item: (-item[1], item[0].lower())
+            )[:6]
+        ],
+        "last_activity_at": last_activity_at,
+    }
+
+
 def _sanitize_block_config(block_type: str, config: dict | None) -> dict:
     clean = dict(config or {})
     synced_keys = {
@@ -77,6 +105,15 @@ def _sanitize_block_config(block_type: str, config: dict | None) -> dict:
             "faceit_last_synced_at",
         ),
         "widget_github": (
+            "git_provider",
+            "git_provider_label",
+            "git_display_name",
+            "git_profile",
+            "git_repository_stats",
+            "git_pinned_repositories",
+            "git_repositories",
+            "git_sync_error",
+            "git_last_synced_at",
             "github_display_name",
             "connected_account_id",
             "github_profile",
@@ -93,10 +130,12 @@ def _enriched_block_config(profile, block) -> dict:
     config = dict(block.config or {})
     steam_account = _account_by_provider(profile, "steam")
     faceit_account = _account_by_provider(profile, "faceit")
-    github_account = _account_by_provider(profile, "github")
+    code_accounts = {
+        provider: _account_by_provider(profile, provider)
+        for provider in ("github", "gitlab", "gitea")
+    }
     steam_metadata = _account_metadata(steam_account)
     faceit_metadata = _account_metadata(faceit_account)
-    github_metadata = _account_metadata(github_account)
 
     if block.block_type == "widget_steam":
         if steam_account:
@@ -163,24 +202,75 @@ def _enriched_block_config(profile, block) -> dict:
                 config.pop(key, None)
 
     if block.block_type == "widget_github":
-        if github_account:
-            username = github_metadata.get("username")
+        requested_provider = str(config.get("provider") or config.get("git_provider") or "github")
+        if requested_provider not in code_accounts:
+            requested_provider = "github"
+        git_account = code_accounts.get(requested_provider) or next(
+            (account for account in code_accounts.values() if account),
+            None,
+        )
+        if git_account:
+            git_metadata = _account_metadata(git_account)
+            provider = git_account.provider
+            username = git_metadata.get("username")
             display_name = _display_name_from_metadata(
-                github_account, github_metadata, "github"
+                git_account, git_metadata, provider
             )
             if username:
                 config["username"] = username
+            include_private = bool(config.get("include_private_repositories"))
+            repositories = [
+                repo
+                for repo in (git_metadata.get("repositories") or [])
+                if isinstance(repo, dict)
+                and (include_private or not repo.get("is_private"))
+            ]
+            pinned_repositories = [
+                repo
+                for repo in (git_metadata.get("pinned_repositories") or [])
+                if isinstance(repo, dict)
+                and (include_private or not repo.get("is_private"))
+            ]
+            config["provider"] = provider
+            config["git_provider"] = provider
+            config["git_provider_label"] = {
+                "github": "GitHub",
+                "gitlab": "GitLab",
+                "gitea": "Gitea",
+            }.get(provider, provider)
+            config["git_display_name"] = display_name
+            config["git_profile"] = git_metadata
+            config["git_repository_stats"] = _git_repository_stats(repositories)
+            config["git_pinned_repositories"] = pinned_repositories
+            config["git_repositories"] = repositories
+            config["git_sync_error"] = git_account.sync_error or git_metadata.get(
+                "repository_sync_error"
+            )
+            config["git_last_synced_at"] = (
+                git_account.last_synced_at.isoformat()
+                if git_account.last_synced_at
+                else None
+            )
             config["github_display_name"] = display_name
-            config["connected_account_id"] = str(github_account.id)
-            config["github_profile"] = github_metadata
-            config["github_sync_error"] = github_account.sync_error
+            config["connected_account_id"] = str(git_account.id)
+            config["github_profile"] = git_metadata
+            config["github_sync_error"] = git_account.sync_error
             config["github_last_synced_at"] = (
-                github_account.last_synced_at.isoformat()
-                if github_account.last_synced_at
+                git_account.last_synced_at.isoformat()
+                if git_account.last_synced_at
                 else None
             )
         else:
             for key in (
+                "git_provider",
+                "git_provider_label",
+                "git_display_name",
+                "git_profile",
+                "git_repository_stats",
+                "git_pinned_repositories",
+                "git_repositories",
+                "git_sync_error",
+                "git_last_synced_at",
                 "github_display_name",
                 "connected_account_id",
                 "github_profile",

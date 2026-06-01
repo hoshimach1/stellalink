@@ -41,8 +41,8 @@ export const BLOCK_LIBRARY: BlockCatalogItem[] = [
   {
     type: 'widget_github',
     icon: 'ri-github-fill',
-    label: 'GitHub',
-    description: 'Ник, активность и закрепленные репозитории.',
+    label: 'Git',
+    description: 'Профиль, статистика и закрепленные репозитории GitHub, GitLab или Gitea.',
   },
   {
     type: 'widget_faceit',
@@ -93,7 +93,7 @@ const DEFAULT_CONFIGS: Record<string, Record<string, unknown>> = {
     show_inventory_highlight: true,
   },
   widget_lastfm: { username: '', show_now_playing: true },
-  widget_github: { username: '', use_connected_account: true, show_contributions: true, show_pinned_repos: true },
+  widget_github: { username: '', provider: 'github', use_connected_account: true, show_contributions: true, show_repository_stats: true, show_pinned_repos: true, include_private_repositories: false },
   widget_faceit: { game: 'cs2' },
   pc_config: { title: 'My Rig', components: [] },
 }

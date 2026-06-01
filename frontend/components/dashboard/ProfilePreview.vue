@@ -38,7 +38,7 @@
         </section>
 
         <section v-else-if="block.block_type === 'widget_github'" class="preview-block">
-          <p class="preview-title">GitHub</p>
+          <p class="preview-title">{{ gitProviderLabel(block.config) }}</p>
           <strong>{{ (block.config.username as string) || 'Ник не указан' }}</strong>
         </section>
 
@@ -91,6 +91,11 @@ function asComponents(config: Record<string, unknown>): ComponentItem[] {
 function steamDisplayName(config: Record<string, unknown>): string {
   const steamProfile = config.steam_profile as Record<string, unknown> | undefined
   return String(config.steam_display_name || steamProfile?.personaname || 'Steam не привязан')
+}
+
+function gitProviderLabel(config: Record<string, unknown>): string {
+  const provider = String(config.git_provider || config.provider || 'github')
+  return String(config.git_provider_label || ({ github: 'GitHub', gitlab: 'GitLab', gitea: 'Gitea' } as Record<string, string>)[provider] || 'Git')
 }
 </script>
 

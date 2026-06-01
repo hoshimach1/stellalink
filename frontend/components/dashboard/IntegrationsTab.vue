@@ -246,8 +246,8 @@ type NoticeTone = 'success' | 'error'
 type CodeProviderMode = 'token' | 'oauth'
 const TOKEN_NAME = 'Stellalink'
 const TOKEN_SCOPES: Record<CodeProvider, string[]> = {
-  github: ['read:user'],
-  gitlab: ['read_user'],
+  github: ['read:user', 'repo'],
+  gitlab: ['read_user', 'read_repository'],
   gitea: ['read:user', 'read:repository'],
 }
 type ConnectedAccount = {
@@ -356,7 +356,6 @@ const serviceCards = computed(() => {
         widget_steam: steamDescription,
         widget_faceit: faceitDescription,
         widget_lastfm: 'Подключите Last.fm, чтобы показывать текущий трек и музыкальную активность.',
-        widget_github: 'Подключите GitHub, чтобы вывести активность и закреплённые репозитории.',
       }
       return {
         ...item,
@@ -446,8 +445,9 @@ async function loadIntegrations() {
     if (steamAccount.value) {
       await ensureSteamBlock()
     }
-    if (codeProviderAccount('github')) {
-      await ensureGitHubBlock()
+    const firstGitProvider = codeProviderDefinitions.find(item => codeProviderAccount(item.provider))?.provider
+    if (firstGitProvider) {
+      await ensureGitBlock(firstGitProvider)
     }
   } catch (error) {
     setIntegrationNotice(extractAuthError(error, 'Не удалось загрузить подключения.'), 'error')
@@ -456,19 +456,22 @@ async function loadIntegrations() {
   }
 }
 
-async function ensureGitHubBlock() {
+async function ensureGitBlock(provider: CodeProvider) {
   if (!profile.profile) return
-  const account = codeProviderAccount('github')
+  const account = codeProviderAccount(provider)
   if (!account) return
   const existing = profile.profile?.blocks.find((block: Block) => block.block_type === 'widget_github')
-  const currentConfig = existing ? sanitizedGitHubBlockConfig(existing.config) : null
+  const currentConfig = existing ? sanitizedGitBlockConfig(existing.config) : null
   const username = account.metadata?.username || account.display_name || ''
   const nextConfig: Record<string, unknown> = {
     ...(currentConfig ?? createDefaultBlockConfig('widget_github')),
     use_connected_account: true,
+    provider,
     username,
     show_contributions: currentConfig?.show_contributions ?? true,
+    show_repository_stats: currentConfig?.show_repository_stats ?? true,
     show_pinned_repos: currentConfig?.show_pinned_repos ?? true,
+    include_private_repositories: currentConfig?.include_private_repositories ?? false,
   }
 
   if (existing) {
@@ -480,8 +483,17 @@ async function ensureGitHubBlock() {
   }
 }
 
-function sanitizedGitHubBlockConfig(value: Record<string, unknown>) {
+function sanitizedGitBlockConfig(value: Record<string, unknown>) {
   const clean = { ...value }
+  delete clean.git_provider
+  delete clean.git_provider_label
+  delete clean.git_display_name
+  delete clean.git_profile
+  delete clean.git_repository_stats
+  delete clean.git_pinned_repositories
+  delete clean.git_repositories
+  delete clean.git_sync_error
+  delete clean.git_last_synced_at
   delete clean.connected_account_id
   delete clean.github_display_name
   delete clean.github_profile
@@ -716,9 +728,7 @@ async function connectCodeProvider(provider: CodeProvider) {
     })
     input.token = ''
     applyIntegrations(data)
-    if (provider === 'github') {
-      await ensureGitHubBlock()
-    }
+    await ensureGitBlock(provider)
     await profile.fetch()
     setIntegrationNotice(`${codeProviderLabel(provider)} подключён через token.`, 'success')
     closeCodeProviderModal()
@@ -736,9 +746,7 @@ async function syncCodeProvider(provider: CodeProvider) {
       method: 'POST',
     })
     applyIntegrations(data)
-    if (provider === 'github') {
-      await ensureGitHubBlock()
-    }
+    await ensureGitBlock(provider)
     await profile.fetch()
     setIntegrationNotice(`${codeProviderLabel(provider)} синхронизирован.`, 'success')
   } catch (error) {
@@ -767,9 +775,7 @@ async function connectService(type: IntegrationType) {
   connectingType.value = type
   try {
     await profile.createBlock(type, createDefaultBlockConfig(type))
-    setIntegrationNotice(type === 'widget_github'
-      ? 'GitHub подключён. Блок добавлен в публичный профиль.'
-      : 'Last.fm подключён. Блок добавлен в публичный профиль.', 'success')
+    setIntegrationNotice('Last.fm подключён. Блок добавлен в публичный профиль.', 'success')
   } catch (error) {
     setIntegrationNotice(extractAuthError(error, 'Не удалось подключить интеграцию.'), 'error')
   } finally {

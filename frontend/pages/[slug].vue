@@ -163,39 +163,35 @@
               <div class="pub-wh pub-m3-widget-head">
                 <div class="pub-wh-left">
                   <div class="pub-w-ico-bg pub-m3-service-icon pub-m3-github">
-                    <i class="ri-github-fill" />
+                    <i :class="gitProviderIcon(block)" />
                   </div>
                   <div>
-                    <div class="pub-w-name">GitHub</div>
-                    <div class="pub-w-id">@{{ block.config.username || '-' }}</div>
+                    <div class="pub-w-name">{{ gitProviderLabel(block) }}</div>
+                    <div class="pub-w-id">@{{ gitUsername(block) || '-' }}</div>
                   </div>
                 </div>
-                <span v-if="block.config.username" class="pub-m3-soft-chip">
-                  {{ mock.ghStats(block.config.username as string).repos }} репо
+                <span v-if="gitRepositoryTotal(block) !== null" class="pub-m3-soft-chip">
+                  {{ gitRepositoryTotal(block) }} репо
                 </span>
               </div>
-              <template v-if="block.config.username">
+              <template v-if="gitUsername(block)">
                 <div class="pub-divider" />
-                <div class="pub-gh-grid-wrap">
-                  <div class="pub-gh-grid">
-                    <div
-                      v-for="(level, i) in mock.ghHeatmap(block.config.username as string)"
-                      :key="i"
-                      class="pub-gh-cell"
-                      :class="`pub-gh-l${level}`"
-                    />
+                <div v-if="block.config.show_repository_stats && gitRepositoryStatsList(block).length" class="pub-faceit-stats">
+                  <div v-for="s in gitRepositoryStatsList(block)" :key="s.label" class="pub-faceit-stat pub-m3-stat">
+                    <div class="pub-fstat-v">{{ s.value }}</div>
+                    <div class="pub-fstat-l">{{ s.label }}</div>
                   </div>
                 </div>
-                <div class="pub-gh-count">
-                  {{ mock.ghStats(block.config.username as string).contributions.toLocaleString('ru') }} contributions за последний год
+                <div v-if="block.config.show_contributions && gitActivitySummary(block)" class="pub-gh-count">
+                  {{ gitActivitySummary(block) }}
                 </div>
                 <template v-if="block.config.show_pinned_repos">
                   <div class="pub-sub-label pub-m3-pin-label">Закреплённые репозитории</div>
                   <div class="pub-gh-repos">
-                    <div v-for="r in mock.ghRepos(block.config.username as string)" :key="r" class="pub-gh-repo pub-m3-repo">
+                    <a v-for="r in gitPinnedRepositories(block)" :key="r.id || r.full_name" class="pub-gh-repo pub-m3-repo" :href="r.url || '#'" target="_blank" rel="noopener">
                       <i class="ri-git-repository-line" />
-                      <span>{{ block.config.username }}/{{ r }}</span>
-                    </div>
+                      <span>{{ r.full_name || r.name }}</span>
+                    </a>
                   </div>
                 </template>
               </template>
@@ -395,38 +391,34 @@
               <template v-else-if="block.block_type === 'widget_github'">
                 <div class="pub-wh">
                   <div class="pub-wh-left">
-                    <div class="pub-w-ico-bg" style="background:rgba(255,255,255,0.06);color:#ececef">🐙</div>
+                    <div class="pub-w-ico-bg" style="background:rgba(255,255,255,0.06);color:#ececef"><i :class="gitProviderIcon(block)" /></div>
                     <div>
-                      <div class="pub-w-name">GitHub</div>
-                      <div class="pub-w-id">@{{ block.config.username || '—' }}</div>
+                      <div class="pub-w-name">{{ gitProviderLabel(block) }}</div>
+                      <div class="pub-w-id">@{{ gitUsername(block) || '—' }}</div>
                     </div>
                   </div>
-                  <span v-if="block.config.username" class="pub-gh-repos-badge">
-                    {{ mock.ghStats(block.config.username as string).repos }} репо
+                  <span v-if="gitRepositoryTotal(block) !== null" class="pub-gh-repos-badge">
+                    {{ gitRepositoryTotal(block) }} репо
                   </span>
                 </div>
-                <template v-if="block.config.username">
+                <template v-if="gitUsername(block)">
                   <div class="pub-divider" />
-                  <div class="pub-gh-grid-wrap">
-                    <div class="pub-gh-grid">
-                      <div
-                        v-for="(level, i) in mock.ghHeatmap(block.config.username as string)"
-                        :key="i"
-                        class="pub-gh-cell"
-                        :class="`pub-gh-l${level}`"
-                      />
+                  <div v-if="block.config.show_repository_stats && gitRepositoryStatsList(block).length" class="pub-faceit-stats">
+                    <div v-for="s in gitRepositoryStatsList(block)" :key="s.label" class="pub-faceit-stat">
+                      <div class="pub-fstat-v">{{ s.value }}</div>
+                      <div class="pub-fstat-l">{{ s.label }}</div>
                     </div>
                   </div>
-                  <div class="pub-gh-count">
-                    {{ mock.ghStats(block.config.username as string).contributions.toLocaleString('ru') }} contributions за последний год
+                  <div v-if="block.config.show_contributions && gitActivitySummary(block)" class="pub-gh-count">
+                    {{ gitActivitySummary(block) }}
                   </div>
                   <template v-if="block.config.show_pinned_repos">
                     <div class="pub-sub-label" style="margin-top:12px">Закреплённые репозитории</div>
                     <div class="pub-gh-repos">
-                      <div v-for="r in mock.ghRepos(block.config.username as string)" :key="r" class="pub-gh-repo">
+                      <a v-for="r in gitPinnedRepositories(block)" :key="r.id || r.full_name" class="pub-gh-repo" :href="r.url || '#'" target="_blank" rel="noopener">
                         <i class="ri-git-repository-line" />
-                        <span>{{ block.config.username }}/{{ r }}</span>
-                      </div>
+                        <span>{{ r.full_name || r.name }}</span>
+                      </a>
                     </div>
                   </template>
                 </template>
@@ -632,38 +624,34 @@
               <div v-else-if="block.block_type === 'widget_github'" class="pub-block-inner">
                 <div class="pub-wh">
                   <div class="pub-wh-left">
-                    <div class="pub-w-ico-bg" style="background:rgba(255,255,255,0.06);color:#ececef">🐙</div>
+                    <div class="pub-w-ico-bg" style="background:rgba(255,255,255,0.06);color:#ececef"><i :class="gitProviderIcon(block)" /></div>
                     <div>
-                      <div class="pub-w-name">GitHub</div>
-                      <div class="pub-w-id">@{{ block.config.username || '—' }}</div>
+                      <div class="pub-w-name">{{ gitProviderLabel(block) }}</div>
+                      <div class="pub-w-id">@{{ gitUsername(block) || '—' }}</div>
                     </div>
                   </div>
-                  <fluent-badge v-if="block.config.username" appearance="neutral">
-                    {{ mock.ghStats(block.config.username as string).repos }} репо
+                  <fluent-badge v-if="gitRepositoryTotal(block) !== null" appearance="neutral">
+                    {{ gitRepositoryTotal(block) }} репо
                   </fluent-badge>
                 </div>
-                <template v-if="block.config.username">
+                <template v-if="gitUsername(block)">
                   <div class="pub-divider" />
-                  <div class="pub-gh-grid-wrap">
-                    <div class="pub-gh-grid">
-                      <div
-                        v-for="(level, i) in mock.ghHeatmap(block.config.username as string)"
-                        :key="i"
-                        class="pub-gh-cell"
-                        :class="`pub-gh-l${level}`"
-                      />
+                  <div v-if="block.config.show_repository_stats && gitRepositoryStatsList(block).length" class="pub-faceit-stats">
+                    <div v-for="s in gitRepositoryStatsList(block)" :key="s.label" class="pub-faceit-stat">
+                      <div class="pub-fstat-v">{{ s.value }}</div>
+                      <div class="pub-fstat-l">{{ s.label }}</div>
                     </div>
                   </div>
-                  <div class="pub-gh-count">
-                    {{ mock.ghStats(block.config.username as string).contributions.toLocaleString('ru') }} contributions за последний год
+                  <div v-if="block.config.show_contributions && gitActivitySummary(block)" class="pub-gh-count">
+                    {{ gitActivitySummary(block) }}
                   </div>
                   <template v-if="block.config.show_pinned_repos">
                     <div class="pub-sub-label" style="margin-top:12px">Закреплённые репозитории</div>
                     <div class="pub-gh-repos">
-                      <div v-for="r in mock.ghRepos(block.config.username as string)" :key="r" class="pub-gh-repo">
+                      <a v-for="r in gitPinnedRepositories(block)" :key="r.id || r.full_name" class="pub-gh-repo" :href="r.url || '#'" target="_blank" rel="noopener">
                         <i class="ri-git-repository-line" />
-                        <span>{{ block.config.username }}/{{ r }}</span>
-                      </div>
+                        <span>{{ r.full_name || r.name }}</span>
+                      </a>
                     </div>
                   </template>
                 </template>
@@ -762,6 +750,18 @@ interface SteamGame {
   total_hours?: number
   last_played_at?: string | null
   hours?: number
+}
+
+interface GitRepository {
+  id?: string
+  name: string
+  full_name?: string
+  url?: string
+  description?: string
+  language?: string
+  stars?: number
+  forks?: number
+  updated_at?: string | null
 }
 
 type ThemeColorMode = 'light' | 'dark'
@@ -946,6 +946,53 @@ function inventoryStatus(block: Block) {
     title: String(item.title || 'Инвентарь'),
     reason: String(item.reason || 'Источник цен не настроен.'),
   }
+}
+
+function gitProviderLabel(block: Block): string {
+  const provider = String(block.config.git_provider || block.config.provider || 'github')
+  return String(block.config.git_provider_label || ({ github: 'GitHub', gitlab: 'GitLab', gitea: 'Gitea' } as Record<string, string>)[provider] || 'Git')
+}
+
+function gitProviderIcon(block: Block): string {
+  const provider = String(block.config.git_provider || block.config.provider || 'github')
+  return ({ github: 'ri-github-fill', gitlab: 'ri-gitlab-fill', gitea: 'ri-git-repository-line' } as Record<string, string>)[provider] || 'ri-git-repository-line'
+}
+
+function gitUsername(block: Block): string {
+  const live = block.config.git_profile as Record<string, unknown> | undefined
+  return String(block.config.username || live?.username || '')
+}
+
+function gitRepositoryStats(block: Block): Record<string, unknown> {
+  const stats = block.config.git_repository_stats as Record<string, unknown> | undefined
+  return stats && typeof stats === 'object' ? stats : {}
+}
+
+function gitRepositoryTotal(block: Block): number | null {
+  const total = gitRepositoryStats(block).total_repositories
+  return typeof total === 'number' ? total : null
+}
+
+function gitRepositoryStatsList(block: Block) {
+  const stats = gitRepositoryStats(block)
+  return [
+    { label: 'Repos', value: stats.total_repositories },
+    { label: 'Stars', value: stats.stars },
+    { label: 'Forks', value: stats.forks },
+    { label: 'Private', value: stats.private_repositories },
+  ].filter(item => item.value !== undefined && item.value !== null && item.value !== '')
+}
+
+function gitPinnedRepositories(block: Block): GitRepository[] {
+  const repos = Array.isArray(block.config.git_pinned_repositories) ? block.config.git_pinned_repositories as GitRepository[] : []
+  return repos.slice(0, 6)
+}
+
+function gitActivitySummary(block: Block): string {
+  const last = gitRepositoryStats(block).last_activity_at
+  if (typeof last !== 'string') return ''
+  const formatted = formatLastPlayed(last)
+  return formatted ? `Последняя активность: ${formatted}` : ''
 }
 
 function faceitDataForBlock(block: Block) {
@@ -2068,7 +2115,7 @@ function faceitStatsList(block: Block) {
 .pub-np-track { font-size: 14px; font-weight: 700; line-height: 1.2; }
 .pub-np-artist { font-size: 12px; color: var(--t-muted); margin-top: 2px; }
 
-/* ── GitHub heatmap ─────────────────────────────────────────────────────────── */
+/* ── Git repositories ───────────────────────────────────────────────────────── */
 .pub-gh-repos-badge {
   font-size: 11px; font-weight: 600; color: var(--t-tag-c);
   background: var(--t-tag-bg); border: 1px solid var(--t-accent12);
@@ -2098,6 +2145,7 @@ function faceitStatsList(block: Block) {
   font-size: 12px; color: var(--t-tag-c);
   background: var(--t-tag-bg); border: 1px solid var(--t-border);
   border-radius: 6px; padding: 6px 10px;
+  text-decoration: none;
 }
 
 /* ── PC Config ──────────────────────────────────────────────────────────────── */

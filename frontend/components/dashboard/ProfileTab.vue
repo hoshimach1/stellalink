@@ -138,18 +138,23 @@
                 <template v-else-if="block.block_type === 'widget_github'">
                   <div class="widget-head">
                     <div>
-                      <p>GitHub</p>
-                      <span>@{{ (previewConfig(block).username as string) || 'username' }}</span>
+                      <p>{{ gitProviderLabel(previewConfig(block)) }}</p>
+                      <span>@{{ gitUsername(previewConfig(block)) || 'username' }}</span>
                     </div>
-                    <span v-if="previewConfig(block).username" class="soft-badge">
-                      {{ mock.ghStats(previewConfig(block).username as string).repos }} repo
+                    <span v-if="gitRepositoryTotal(previewConfig(block)) !== null" class="soft-badge">
+                      {{ gitRepositoryTotal(previewConfig(block)) }} repo
                     </span>
                   </div>
-                  <div v-if="previewConfig(block).username && previewConfig(block).show_contributions" class="heatmap" aria-hidden="true">
-                    <span v-for="(level, index) in mock.ghHeatmap(previewConfig(block).username as string).slice(0, 56)" :key="index" :class="`level-${level}`" />
+                  <div v-if="previewConfig(block).show_repository_stats && gitRepositoryStatsList(previewConfig(block)).length" class="stat-grid">
+                    <div v-for="stat in gitRepositoryStatsList(previewConfig(block))" :key="stat.label">
+                      <strong>{{ stat.value }}</strong><span>{{ stat.label }}</span>
+                    </div>
                   </div>
-                  <div v-if="previewConfig(block).username && previewConfig(block).show_pinned_repos" class="repo-row">
-                    <span v-for="repo in mock.ghRepos(previewConfig(block).username as string)" :key="repo">{{ repo }}</span>
+                  <p v-if="previewConfig(block).show_contributions && gitActivitySummary(previewConfig(block))" class="empty-line">
+                    {{ gitActivitySummary(previewConfig(block)) }}
+                  </p>
+                  <div v-if="gitUsername(previewConfig(block)) && previewConfig(block).show_pinned_repos" class="repo-row">
+                    <span v-for="repo in gitPinnedRepositories(previewConfig(block))" :key="repo.id || repo.full_name">{{ repo.name }}</span>
                   </div>
                 </template>
 
@@ -511,6 +516,18 @@ interface SteamGame {
   hours?: number
 }
 
+interface GitRepository {
+  id?: string
+  name: string
+  full_name?: string
+  url?: string
+  description?: string
+  language?: string
+  stars?: number
+  forks?: number
+  updated_at?: string | null
+}
+
 type NoticeTone = 'success' | 'info' | 'error'
 type Panel = 'profile' | 'blocks'
 type ThemeColorMode = 'light' | 'dark'
@@ -746,6 +763,47 @@ function inventoryStatus(value: Record<string, unknown>) {
     title: String(item.title || 'Инвентарь'),
     reason: String(item.reason || 'Источник цен не настроен.'),
   }
+}
+
+function gitProviderLabel(value: Record<string, unknown>): string {
+  const provider = String(value.git_provider || value.provider || 'github')
+  return String(value.git_provider_label || ({ github: 'GitHub', gitlab: 'GitLab', gitea: 'Gitea' } as Record<string, string>)[provider] || 'Git')
+}
+
+function gitUsername(value: Record<string, unknown>): string {
+  const profile = value.git_profile as Record<string, unknown> | undefined
+  return String(value.username || profile?.username || '')
+}
+
+function gitRepositoryStats(value: Record<string, unknown>): Record<string, unknown> {
+  const stats = value.git_repository_stats as Record<string, unknown> | undefined
+  return stats && typeof stats === 'object' ? stats : {}
+}
+
+function gitRepositoryTotal(value: Record<string, unknown>): number | null {
+  const total = gitRepositoryStats(value).total_repositories
+  return typeof total === 'number' ? total : null
+}
+
+function gitRepositoryStatsList(value: Record<string, unknown>) {
+  const stats = gitRepositoryStats(value)
+  return [
+    { label: 'Repos', value: stats.total_repositories },
+    { label: 'Stars', value: stats.stars },
+    { label: 'Forks', value: stats.forks },
+  ].filter(item => item.value !== undefined && item.value !== null && item.value !== '')
+}
+
+function gitPinnedRepositories(value: Record<string, unknown>): GitRepository[] {
+  const repos = Array.isArray(value.git_pinned_repositories) ? value.git_pinned_repositories as GitRepository[] : []
+  return repos.slice(0, 3)
+}
+
+function gitActivitySummary(value: Record<string, unknown>): string {
+  const last = gitRepositoryStats(value).last_activity_at
+  if (typeof last !== 'string') return ''
+  const formatted = formatLastPlayed(last)
+  return formatted ? `Последняя активность в репозиториях: ${formatted}` : ''
 }
 
 function faceitPreviewData(value: Record<string, unknown>) {
