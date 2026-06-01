@@ -56,11 +56,11 @@
                   </span>
                   <span class="block-icon">
                     <FaceitLogo v-if="block.block_type === 'widget_faceit'" class="faceit-logo" />
-                    <i v-else :class="blockIcon(block.block_type)" />
+                    <i v-else :class="displayBlockIcon(block)" />
                   </span>
                   <div>
-                    <strong>{{ blockLabel(block.block_type) }}</strong>
-                    <small>{{ block.is_visible ? blockDescription(block.block_type) : 'Скрыт на публичной странице' }}</small>
+                    <strong>{{ displayBlockLabel(block) }}</strong>
+                    <small>{{ block.is_visible ? displayBlockDescription(block) : 'Скрыт на публичной странице' }}</small>
                   </div>
                 </div>
                 <div class="block-actions">
@@ -402,9 +402,9 @@
                     <span class="mini-handle" title="Перетащить" @click.stop><i class="ri-draggable" /></span>
                     <span class="mini-icon">
                       <FaceitLogo v-if="block.block_type === 'widget_faceit'" class="faceit-logo" />
-                      <i v-else :class="blockIcon(block.block_type)" />
+                      <i v-else :class="displayBlockIcon(block)" />
                     </span>
-                    <span class="mini-label">{{ blockLabel(block.block_type) }}</span>
+                    <span class="mini-label">{{ displayBlockLabel(block) }}</span>
                     <span class="mini-actions">
                       <button class="tiny-action" :class="{ active: block.is_visible }" type="button" title="Видимость" @click.stop="toggleVisible(block)">
                         <i :class="block.is_visible ? 'ri-eye-line' : 'ri-eye-off-line'" />
@@ -444,11 +444,11 @@
               </button>
               <span class="section-icon">
                 <FaceitLogo v-if="activeBlock.block_type === 'widget_faceit'" class="faceit-logo" />
-                <i v-else :class="blockIcon(activeBlock.block_type)" />
+                <i v-else :class="displayBlockIcon(activeBlock)" />
               </span>
               <div>
-                <h3>{{ blockLabel(activeBlock.block_type) }}</h3>
-                <p>{{ blockDescription(activeBlock.block_type) }}</p>
+                <h3>{{ displayBlockLabel(activeBlock) }}</h3>
+                <p>{{ displayBlockDescription(activeBlock) }}</p>
               </div>
             </div>
 
@@ -770,6 +770,26 @@ function gitProviderLabel(value: Record<string, unknown>): string {
   return String(value.git_provider_label || ({ github: 'GitHub', gitlab: 'GitLab', gitea: 'Gitea' } as Record<string, string>)[provider] || 'Git')
 }
 
+function gitProviderIcon(value: Record<string, unknown>): string {
+  const provider = String(value.git_provider || value.provider || 'github')
+  return ({ github: 'ri-github-fill', gitlab: 'ri-gitlab-fill', gitea: 'ri-git-repository-line' } as Record<string, string>)[provider] || 'ri-git-repository-line'
+}
+
+function displayBlockLabel(block: Block): string {
+  return block.block_type === 'widget_github' ? gitProviderLabel(block.config) : blockLabel(block.block_type)
+}
+
+function displayBlockIcon(block: Block): string {
+  return block.block_type === 'widget_github' ? gitProviderIcon(block.config) : blockIcon(block.block_type)
+}
+
+function displayBlockDescription(block: Block): string {
+  if (block.block_type === 'widget_github') {
+    return `${gitProviderLabel(block.config)}: профиль, статистика и репозитории.`
+  }
+  return blockDescription(block.block_type)
+}
+
 function gitUsername(value: Record<string, unknown>): string {
   const profile = value.git_profile as Record<string, unknown> | undefined
   return String(value.username || profile?.username || '')
@@ -859,7 +879,8 @@ async function saveBlock() {
 
 async function addBlock(type: string) {
   try {
-    const block = await profile.createBlock(type, createDefaultBlockConfig(type))
+    const blockType = ['widget_gitlab', 'widget_gitea'].includes(type) ? 'widget_github' : type
+    const block = await profile.createBlock(blockType, createDefaultBlockConfig(type))
     clearObject(blockDraft)
     Object.assign(blockDraft, cloneConfig(block.config))
     editingBlockId.value = block.id
