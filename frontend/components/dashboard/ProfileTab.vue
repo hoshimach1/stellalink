@@ -139,7 +139,7 @@
                   <div class="widget-head">
                     <div>
                       <p>{{ gitProviderLabel(previewConfig(block)) }}</p>
-                      <span>@{{ gitUsername(previewConfig(block)) || 'username' }}</span>
+                      <span>{{ gitAccountCaption(previewConfig(block)) }}</span>
                     </div>
                     <span v-if="gitRepositoryTotal(previewConfig(block)) !== null" class="soft-badge">
                       {{ gitRepositoryTotal(previewConfig(block)) }} repo
@@ -466,6 +466,39 @@
       </div>
     </aside>
   </div>
+
+  <Teleport to="body">
+    <Transition name="git-provider-modal">
+      <div v-if="gitProviderModalOpen" class="git-provider-overlay" @click.self="closeGitProviderModal">
+        <section class="git-provider-modal" role="dialog" aria-modal="true" aria-labelledby="git-provider-title">
+          <button class="git-provider-close" type="button" aria-label="Закрыть" @click="closeGitProviderModal">
+            <i class="ri-close-line" />
+          </button>
+
+          <div class="git-provider-head">
+            <span class="git-provider-head-icon"><i class="ri-git-branch-line" /></span>
+            <h2 id="git-provider-title">Git</h2>
+            <p>Выберите интеграцию для блока профиля.</p>
+          </div>
+
+          <div class="git-provider-grid">
+            <button
+              v-for="provider in GIT_PROVIDER_CHOICES"
+              :key="provider.value"
+              class="git-provider-choice"
+              type="button"
+              :disabled="gitBlockAdding"
+              @click="createGitBlock(provider.value)"
+            >
+              <span><i :class="provider.icon" /></span>
+              <strong>{{ provider.label }}</strong>
+              <small>{{ provider.description }}</small>
+            </button>
+          </div>
+        </section>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -532,6 +565,7 @@ type NoticeTone = 'success' | 'info' | 'error'
 type Panel = 'profile' | 'blocks'
 type ThemeColorMode = 'light' | 'dark'
 type Material3Layout = 'compact' | 'wide'
+type GitProvider = 'github' | 'gitlab' | 'gitea'
 
 interface ProfileThemeTokens {
   colorMode?: ThemeColorMode
@@ -548,8 +582,36 @@ const requestHost = request.host
 const requestOrigin = request.origin
 const { pushToast } = useAppToast()
 
+const GIT_PROVIDER_CHOICES: Array<{
+  value: GitProvider
+  label: string
+  icon: string
+  description: string
+}> = [
+  {
+    value: 'github',
+    label: 'GitHub',
+    icon: 'ri-github-fill',
+    description: 'Pinned repositories и статистика GitHub.',
+  },
+  {
+    value: 'gitlab',
+    label: 'GitLab',
+    icon: 'ri-gitlab-fill',
+    description: 'Проекты, звезды и активность GitLab.',
+  },
+  {
+    value: 'gitea',
+    label: 'Gitea',
+    icon: 'ri-git-repository-line',
+    description: 'Репозитории и активность Gitea.',
+  },
+]
+
 const panel = ref<Panel>('profile')
 const editingBlockId = ref<string | null>(null)
+const gitProviderModalOpen = ref(false)
+const gitBlockAdding = ref(false)
 
 const avatarTimestamp = ref(Date.now())
 const avatarCropFile = ref<File | null>(null)
@@ -775,6 +837,10 @@ function gitProviderIcon(value: Record<string, unknown>): string {
   return ({ github: 'ri-github-fill', gitlab: 'ri-gitlab-fill', gitea: 'ri-git-repository-line' } as Record<string, string>)[provider] || 'ri-git-repository-line'
 }
 
+function gitProviderChoiceLabel(provider: GitProvider): string {
+  return GIT_PROVIDER_CHOICES.find(item => item.value === provider)?.label ?? 'Git'
+}
+
 function displayBlockLabel(block: Block): string {
   return block.block_type === 'widget_github' ? gitProviderLabel(block.config) : blockLabel(block.block_type)
 }
@@ -793,6 +859,11 @@ function displayBlockDescription(block: Block): string {
 function gitUsername(value: Record<string, unknown>): string {
   const profile = value.git_profile as Record<string, unknown> | undefined
   return String(value.username || profile?.username || '')
+}
+
+function gitAccountCaption(value: Record<string, unknown>): string {
+  const username = gitUsername(value)
+  return username ? `@${username}` : 'Интеграция не привязана'
 }
 
 function gitRepositoryStats(value: Record<string, unknown>): Record<string, unknown> {
@@ -878,9 +949,13 @@ async function saveBlock() {
 }
 
 async function addBlock(type: string) {
+  if (type === 'widget_github') {
+    gitProviderModalOpen.value = true
+    return
+  }
+
   try {
-    const blockType = ['widget_gitlab', 'widget_gitea'].includes(type) ? 'widget_github' : type
-    const block = await profile.createBlock(blockType, createDefaultBlockConfig(type))
+    const block = await profile.createBlock(type, createDefaultBlockConfig(type))
     clearObject(blockDraft)
     Object.assign(blockDraft, cloneConfig(block.config))
     editingBlockId.value = block.id
@@ -888,6 +963,32 @@ async function addBlock(type: string) {
     setNotice(`Блок "${blockLabel(type)}" добавлен.`, 'success')
   } catch (error) {
     setNotice(extractAuthError(error, 'Не удалось добавить блок.'), 'error')
+  }
+}
+
+function closeGitProviderModal() {
+  if (gitBlockAdding.value) return
+  gitProviderModalOpen.value = false
+}
+
+async function createGitBlock(provider: GitProvider) {
+  gitBlockAdding.value = true
+  try {
+    const blockConfig = {
+      ...createDefaultBlockConfig('widget_github'),
+      provider,
+    }
+    const block = await profile.createBlock('widget_github', blockConfig)
+    clearObject(blockDraft)
+    Object.assign(blockDraft, cloneConfig(block.config))
+    editingBlockId.value = block.id
+    panel.value = 'blocks'
+    gitProviderModalOpen.value = false
+    setNotice(`Блок "${gitProviderChoiceLabel(provider)}" добавлен.`, 'success')
+  } catch (error) {
+    setNotice(extractAuthError(error, 'Не удалось добавить Git-блок.'), 'error')
+  } finally {
+    gitBlockAdding.value = false
   }
 }
 
@@ -2103,6 +2204,175 @@ async function onAvatarCropSave(blob: Blob) {
 .studio-spinner.dark {
   border-color: rgba(255,255,255,0.34);
   border-top-color: #fff;
+}
+
+.git-provider-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: color-mix(in srgb, #05070c 54%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.git-provider-modal {
+  position: relative;
+  width: min(100%, 520px);
+  display: grid;
+  gap: 18px;
+  padding: 26px;
+  border: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 64%, transparent);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 96%, transparent);
+  box-shadow: 0 24px 70px color-mix(in srgb, #05070c 32%, transparent);
+}
+
+.git-provider-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 38px;
+  height: 38px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--dash-surface-soft, #F2F4F8);
+  color: var(--dash-text-2, #475778);
+  cursor: pointer;
+  font: inherit;
+  font-size: 20px;
+}
+
+.git-provider-head {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 8px 28px 0;
+  text-align: center;
+}
+
+.git-provider-head-icon {
+  width: 54px;
+  height: 54px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 20px;
+  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
+  color: var(--dash-accent-strong, #163E86);
+  font-size: 28px;
+}
+
+.git-provider-head h2,
+.git-provider-head p {
+  margin: 0;
+}
+
+.git-provider-head h2 {
+  color: var(--dash-text-1, #10182b);
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.git-provider-head p {
+  color: var(--dash-text-2, #475778);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.git-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.git-provider-choice {
+  min-width: 0;
+  min-height: 132px;
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 8px;
+  padding: 13px;
+  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border-radius: 18px;
+  background: var(--dash-surface-strong, #fff);
+  color: var(--dash-text-1, #10182b);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.git-provider-choice span {
+  width: 40px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
+  color: var(--dash-accent-strong, #163E86);
+  font-size: 22px;
+}
+
+.git-provider-choice strong,
+.git-provider-choice small {
+  overflow-wrap: anywhere;
+}
+
+.git-provider-choice strong {
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.git-provider-choice small {
+  color: var(--dash-text-2, #475778);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.git-provider-choice:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.git-provider-modal-enter-active,
+.git-provider-modal-leave-active {
+  transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.git-provider-modal-enter-active .git-provider-modal,
+.git-provider-modal-leave-active .git-provider-modal {
+  transition:
+    transform 220ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.git-provider-modal-enter-from,
+.git-provider-modal-leave-to {
+  opacity: 0;
+}
+
+.git-provider-modal-enter-from .git-provider-modal,
+.git-provider-modal-leave-to .git-provider-modal {
+  opacity: 0;
+  transform: translateY(14px) scale(0.98);
+}
+
+@media (max-width: 640px) {
+  .git-provider-modal {
+    padding: 24px 18px;
+    border-radius: 24px;
+  }
+
+  .git-provider-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .git-provider-choice {
+    min-height: 96px;
+  }
 }
 
 .block-ghost,

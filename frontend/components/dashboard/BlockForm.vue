@@ -119,25 +119,6 @@
         <strong>{{ gitDisplayName() }}</strong>
         <small>{{ gitSubLabel() }}</small>
       </div>
-      <div class="bf-field">
-        <span>Провайдер</span>
-        <div class="bf-segments" role="group" aria-label="Git provider">
-          <button
-            v-for="provider in GIT_PROVIDERS"
-            :key="provider.value"
-            class="bf-segment"
-            :class="{ active: gitProvider() === provider.value }"
-            type="button"
-            @click="config.provider = provider.value"
-          >
-            {{ provider.label }}
-          </button>
-        </div>
-      </div>
-      <label class="bf-field">
-        <span>Username</span>
-        <input v-model="config.username" type="text" placeholder="octocat">
-      </label>
       <label class="bf-check">
         <input v-model="config.show_contributions" type="checkbox">
         <span>Показывать активность</span>
@@ -259,11 +240,11 @@ const POPULAR_ICONS = [
   'dribbble',
 ]
 
-const GIT_PROVIDERS = [
-  { value: 'github', label: 'GitHub' },
-  { value: 'gitlab', label: 'GitLab' },
-  { value: 'gitea', label: 'Gitea' },
-] as const
+const GIT_PROVIDER_LABELS: Record<string, string> = {
+  github: 'GitHub',
+  gitlab: 'GitLab',
+  gitea: 'Gitea',
+}
 
 function linkGroups(): Group[] {
   if (!Array.isArray(config.groups)) {
@@ -333,7 +314,7 @@ function gitDisplayName(): string {
 }
 
 function gitSubLabel(): string {
-  const provider = String(config.git_provider_label || GIT_PROVIDERS.find(item => item.value === gitProvider())?.label || 'Git')
+  const provider = String(config.git_provider_label || GIT_PROVIDER_LABELS[gitProvider()] || 'Git')
   const stats = config.git_repository_stats as Record<string, unknown> | undefined
   const total = stats?.total_repositories
   return total !== undefined && total !== null
