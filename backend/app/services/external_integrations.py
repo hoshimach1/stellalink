@@ -505,7 +505,11 @@ def _summarize_repo(provider: str, repo: dict[str, Any]) -> dict[str, Any]:
     namespace = repo.get("namespace") if isinstance(repo.get("namespace"), dict) else {}
     owner = repo.get("owner") if isinstance(repo.get("owner"), dict) else {}
     full_name = _clean_text(repo.get("full_name") or repo.get("path_with_namespace"))
-    name = _clean_text(repo.get("name") or repo.get("path")) or full_name or "repository"
+    name = (
+        _clean_text(repo.get("name") or repo.get("path"))
+        or full_name
+        or "repository"
+    )
     if not full_name:
         owner_name = _clean_text(owner.get("login") or owner.get("username"))
         namespace_name = _clean_text(namespace.get("full_path") or namespace.get("path"))
@@ -551,10 +555,18 @@ def _repository_stats(repositories: list[dict[str, Any]]) -> dict[str, Any]:
     )
     return {
         "total_repositories": len(repositories),
-        "public_repositories": sum(1 for repo in repositories if not repo.get("is_private")),
-        "private_repositories": sum(1 for repo in repositories if repo.get("is_private")),
-        "forked_repositories": sum(1 for repo in repositories if repo.get("is_fork")),
-        "archived_repositories": sum(1 for repo in repositories if repo.get("is_archived")),
+        "public_repositories": sum(
+            1 for repo in repositories if not repo.get("is_private")
+        ),
+        "private_repositories": sum(
+            1 for repo in repositories if repo.get("is_private")
+        ),
+        "forked_repositories": sum(
+            1 for repo in repositories if repo.get("is_fork")
+        ),
+        "archived_repositories": sum(
+            1 for repo in repositories if repo.get("is_archived")
+        ),
         "stars": sum(_to_int(repo.get("stars")) for repo in repositories),
         "forks": sum(_to_int(repo.get("forks")) for repo in repositories),
         "top_languages": top_languages,
@@ -686,7 +698,8 @@ async def fetch_code_provider_repositories(
     )
     if not isinstance(payload, list):
         raise ExternalApiError(
-            f"{_provider_label(provider)}: returned an unexpected repositories payload."
+            f"{_provider_label(provider)}: returned an unexpected "
+            "repositories payload."
         )
 
     repositories = [

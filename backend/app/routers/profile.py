@@ -65,10 +65,18 @@ def _git_repository_stats(repositories: list[dict]) -> dict:
     )
     return {
         "total_repositories": len(repositories),
-        "public_repositories": sum(1 for repo in repositories if not repo.get("is_private")),
-        "private_repositories": sum(1 for repo in repositories if repo.get("is_private")),
-        "forked_repositories": sum(1 for repo in repositories if repo.get("is_fork")),
-        "archived_repositories": sum(1 for repo in repositories if repo.get("is_archived")),
+        "public_repositories": sum(
+            1 for repo in repositories if not repo.get("is_private")
+        ),
+        "private_repositories": sum(
+            1 for repo in repositories if repo.get("is_private")
+        ),
+        "forked_repositories": sum(
+            1 for repo in repositories if repo.get("is_fork")
+        ),
+        "archived_repositories": sum(
+            1 for repo in repositories if repo.get("is_archived")
+        ),
         "stars": sum(int(repo.get("stars") or 0) for repo in repositories),
         "forks": sum(int(repo.get("forks") or 0) for repo in repositories),
         "top_languages": [
@@ -202,7 +210,9 @@ def _enriched_block_config(profile, block) -> dict:
                 config.pop(key, None)
 
     if block.block_type == "widget_github":
-        requested_provider = str(config.get("provider") or config.get("git_provider") or "github")
+        requested_provider = str(
+            config.get("provider") or config.get("git_provider") or "github"
+        )
         if requested_provider not in code_accounts:
             requested_provider = "github"
         git_account = code_accounts.get(requested_provider) or next(
