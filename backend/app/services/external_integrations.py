@@ -506,13 +506,13 @@ def _summarize_repo(provider: str, repo: dict[str, Any]) -> dict[str, Any]:
     owner = repo.get("owner") if isinstance(repo.get("owner"), dict) else {}
     full_name = _clean_text(repo.get("full_name") or repo.get("path_with_namespace"))
     name = (
-        _clean_text(repo.get("name") or repo.get("path"))
-        or full_name
-        or "repository"
+        _clean_text(repo.get("name") or repo.get("path")) or full_name or "repository"
     )
     if not full_name:
         owner_name = _clean_text(owner.get("login") or owner.get("username"))
-        namespace_name = _clean_text(namespace.get("full_path") or namespace.get("path"))
+        namespace_name = _clean_text(
+            namespace.get("full_path") or namespace.get("path")
+        )
         full_name = (
             f"{owner_name or namespace_name}/{name}"
             if (owner_name or namespace_name)
@@ -561,9 +561,7 @@ def _repository_stats(repositories: list[dict[str, Any]]) -> dict[str, Any]:
         "private_repositories": sum(
             1 for repo in repositories if repo.get("is_private")
         ),
-        "forked_repositories": sum(
-            1 for repo in repositories if repo.get("is_fork")
-        ),
+        "forked_repositories": sum(1 for repo in repositories if repo.get("is_fork")),
         "archived_repositories": sum(
             1 for repo in repositories if repo.get("is_archived")
         ),

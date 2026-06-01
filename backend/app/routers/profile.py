@@ -71,9 +71,7 @@ def _git_repository_stats(repositories: list[dict]) -> dict:
         "private_repositories": sum(
             1 for repo in repositories if repo.get("is_private")
         ),
-        "forked_repositories": sum(
-            1 for repo in repositories if repo.get("is_fork")
-        ),
+        "forked_repositories": sum(1 for repo in repositories if repo.get("is_fork")),
         "archived_repositories": sum(
             1 for repo in repositories if repo.get("is_archived")
         ),
