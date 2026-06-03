@@ -469,6 +469,7 @@ async function ensureGitBlock(provider: CodeProvider) {
     provider,
     username,
     show_contributions: currentConfig?.show_contributions ?? true,
+    contributions_days: currentConfig?.contributions_days ?? 30,
     show_repository_stats: currentConfig?.show_repository_stats ?? true,
     show_pinned_repos: currentConfig?.show_pinned_repos ?? true,
     include_private_repositories: currentConfig?.include_private_repositories ?? false,
@@ -492,6 +493,8 @@ function sanitizedGitBlockConfig(value: Record<string, unknown>) {
   delete clean.git_repository_stats
   delete clean.git_pinned_repositories
   delete clean.git_repositories
+  delete clean.git_contributions
+  delete clean.git_activity_sync_error
   delete clean.git_sync_error
   delete clean.git_last_synced_at
   delete clean.connected_account_id

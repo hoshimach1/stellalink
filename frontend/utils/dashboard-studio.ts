@@ -97,6 +97,7 @@ const DEFAULT_CONFIGS: Record<string, Record<string, unknown>> = {
     provider: 'github',
     use_connected_account: true,
     show_contributions: true,
+    contributions_days: 30,
     show_repository_stats: true,
     show_pinned_repos: true,
     include_private_repositories: false,

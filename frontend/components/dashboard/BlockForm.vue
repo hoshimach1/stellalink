@@ -123,6 +123,21 @@
         <input v-model="config.show_contributions" type="checkbox">
         <span>Показывать активность</span>
       </label>
+      <div v-if="config.show_contributions" class="bf-field">
+        <span>Период активности</span>
+        <div class="bf-segments bf-segments-activity" role="group" aria-label="Период активности Git">
+          <button
+            v-for="days in CONTRIBUTION_DAY_OPTIONS"
+            :key="days"
+            class="bf-segment"
+            :class="{ active: contributionDays() === days }"
+            type="button"
+            @click="config.contributions_days = days"
+          >
+            {{ days }} дн.
+          </button>
+        </div>
+      </div>
       <label class="bf-check">
         <input v-model="config.show_repository_stats" type="checkbox">
         <span>Показывать статистику репозиториев</span>
@@ -245,6 +260,7 @@ const GIT_PROVIDER_LABELS: Record<string, string> = {
   gitlab: 'GitLab',
   gitea: 'Gitea',
 }
+const CONTRIBUTION_DAY_OPTIONS = [7, 14, 30, 90]
 
 function linkGroups(): Group[] {
   if (!Array.isArray(config.groups)) {
@@ -311,6 +327,11 @@ function gitProvider(): string {
 function gitDisplayName(): string {
   const profile = config.git_profile as Record<string, unknown> | undefined
   return String(config.git_display_name || config.github_display_name || profile?.display_name || profile?.username || config.username || 'Git-профиль не привязан')
+}
+
+function contributionDays(): number {
+  const days = Number(config.contributions_days || 30)
+  return CONTRIBUTION_DAY_OPTIONS.includes(days) ? days : 30
 }
 
 function gitSubLabel(): string {
@@ -561,6 +582,10 @@ function gitSubLabel(): string {
   gap: 8px;
 }
 
+.bf-segments-activity {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .bf-segment {
   min-height: 42px;
   border-radius: 999px;
@@ -593,6 +618,10 @@ function gitSubLabel(): string {
 @media (max-width: 640px) {
   .bf-grid {
     grid-template-columns: 1fr;
+  }
+
+  .bf-segments-activity {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .bf-inline {

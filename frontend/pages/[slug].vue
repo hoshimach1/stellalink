@@ -182,6 +182,17 @@
                     <div class="pub-fstat-l">{{ s.label }}</div>
                   </div>
                 </div>
+                <div v-if="block.config.show_contributions && gitContributionCells(block).length" class="pub-gh-grid-wrap">
+                  <div class="pub-gh-grid" :aria-label="gitActivitySummary(block)">
+                    <span
+                      v-for="(day, index) in gitContributionCells(block)"
+                      :key="day.date || `pad-${index}`"
+                      class="pub-gh-cell"
+                      :class="`pub-gh-l${gitContributionLevel(day)}`"
+                      :title="gitContributionTitle(day)"
+                    />
+                  </div>
+                </div>
                 <div v-if="block.config.show_contributions && gitActivitySummary(block)" class="pub-gh-count">
                   {{ gitActivitySummary(block) }}
                 </div>
@@ -407,6 +418,17 @@
                     <div v-for="s in gitRepositoryStatsList(block)" :key="s.label" class="pub-faceit-stat">
                       <div class="pub-fstat-v">{{ s.value }}</div>
                       <div class="pub-fstat-l">{{ s.label }}</div>
+                    </div>
+                  </div>
+                  <div v-if="block.config.show_contributions && gitContributionCells(block).length" class="pub-gh-grid-wrap">
+                    <div class="pub-gh-grid" :aria-label="gitActivitySummary(block)">
+                      <span
+                        v-for="(day, index) in gitContributionCells(block)"
+                        :key="day.date || `pad-${index}`"
+                        class="pub-gh-cell"
+                        :class="`pub-gh-l${gitContributionLevel(day)}`"
+                        :title="gitContributionTitle(day)"
+                      />
                     </div>
                   </div>
                   <div v-if="block.config.show_contributions && gitActivitySummary(block)" class="pub-gh-count">
@@ -642,6 +664,17 @@
                       <div class="pub-fstat-l">{{ s.label }}</div>
                     </div>
                   </div>
+                  <div v-if="block.config.show_contributions && gitContributionCells(block).length" class="pub-gh-grid-wrap">
+                    <div class="pub-gh-grid" :aria-label="gitActivitySummary(block)">
+                      <span
+                        v-for="(day, index) in gitContributionCells(block)"
+                        :key="day.date || `pad-${index}`"
+                        class="pub-gh-cell"
+                        :class="`pub-gh-l${gitContributionLevel(day)}`"
+                        :title="gitContributionTitle(day)"
+                      />
+                    </div>
+                  </div>
                   <div v-if="block.config.show_contributions && gitActivitySummary(block)" class="pub-gh-count">
                     {{ gitActivitySummary(block) }}
                   </div>
@@ -762,6 +795,13 @@ interface GitRepository {
   stars?: number
   forks?: number
   updated_at?: string | null
+}
+
+interface GitContributionDay {
+  date?: string
+  count?: number
+  level?: number
+  empty?: boolean
 }
 
 type ThemeColorMode = 'light' | 'dark'
@@ -988,11 +1028,43 @@ function gitPinnedRepositories(block: Block): GitRepository[] {
   return repos.slice(0, 6)
 }
 
+function gitContributionDays(block: Block): GitContributionDay[] {
+  const activity = block.config.git_contributions as Record<string, unknown> | undefined
+  return Array.isArray(activity?.days) ? activity.days as GitContributionDay[] : []
+}
+
+function gitContributionCells(block: Block): GitContributionDay[] {
+  const days = gitContributionDays(block)
+  if (!days.length) return []
+  const first = new Date(String(days[0].date || ''))
+  const pad = Number.isNaN(first.getTime()) ? 0 : first.getDay()
+  return [
+    ...Array.from({ length: pad }, () => ({ empty: true, count: 0, level: 0 })),
+    ...days,
+  ]
+}
+
+function gitContributionLevel(day: GitContributionDay): number {
+  if (day.empty) return 0
+  const level = Number(day.level || 0)
+  return Math.max(0, Math.min(4, Number.isFinite(level) ? level : 0))
+}
+
+function gitContributionTitle(day: GitContributionDay): string {
+  if (day.empty || !day.date) return ''
+  const date = formatLastPlayed(day.date)
+  const count = Number(day.count || 0)
+  return `${date || day.date}: ${count} событий`
+}
+
 function gitActivitySummary(block: Block): string {
-  const last = gitRepositoryStats(block).last_activity_at
-  if (typeof last !== 'string') return ''
-  const formatted = formatLastPlayed(last)
-  return formatted ? `Последняя активность: ${formatted}` : ''
+  const activity = block.config.git_contributions as Record<string, unknown> | undefined
+  if (!activity || !Array.isArray(activity.days)) return ''
+  const total = Number(activity.total || 0)
+  const days = Number(activity.window_days || block.config.contributions_days || 30)
+  return total > 0
+    ? `Активность за ${days} дней: ${total} событий`
+    : `Нет активности за ${days} дней`
 }
 
 function faceitDataForBlock(block: Block) {

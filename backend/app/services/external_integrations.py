@@ -48,6 +48,7 @@ CODE_PROVIDER_SCOPES = {
     "gitlab": "read_user read_repository",
     "gitea": "read:user read:repository",
 }
+CODE_PROVIDER_ACTIVITY_DAYS = 90
 
 
 class ExternalApiError(Exception):
@@ -65,7 +66,7 @@ def _clean_text(value: Any) -> Optional[str]:
 
 def _hinted_error(service: str, status_code: int, body: str = "") -> ExternalApiError:
     if status_code == 401 or status_code == 403:
-        return ExternalApiError(f"{service}: API key was rejected.", status_code=502)
+        return ExternalApiError(f"{service}: API key was rejected.", status_code=400)
     if status_code == 404:
         return ExternalApiError(
             f"{service}: requested profile was not found.", status_code=404
@@ -430,7 +431,7 @@ def _alternate_code_provider_auth_method(
 
 
 def _looks_like_auth_rejection(exc: ExternalApiError) -> bool:
-    return exc.status_code == 502 and "API key was rejected" in str(exc)
+    return "API key was rejected" in str(exc)
 
 
 def _summarize_code_provider_user(
@@ -513,6 +514,84 @@ def _repo_timestamp(repo: dict[str, Any], provider: str) -> Optional[str]:
     return _clean_text(repo.get("updated_at") or repo.get("created_at"))
 
 
+def _parse_iso_datetime(value: Any) -> Optional[datetime]:
+    text = _clean_text(value)
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = f"{text[:-1]}+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _empty_contributions(days: int = CODE_PROVIDER_ACTIVITY_DAYS) -> dict[str, Any]:
+    days = max(1, min(CODE_PROVIDER_ACTIVITY_DAYS, _to_int(days, 30)))
+    today = datetime.now(timezone.utc).date()
+    start = today - timedelta(days=days - 1)
+    items = []
+    for index in range(days):
+        day = start + timedelta(days=index)
+        items.append({"date": day.isoformat(), "count": 0, "level": 0})
+    return {
+        "days": items,
+        "total": 0,
+        "active_days": 0,
+        "window_days": days,
+        "from": items[0]["date"] if items else None,
+        "to": items[-1]["date"] if items else None,
+        "source": "empty",
+    }
+
+
+def _contributions_from_counts(
+    counts: dict[str, int],
+    days: int = CODE_PROVIDER_ACTIVITY_DAYS,
+    source: str = "events",
+) -> dict[str, Any]:
+    activity = _empty_contributions(days)
+    max_count = max(counts.values(), default=0)
+    total = 0
+    active_days = 0
+    for item in activity["days"]:
+        count = _to_int(counts.get(item["date"]))
+        total += count
+        if count > 0:
+            active_days += 1
+        if count <= 0 or max_count <= 0:
+            level = 0
+        elif count >= max_count:
+            level = 4
+        else:
+            level = max(1, min(4, int((count / max_count) * 4) + 1))
+        item["count"] = count
+        item["level"] = level
+    activity.update({"total": total, "active_days": active_days, "source": source})
+    return activity
+
+
+def _contributions_from_repositories(
+    repositories: list[dict[str, Any]], days: int = CODE_PROVIDER_ACTIVITY_DAYS
+) -> dict[str, Any]:
+    base = _empty_contributions(days)
+    valid_dates = {item["date"] for item in base["days"]}
+    counts = {date: 0 for date in valid_dates}
+    for repo in repositories:
+        if not isinstance(repo, dict):
+            continue
+        updated_at = _parse_iso_datetime(repo.get("updated_at"))
+        if not updated_at:
+            continue
+        key = updated_at.date().isoformat()
+        if key in counts:
+            counts[key] += 1
+    return _contributions_from_counts(counts, days, "repository_updates")
+
+
 def _summarize_repo(provider: str, repo: dict[str, Any]) -> dict[str, Any]:
     namespace = repo.get("namespace") if isinstance(repo.get("namespace"), dict) else {}
     owner = repo.get("owner") if isinstance(repo.get("owner"), dict) else {}
@@ -531,6 +610,13 @@ def _summarize_repo(provider: str, repo: dict[str, Any]) -> dict[str, Any]:
             else name
         )
 
+    is_gitlab_private = (
+        provider == "gitlab" and _clean_text(repo.get("visibility")) == "private"
+    )
+    is_gitlab_fork = provider == "gitlab" and isinstance(
+        repo.get("forked_from_project"), dict
+    )
+
     return {
         "id": str(repo.get("id") or full_name),
         "name": name,
@@ -541,8 +627,8 @@ def _summarize_repo(provider: str, repo: dict[str, Any]) -> dict[str, Any]:
         "stars": _repo_number(repo, "stargazers_count", "star_count", "stars_count"),
         "forks": _repo_number(repo, "forks_count", "forks"),
         "open_issues": _repo_number(repo, "open_issues_count", "open_issues"),
-        "is_private": _repo_bool(repo, "private"),
-        "is_fork": _repo_bool(repo, "fork"),
+        "is_private": _repo_bool(repo, "private") or is_gitlab_private,
+        "is_fork": _repo_bool(repo, "fork") or is_gitlab_fork,
         "is_archived": _repo_bool(repo, "archived"),
         "updated_at": _repo_timestamp(repo, provider),
     }
@@ -689,6 +775,140 @@ query($login: String!) {
             }
         )
     return result
+
+
+async def fetch_github_contributions(
+    base_url: str,
+    access_token: str,
+    username: str,
+    auth_method: str,
+    days: int = CODE_PROVIDER_ACTIVITY_DAYS,
+) -> dict[str, Any]:
+    if not username:
+        return _empty_contributions(days)
+
+    now = datetime.now(timezone.utc)
+    from_dt = now - timedelta(days=max(1, min(days, CODE_PROVIDER_ACTIVITY_DAYS)) - 1)
+    payload = await _post_json_body(
+        _github_graphql_url(base_url),
+        {
+            "query": """
+query($login: String!, $from: DateTime!, $to: DateTime!) {
+  user(login: $login) {
+    contributionsCollection(from: $from, to: $to) {
+      contributionCalendar {
+        weeks {
+          contributionDays {
+            date
+            contributionCount
+          }
+        }
+      }
+    }
+  }
+}
+""",
+            "variables": {
+                "login": username,
+                "from": from_dt.isoformat(),
+                "to": now.isoformat(),
+            },
+        },
+        "GitHub",
+        headers=_code_provider_auth_headers("github", access_token, auth_method),
+    )
+    if payload.get("errors"):
+        raise ExternalApiError("GitHub: contributions request failed.")
+
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    user = data.get("user") if isinstance(data.get("user"), dict) else {}
+    collection = (
+        user.get("contributionsCollection") if isinstance(user, dict) else {}
+    )
+    calendar = (
+        collection.get("contributionCalendar")
+        if isinstance(collection, dict)
+        else {}
+    )
+    weeks = calendar.get("weeks") if isinstance(calendar, dict) else []
+    counts: dict[str, int] = {}
+    if isinstance(weeks, list):
+        for week in weeks:
+            if not isinstance(week, dict):
+                continue
+            contribution_days = week.get("contributionDays")
+            if not isinstance(contribution_days, list):
+                continue
+            for day in contribution_days:
+                if not isinstance(day, dict):
+                    continue
+                key = _clean_text(day.get("date"))
+                if key:
+                    counts[key] = _to_int(day.get("contributionCount"))
+    return _contributions_from_counts(counts, days, "github_contribution_calendar")
+
+
+async def fetch_gitlab_contributions(
+    access_token: str,
+    api_base: str,
+    user_id: str,
+    auth_method: str,
+    days: int = CODE_PROVIDER_ACTIVITY_DAYS,
+) -> dict[str, Any]:
+    if not user_id:
+        return _empty_contributions(days)
+
+    today = datetime.now(timezone.utc).date()
+    start = today - timedelta(days=max(1, min(days, CODE_PROVIDER_ACTIVITY_DAYS)) - 1)
+    query = urllib.parse.urlencode(
+        {
+            "after": start.isoformat(),
+            "before": today.isoformat(),
+            "per_page": 100,
+            "sort": "desc",
+        }
+    )
+    url = f"{api_base}/users/{urllib.parse.quote(user_id, safe='')}/events?{query}"
+    payload = await _fetch_json_value(
+        url,
+        "GitLab",
+        headers=_code_provider_auth_headers("gitlab", access_token, auth_method),
+    )
+    if not isinstance(payload, list):
+        raise ExternalApiError("GitLab: returned an unexpected activity payload.")
+
+    counts: dict[str, int] = {}
+    for event in payload:
+        if not isinstance(event, dict):
+            continue
+        created_at = _parse_iso_datetime(event.get("created_at"))
+        if not created_at:
+            continue
+        key = created_at.date().isoformat()
+        counts[key] = counts.get(key, 0) + 1
+    return _contributions_from_counts(counts, days, "gitlab_events")
+
+
+async def fetch_code_provider_contributions(
+    provider: str,
+    access_token: str,
+    base_url: str,
+    api_base: str,
+    username: str,
+    user_id: str,
+    auth_method: str,
+    repositories: list[dict[str, Any]],
+    days: int = CODE_PROVIDER_ACTIVITY_DAYS,
+) -> dict[str, Any]:
+    if provider == "github":
+        return await fetch_github_contributions(
+            base_url, access_token, username, auth_method, days
+        )
+    if provider == "gitlab":
+        return await fetch_gitlab_contributions(
+            access_token, api_base, user_id, auth_method, days
+        )
+    return _contributions_from_repositories(repositories, days)
 
 
 async def fetch_code_provider_repositories(
@@ -929,23 +1149,45 @@ async def fetch_code_provider_profile(
     metadata = _summarize_code_provider_user(provider, base_url, urls["api"], payload)
     metadata["auth_method"] = effective_auth_method
     try:
-        metadata.update(
-            await fetch_code_provider_repositories(
-                provider,
-                access_token,
-                base_url,
-                urls["api"],
-                str(metadata.get("username") or ""),
-                str(metadata.get("uid") or ""),
-                auth_method=effective_auth_method,
-            )
+        repository_metadata = await fetch_code_provider_repositories(
+            provider,
+            access_token,
+            base_url,
+            urls["api"],
+            str(metadata.get("username") or ""),
+            str(metadata.get("uid") or ""),
+            auth_method=effective_auth_method,
         )
+        metadata.update(repository_metadata)
         metadata["repository_sync_error"] = None
     except ExternalApiError as exc:
         metadata["repositories"] = []
         metadata["pinned_repositories"] = []
         metadata["repository_stats"] = {}
         metadata["repository_sync_error"] = str(exc)
+    repositories = [
+        repo
+        for repo in metadata.get("repositories", [])
+        if isinstance(repo, dict)
+    ]
+    try:
+        metadata["contributions"] = await fetch_code_provider_contributions(
+            provider,
+            access_token,
+            base_url,
+            urls["api"],
+            str(metadata.get("username") or ""),
+            str(metadata.get("uid") or ""),
+            effective_auth_method,
+            repositories,
+            CODE_PROVIDER_ACTIVITY_DAYS,
+        )
+        metadata["activity_sync_error"] = None
+    except ExternalApiError as exc:
+        metadata["contributions"] = _contributions_from_repositories(
+            repositories, CODE_PROVIDER_ACTIVITY_DAYS
+        )
+        metadata["activity_sync_error"] = str(exc)
     return metadata
 
 

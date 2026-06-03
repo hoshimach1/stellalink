@@ -87,6 +87,32 @@ def _git_repository_stats(repositories: list[dict]) -> dict:
     }
 
 
+def _git_contributions_days(value) -> int:
+    try:
+        days = int(value)
+    except (TypeError, ValueError):
+        days = 30
+    return min(90, max(1, days))
+
+
+def _slice_git_contributions(activity: dict | None, days: int) -> dict:
+    days = _git_contributions_days(days)
+    source_days = []
+    if isinstance(activity, dict) and isinstance(activity.get("days"), list):
+        source_days = [day for day in activity["days"] if isinstance(day, dict)]
+    visible_days = source_days[-days:]
+    total = sum(int(day.get("count") or 0) for day in visible_days)
+    return {
+        "days": visible_days,
+        "total": total,
+        "active_days": sum(1 for day in visible_days if int(day.get("count") or 0) > 0),
+        "window_days": len(visible_days) or days,
+        "from": visible_days[0].get("date") if visible_days else None,
+        "to": visible_days[-1].get("date") if visible_days else None,
+        "source": activity.get("source") if isinstance(activity, dict) else None,
+    }
+
+
 def _sanitize_block_config(block_type: str, config: dict | None) -> dict:
     clean = dict(config or {})
     synced_keys = {
@@ -118,6 +144,8 @@ def _sanitize_block_config(block_type: str, config: dict | None) -> dict:
             "git_repository_stats",
             "git_pinned_repositories",
             "git_repositories",
+            "git_contributions",
+            "git_activity_sync_error",
             "git_sync_error",
             "git_last_synced_at",
             "github_display_name",
@@ -227,6 +255,9 @@ def _enriched_block_config(profile, block) -> dict:
             if username:
                 config["username"] = username
             include_private = bool(config.get("include_private_repositories"))
+            contribution_days = _git_contributions_days(
+                config.get("contributions_days")
+            )
             repositories = [
                 repo
                 for repo in (git_metadata.get("repositories") or [])
@@ -251,6 +282,10 @@ def _enriched_block_config(profile, block) -> dict:
             config["git_repository_stats"] = _git_repository_stats(repositories)
             config["git_pinned_repositories"] = pinned_repositories
             config["git_repositories"] = repositories
+            config["git_contributions"] = _slice_git_contributions(
+                git_metadata.get("contributions"), contribution_days
+            )
+            config["git_activity_sync_error"] = git_metadata.get("activity_sync_error")
             config["git_sync_error"] = git_account.sync_error or git_metadata.get(
                 "repository_sync_error"
             )
@@ -277,6 +312,8 @@ def _enriched_block_config(profile, block) -> dict:
                 "git_repository_stats",
                 "git_pinned_repositories",
                 "git_repositories",
+                "git_contributions",
+                "git_activity_sync_error",
                 "git_sync_error",
                 "git_last_synced_at",
                 "github_display_name",

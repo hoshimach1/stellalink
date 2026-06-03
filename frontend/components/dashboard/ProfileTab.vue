@@ -150,6 +150,14 @@
                       <strong>{{ stat.value }}</strong><span>{{ stat.label }}</span>
                     </div>
                   </div>
+                  <div v-if="previewConfig(block).show_contributions && gitContributionCells(previewConfig(block)).length" class="heatmap" :aria-label="gitActivitySummary(previewConfig(block))">
+                    <span
+                      v-for="(day, index) in gitContributionCells(previewConfig(block))"
+                      :key="day.date || `pad-${index}`"
+                      :class="`level-${gitContributionLevel(day)}`"
+                      :title="gitContributionTitle(day)"
+                    />
+                  </div>
                   <p v-if="previewConfig(block).show_contributions && gitActivitySummary(previewConfig(block))" class="empty-line">
                     {{ gitActivitySummary(previewConfig(block)) }}
                   </p>
@@ -561,6 +569,13 @@ interface GitRepository {
   updated_at?: string | null
 }
 
+interface GitContributionDay {
+  date?: string
+  count?: number
+  level?: number
+  empty?: boolean
+}
+
 type NoticeTone = 'success' | 'info' | 'error'
 type Panel = 'profile' | 'blocks'
 type ThemeColorMode = 'light' | 'dark'
@@ -890,11 +905,43 @@ function gitPinnedRepositories(value: Record<string, unknown>): GitRepository[] 
   return repos.slice(0, 3)
 }
 
+function gitContributionDays(value: Record<string, unknown>): GitContributionDay[] {
+  const activity = value.git_contributions as Record<string, unknown> | undefined
+  return Array.isArray(activity?.days) ? activity.days as GitContributionDay[] : []
+}
+
+function gitContributionCells(value: Record<string, unknown>): GitContributionDay[] {
+  const days = gitContributionDays(value)
+  if (!days.length) return []
+  const first = new Date(String(days[0].date || ''))
+  const pad = Number.isNaN(first.getTime()) ? 0 : first.getDay()
+  return [
+    ...Array.from({ length: pad }, () => ({ empty: true, count: 0, level: 0 })),
+    ...days,
+  ]
+}
+
+function gitContributionLevel(day: GitContributionDay): number {
+  if (day.empty) return 0
+  const level = Number(day.level || 0)
+  return Math.max(0, Math.min(4, Number.isFinite(level) ? level : 0))
+}
+
+function gitContributionTitle(day: GitContributionDay): string {
+  if (day.empty || !day.date) return ''
+  const date = formatLastPlayed(day.date)
+  const count = Number(day.count || 0)
+  return `${date || day.date}: ${count} событий`
+}
+
 function gitActivitySummary(value: Record<string, unknown>): string {
-  const last = gitRepositoryStats(value).last_activity_at
-  if (typeof last !== 'string') return ''
-  const formatted = formatLastPlayed(last)
-  return formatted ? `Последняя активность в репозиториях: ${formatted}` : ''
+  const activity = value.git_contributions as Record<string, unknown> | undefined
+  if (!activity || !Array.isArray(activity.days)) return ''
+  const total = Number(activity.total || 0)
+  const days = Number(activity.window_days || value.contributions_days || 30)
+  return total > 0
+    ? `Активность за ${days} дней: ${total} событий`
+    : `Нет активности за ${days} дней`
 }
 
 function faceitPreviewData(value: Record<string, unknown>) {
