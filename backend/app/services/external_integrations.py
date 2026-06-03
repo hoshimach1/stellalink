@@ -822,13 +822,9 @@ query($login: String!, $from: DateTime!, $to: DateTime!) {
 
     data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
     user = data.get("user") if isinstance(data.get("user"), dict) else {}
-    collection = (
-        user.get("contributionsCollection") if isinstance(user, dict) else {}
-    )
+    collection = user.get("contributionsCollection") if isinstance(user, dict) else {}
     calendar = (
-        collection.get("contributionCalendar")
-        if isinstance(collection, dict)
-        else {}
+        collection.get("contributionCalendar") if isinstance(collection, dict) else {}
     )
     weeks = calendar.get("weeks") if isinstance(calendar, dict) else []
     counts: dict[str, int] = {}
@@ -1166,9 +1162,7 @@ async def fetch_code_provider_profile(
         metadata["repository_stats"] = {}
         metadata["repository_sync_error"] = str(exc)
     repositories = [
-        repo
-        for repo in metadata.get("repositories", [])
-        if isinstance(repo, dict)
+        repo for repo in metadata.get("repositories", []) if isinstance(repo, dict)
     ]
     try:
         metadata["contributions"] = await fetch_code_provider_contributions(
