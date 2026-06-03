@@ -10,6 +10,8 @@ export default defineNuxtConfig({
     },
   },
 
+  css: ['~/assets/css/tokens.css'],
+
   modules: ['@pinia/nuxt'],
 
   vite: {

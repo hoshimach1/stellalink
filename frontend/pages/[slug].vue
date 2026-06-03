@@ -817,6 +817,7 @@ definePageMeta({ layout: 'landing' })
 
 const route = useRoute()
 const config = useRuntimeConfig()
+const requestUrl = useRequestURL()
 const slug = route.params.slug as string
 
 const mock = useProfileMockData()
@@ -838,11 +839,35 @@ const { data: profile, pending } = await useFetch<{
   onResponseError() { return null },
 })
 
+const avatarSrc = computed(() =>
+  profile.value?.avatar_url
+    ? resolveAvatarUrl(profile.value.avatar_url, config.public.apiBase as string)
+    : null
+)
 const pageTitle = computed(() => {
   const name = profile.value?.display_name
   return name ? `${name} — Stellalink` : `${slug} — Stellalink`
 })
-useHead({ title: pageTitle })
+const seoDescription = computed(() =>
+  profile.value?.bio || 'Живой профиль Stellalink в одном URL',
+)
+const seoImage = computed(() => {
+  const image = avatarSrc.value || '/images/logos/logo_big.png'
+  return new URL(image, requestUrl.origin).toString()
+})
+
+useSeoMeta({
+  title: () => pageTitle.value,
+  description: () => seoDescription.value,
+  ogTitle: () => pageTitle.value,
+  ogDescription: () => seoDescription.value,
+  ogImage: () => seoImage.value,
+  ogUrl: () => new URL(route.fullPath, requestUrl.origin).toString(),
+  twitterCard: 'summary_large_image',
+  twitterTitle: () => pageTitle.value,
+  twitterDescription: () => seoDescription.value,
+  twitterImage: () => seoImage.value,
+})
 
 const theme = computed(() => profile.value?.theme_preset || 'material3')
 const themeTokens = computed<ProfileThemeTokens>(() => {
@@ -860,11 +885,6 @@ const isMaterial3Wide = computed(() =>
 const material3AccentColor = computed(() => theme.value === 'material3' ? (profile.value?.accent_color || '#6750a4') : null)
 const initial = computed(() => profile.value?.display_name?.[0]?.toUpperCase() ?? '?')
 const visibleBlocks = computed(() => profile.value?.blocks.filter(b => b.is_visible) ?? [])
-const avatarSrc = computed(() =>
-  profile.value?.avatar_url
-    ? resolveAvatarUrl(profile.value.avatar_url, config.public.apiBase as string)
-    : null
-)
 
 const accentVars = computed(() => {
   if (theme.value !== 'material3') return ''
@@ -1131,6 +1151,36 @@ function faceitStatsList(block: Block) {
 }
 .pub-loading-text { color: #71717a; font-size: 13px; }
 
+@media (prefers-color-scheme: light) {
+  .pub-loading {
+    background: #fffbff;
+  }
+
+  .pub-spinner {
+    border-color: rgba(0, 0, 0, 0.12);
+    border-top-color: #49454f;
+  }
+
+  .pub-notfound {
+    background: #fffbff;
+    color: #1d1b20;
+  }
+
+  .pub-notfound p {
+    color: #625b71;
+  }
+
+  .pub-nf-logo {
+    mix-blend-mode: multiply;
+  }
+
+  .pub-home-btn {
+    background: rgba(103, 80, 164, 0.08);
+    border-color: rgba(103, 80, 164, 0.18);
+    color: #4f378b;
+  }
+}
+
 /* ── Theme tokens ────────────────────────────────────────────────────────────── */
 .pub-page {
   --t-accent:   #6750a4;
@@ -1169,7 +1219,7 @@ function faceitStatsList(block: Block) {
   --m3-surface-container-high: #e9e3ed;
   --m3-outline: rgba(73,69,79,0.22);
   --m3-focus: color-mix(in srgb, var(--t-accent) 60%, #ffffff);
-  --m3-spring: cubic-bezier(0.2, 0, 0, 1);
+  --m3-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* Glass tokens */

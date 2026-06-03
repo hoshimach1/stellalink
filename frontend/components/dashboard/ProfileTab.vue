@@ -51,7 +51,19 @@
             >
               <div class="block-toolbar">
                 <div class="block-title">
-                  <span class="drag-handle" title="Перетащить" @click.stop>
+                  <span
+                    class="drag-handle"
+                    role="button"
+                    tabindex="0"
+                    aria-roledescription="draggable"
+                    :aria-label="dragHandleLabel(block)"
+                    title="Перетащить"
+                    @click.stop
+                    @keydown.up.prevent.stop="moveBlockByKeyboard(block, -1)"
+                    @keydown.down.prevent.stop="moveBlockByKeyboard(block, 1)"
+                    @keydown.enter.prevent.stop="openBlockEditor(block)"
+                    @keydown.space.prevent.stop="openBlockEditor(block)"
+                  >
                     <i class="ri-draggable" />
                   </span>
                   <span class="block-icon">
@@ -64,10 +76,10 @@
                   </div>
                 </div>
                 <div class="block-actions">
-                  <button class="tiny-action" :class="{ active: block.is_visible }" type="button" title="Видимость" @click.stop="toggleVisible(block)">
+                  <button class="tiny-action" :class="{ active: block.is_visible }" type="button" :title="visibilityToggleLabel(block)" :aria-label="visibilityToggleLabel(block)" :aria-pressed="block.is_visible" @click.stop="toggleVisible(block)">
                     <i :class="block.is_visible ? 'ri-eye-line' : 'ri-eye-off-line'" />
                   </button>
-                  <button class="tiny-action danger" type="button" title="Удалить" @click.stop="deleteBlock(block.id)">
+                  <button class="tiny-action danger" type="button" :aria-label="deleteBlockLabel(block)" title="Удалить" @click.stop="deleteBlock(block.id)">
                     <i class="ri-delete-bin-line" />
                   </button>
                 </div>
@@ -414,10 +426,10 @@
                     </span>
                     <span class="mini-label">{{ displayBlockLabel(block) }}</span>
                     <span class="mini-actions">
-                      <button class="tiny-action" :class="{ active: block.is_visible }" type="button" title="Видимость" @click.stop="toggleVisible(block)">
+                      <button class="tiny-action" :class="{ active: block.is_visible }" type="button" :title="visibilityToggleLabel(block)" :aria-label="visibilityToggleLabel(block)" :aria-pressed="block.is_visible" @click.stop="toggleVisible(block)">
                         <i :class="block.is_visible ? 'ri-eye-line' : 'ri-eye-off-line'" />
                       </button>
-                      <button class="tiny-action danger" type="button" title="Удалить" @click.stop="deleteBlock(block.id)">
+                      <button class="tiny-action danger" type="button" :aria-label="deleteBlockLabel(block)" title="Удалить" @click.stop="deleteBlock(block.id)">
                         <i class="ri-delete-bin-line" />
                       </button>
                     </span>
@@ -871,6 +883,18 @@ function displayBlockDescription(block: Block): string {
   return blockDescription(block.block_type)
 }
 
+function dragHandleLabel(block: Block): string {
+  return `Переместить блок ${displayBlockLabel(block)}`
+}
+
+function visibilityToggleLabel(block: Block): string {
+  return block.is_visible ? 'Скрыть блок' : 'Показать блок'
+}
+
+function deleteBlockLabel(block: Block): string {
+  return `Удалить блок ${displayBlockLabel(block)}`
+}
+
 function gitUsername(value: Record<string, unknown>): string {
   const profile = value.git_profile as Record<string, unknown> | undefined
   return String(value.username || profile?.username || '')
@@ -1062,6 +1086,25 @@ async function onDragEnd() {
   const ids = draggableBlocks.value.map(block => block.id)
   try {
     await profile.reorder(ids)
+  } catch (error) {
+    draggableBlocks.value = [...blocks.value]
+    setNotice(extractAuthError(error, 'Не удалось изменить порядок.'), 'error')
+  }
+}
+
+async function moveBlockByKeyboard(block: Block, delta: number) {
+  const currentIndex = draggableBlocks.value.findIndex(item => item.id === block.id)
+  if (currentIndex === -1) return
+  const nextIndex = currentIndex + delta
+  if (nextIndex < 0 || nextIndex >= draggableBlocks.value.length) return
+
+  const nextBlocks = [...draggableBlocks.value]
+  const [moved] = nextBlocks.splice(currentIndex, 1)
+  nextBlocks.splice(nextIndex, 0, moved)
+  draggableBlocks.value = nextBlocks
+
+  try {
+    await profile.reorder(nextBlocks.map(item => item.id))
   } catch (error) {
     draggableBlocks.value = [...blocks.value]
     setNotice(extractAuthError(error, 'Не удалось изменить порядок.'), 'error')
@@ -1528,6 +1571,20 @@ async function onAvatarCropSave(blob: Blob) {
 .mini-handle {
   color: var(--card-muted);
   cursor: grab;
+}
+
+.drag-handle {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  outline: none;
+}
+
+.drag-handle:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--profile-accent, var(--dash-accent, #345EA8)) 28%, transparent);
+  color: var(--card-text);
 }
 
 .block-icon,

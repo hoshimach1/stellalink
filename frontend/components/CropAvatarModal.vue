@@ -1,8 +1,8 @@
 <template>
   <Teleport to="body">
     <div v-if="visible" class="crop-overlay" @mousedown.self="cancel">
-      <div class="crop-dialog">
-        <div class="crop-title">Обрезать аватар</div>
+      <div class="crop-dialog" role="dialog" aria-modal="true" aria-labelledby="crop-title">
+        <h2 id="crop-title" class="crop-title">Обрезать аватар</h2>
         <div
           class="crop-canvas-wrap"
           :class="{ dragging: isDragging }"
@@ -211,7 +211,7 @@ function onTouchEnd() {
   display: flex; flex-direction: column; align-items: center; gap: 14px;
   box-shadow: 0 24px 64px rgba(0,0,0,0.6);
 }
-.crop-title { font-size: 15px; font-weight: 700; color: #ececef; align-self: flex-start; font-family: 'Roboto Flex', 'Segoe UI', sans-serif; }
+.crop-title { margin: 0; font-size: 15px; font-weight: 700; color: #ececef; align-self: flex-start; font-family: 'Roboto Flex', 'Segoe UI', sans-serif; }
 .crop-canvas-wrap {
   position: relative; border-radius: 50%; overflow: hidden;
   width: 320px; height: 320px; flex-shrink: 0;

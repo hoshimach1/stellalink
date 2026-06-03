@@ -1,26 +1,4 @@
 .dash-page {
-  --font-brand: "Roboto Flex", "Segoe UI", system-ui, sans-serif;
-  --bg: oklch(98.4% 0.006 255);
-  --surface: oklch(100% 0 0);
-  --surface-low: oklch(95.3% 0.012 255);
-  --surface-mid: oklch(92% 0.018 255);
-  --surface-warm: oklch(96.5% 0.032 178);
-  --text-1: oklch(19% 0.024 255);
-  --text-2: oklch(43% 0.034 255);
-  --text-3: oklch(58% 0.032 255);
-  --outline: oklch(88% 0.018 255);
-  --primary: oklch(50% 0.15 225);
-  --on-primary: #ffffff;
-  --primary-container: oklch(88% 0.068 218);
-  --on-primary-container: oklch(24% 0.082 225);
-  --secondary: oklch(53% 0.082 235);
-  --tertiary: oklch(56% 0.096 275);
-  --success: oklch(50% 0.13 152);
-  --warning: oklch(58% 0.12 78);
-  --error: oklch(52% 0.18 25);
-  --shadow-soft: 0 18px 48px color-mix(in srgb, var(--text-1) 10%, transparent);
-  --shadow-mid: 0 26px 64px color-mix(in srgb, var(--text-1) 15%, transparent);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --m3-motion: var(--ease-spring);
   --m3-fast: 170ms;
   --m3-med: 300ms;
@@ -799,23 +777,6 @@
 
 @media (prefers-color-scheme: dark) {
   .dash-page {
-    --bg: oklch(16% 0.015 255);
-    --surface: oklch(21% 0.018 255);
-    --surface-low: oklch(25% 0.022 255);
-    --surface-mid: oklch(30% 0.026 255);
-    --surface-warm: color-mix(in srgb, var(--secondary) 16%, transparent);
-    --text-1: oklch(94% 0.01 255);
-    --text-2: oklch(77% 0.02 255);
-    --text-3: oklch(64% 0.026 255);
-    --outline: rgba(203, 213, 225, 0.17);
-    --primary: oklch(78% 0.11 218);
-    --primary-container: color-mix(in srgb, var(--primary) 16%, transparent);
-    --on-primary-container: oklch(90% 0.048 218);
-    --secondary: oklch(77% 0.066 235);
-    --tertiary: oklch(78% 0.08 278);
-    --success: oklch(76% 0.13 152);
-    --warning: oklch(82% 0.12 78);
-    --error: oklch(79% 0.13 25);
     --dash-bg: var(--bg);
     --dash-surface: var(--surface);
     --dash-surface-soft: var(--surface-low);
@@ -833,8 +794,6 @@
     --dash-warn-soft: color-mix(in srgb, var(--warning) 20%, var(--surface));
     --dash-red: var(--error);
     --dash-red-soft: color-mix(in srgb, var(--error) 18%, var(--surface));
-    --shadow-soft: 0 18px 48px rgba(0, 0, 0, 0.34);
-    --shadow-mid: 0 24px 60px rgba(0, 0, 0, 0.42);
     --dash-shadow: var(--shadow-soft);
     background:
       linear-gradient(180deg, color-mix(in srgb, var(--primary-container) 58%, var(--bg)) 0, transparent 360px),

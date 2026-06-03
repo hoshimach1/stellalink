@@ -109,6 +109,8 @@
   filter: blur(64px);
   opacity: 0.34;
   pointer-events: none;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .auth-root-glow-left {
