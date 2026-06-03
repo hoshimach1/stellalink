@@ -2,26 +2,8 @@
   --m3-motion: var(--ease-spring);
   --m3-fast: 170ms;
   --m3-med: 300ms;
-  --dash-bg: var(--bg);
-  --dash-surface: var(--surface);
-  --dash-surface-soft: var(--surface-low);
-  --dash-surface-strong: var(--surface);
-  --dash-text-1: var(--text-1);
-  --dash-text-2: var(--text-2);
-  --dash-text-3: var(--text-3);
-  --dash-outline: var(--outline);
-  --dash-accent: var(--primary);
-  --dash-accent-strong: var(--on-primary-container);
-  --dash-accent-soft: var(--primary-container);
-  --dash-green: var(--success);
-  --dash-green-soft: color-mix(in srgb, var(--success) 16%, var(--surface));
-  --dash-warn: var(--warning);
-  --dash-warn-soft: color-mix(in srgb, var(--warning) 18%, var(--surface));
-  --dash-red: var(--error);
-  --dash-red-soft: color-mix(in srgb, var(--error) 14%, var(--surface));
-  --dash-shadow: var(--shadow-soft);
   min-height: 100vh;
-  color: var(--dash-text-1);
+  color: var(--text-1);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--primary-container) 42%, var(--bg)) 0, transparent 380px),
     linear-gradient(135deg, var(--bg) 0%, color-mix(in srgb, var(--secondary) 8%, var(--bg)) 58%, color-mix(in srgb, var(--tertiary) 6%, var(--bg)) 100%);
@@ -110,7 +92,7 @@
   min-height: 42px;
   padding: 0 12px;
   border-radius: 999px;
-  color: var(--dash-text-1);
+  color: var(--text-1);
   text-decoration: none;
   font-size: 21px;
   font-weight: 800;
@@ -142,14 +124,14 @@
   padding: 0 13px;
   border-radius: 999px;
   background: transparent;
-  color: var(--dash-text-2);
+  color: var(--text-2);
   font-size: 14px;
   font-weight: 700;
 }
 
 .dash-tab.active {
   background: color-mix(in srgb, var(--primary-container) 86%, white);
-  color: var(--dash-accent-strong);
+  color: var(--on-primary-container);
 }
 
 .dash-actions {
@@ -163,10 +145,10 @@
 .dash-action,
 .dash-user {
   min-height: 46px;
-  border: 1px solid var(--dash-outline);
+  border: 1px solid var(--outline);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--dash-surface-strong) 88%, transparent);
-  color: var(--dash-text-1);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--text-1);
 }
 
 .dash-action {
@@ -209,7 +191,7 @@
   overflow: hidden;
   border-radius: 50%;
   background:
-    linear-gradient(135deg, var(--dash-accent), var(--tertiary));
+    linear-gradient(135deg, var(--primary), var(--tertiary));
   color: var(--on-primary);
   font-size: 13px;
   font-weight: 900;
@@ -241,14 +223,14 @@
 }
 
 .dash-user-copy small {
-  color: var(--dash-text-3);
+  color: var(--text-3);
   font-size: 11px;
 }
 
 .dash-logout:hover {
-  color: var(--dash-red);
-  border-color: color-mix(in srgb, var(--dash-red) 24%, var(--dash-outline));
-  background: var(--dash-red-soft);
+  color: var(--error);
+  border-color: color-mix(in srgb, var(--error) 24%, var(--outline));
+  background: var(--error-container);
 }
 
 .dash-main {
@@ -274,10 +256,10 @@
   width: min(470px, calc(100vw - 32px));
   margin: 0;
   padding: 16px 14px 14px;
-  border: 1px solid var(--dash-outline);
+  border: 1px solid var(--outline);
   border-radius: 28px;
-  background: color-mix(in srgb, var(--dash-surface-strong) 96%, transparent);
-  box-shadow: 0 20px 54px color-mix(in srgb, var(--dash-text-1) 14%, transparent);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: 0 20px 54px color-mix(in srgb, var(--text-1) 14%, transparent);
   backdrop-filter: blur(18px) saturate(150%);
   overflow: hidden;
 }
@@ -287,7 +269,7 @@
   inset: 0 auto auto 0;
   width: 100%;
   height: 3px;
-  background: linear-gradient(90deg, var(--dash-warn), var(--dash-accent));
+  background: linear-gradient(90deg, var(--warning), var(--primary));
   transform-origin: left center;
   animation: dash-mail-countdown 10s linear forwards;
 }
@@ -298,8 +280,8 @@
   display: inline-grid;
   place-items: center;
   border-radius: 18px;
-  background: var(--dash-warn-soft);
-  color: var(--dash-warn);
+  background: var(--warning-container);
+  color: var(--warning);
   font-size: 20px;
 }
 
@@ -315,7 +297,7 @@
 
 .dash-mail-copy span,
 .dash-mail-note {
-  color: var(--dash-text-2);
+  color: var(--text-2);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -324,8 +306,8 @@
 .dash-mail-close {
   min-height: 38px;
   border-radius: 999px;
-  background: var(--dash-accent-soft);
-  color: var(--dash-accent-strong);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
   font-size: 13px;
   font-weight: 800;
 }
@@ -344,11 +326,11 @@
 }
 
 .dash-mail-note.tone-success {
-  color: var(--dash-green);
+  color: var(--success);
 }
 
 .dash-mail-note.tone-error {
-  color: var(--dash-red);
+  color: var(--error);
 }
 
 .dash-setup {
@@ -370,12 +352,12 @@
   display: grid;
   gap: 14px;
   padding: 20px;
-  border: 1px solid color-mix(in srgb, var(--dash-outline) 76%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline) 76%, transparent);
   border-radius: 28px;
   background:
     linear-gradient(160deg, color-mix(in srgb, var(--primary-container) 58%, transparent), transparent 38%),
     linear-gradient(145deg, var(--surface-mid), var(--surface-low));
-  color: var(--dash-text-1);
+  color: var(--text-1);
   box-shadow: var(--shadow-mid);
 }
 
@@ -391,7 +373,7 @@
   display: grid;
   place-items: center;
   border-radius: 24px;
-  background: linear-gradient(135deg, var(--dash-accent), var(--tertiary));
+  background: linear-gradient(135deg, var(--primary), var(--tertiary));
   color: var(--on-primary);
   font-size: 28px;
   font-weight: 900;
@@ -403,16 +385,16 @@
 }
 
 .setup-phone-top span {
-  color: var(--dash-text-3);
+  color: var(--text-3);
   font-size: 12px;
 }
 
 .setup-phone-line,
 .setup-phone-link {
   height: 52px;
-  border: 1px solid color-mix(in srgb, var(--dash-outline) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline) 72%, transparent);
   border-radius: 18px;
-  background: color-mix(in srgb, var(--dash-surface-strong) 72%, transparent);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
 }
 
 .setup-phone-line.wide {
@@ -427,10 +409,10 @@
 
 .setup-phone-chip-row span {
   padding: 7px 10px;
-  border: 1px solid color-mix(in srgb, var(--dash-outline) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline) 70%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--dash-surface-strong) 78%, transparent);
-  color: var(--dash-text-2);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  color: var(--text-2);
   font-size: 12px;
   font-weight: 800;
 }
@@ -447,7 +429,7 @@
 
 .dash-kicker {
   margin: 0;
-  color: var(--dash-accent-strong);
+  color: var(--on-primary-container);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0;
@@ -465,7 +447,7 @@
 .setup-lead {
   max-width: 560px;
   margin: 0 0 6px;
-  color: var(--dash-text-2);
+  color: var(--text-2);
   font-size: 16px;
   line-height: 1.6;
 }
@@ -476,7 +458,7 @@
 }
 
 .dash-field > span {
-  color: var(--dash-text-2);
+  color: var(--text-2);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0;
@@ -486,10 +468,10 @@
 .dash-slug-field {
   width: 100%;
   min-height: 54px;
-  border: 1px solid var(--dash-outline);
+  border: 1px solid var(--outline);
   border-radius: 18px;
-  background: var(--dash-surface-strong);
-  color: var(--dash-text-1);
+  background: var(--surface);
+  color: var(--text-1);
   font: inherit;
   outline: none;
   transition: border-color var(--m3-fast) var(--m3-motion), box-shadow var(--m3-fast) var(--m3-motion);
@@ -508,7 +490,7 @@
 
 .dash-slug-field span {
   flex: 0 0 auto;
-  color: var(--dash-text-3);
+  color: var(--text-3);
   font-size: 14px;
   font-weight: 800;
 }
@@ -523,8 +505,8 @@
 
 .dash-field input:focus,
 .dash-slug-field:focus-within {
-  border-color: var(--dash-accent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent) 16%, transparent);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 16%, transparent);
 }
 
 .setup-helper {
@@ -535,28 +517,28 @@
 }
 
 .setup-helper {
-  background: var(--dash-surface-soft);
-  color: var(--dash-text-2);
+  background: var(--surface-low);
+  color: var(--text-2);
 }
 
 .setup-helper.ready {
-  background: var(--dash-green-soft);
-  color: var(--dash-green);
+  background: var(--success-container);
+  color: var(--success);
 }
 
 .setup-helper.warn {
-  background: var(--dash-warn-soft);
-  color: var(--dash-warn);
+  background: var(--warning-container);
+  color: var(--warning);
 }
 
 .dash-primary {
   min-height: 54px;
   justify-content: center;
   border-radius: 999px;
-  background: var(--dash-accent);
+  background: var(--primary);
   color: #fff;
   font-weight: 900;
-  box-shadow: 0 16px 30px color-mix(in srgb, var(--dash-accent) 22%, transparent);
+  box-shadow: 0 16px 30px color-mix(in srgb, var(--primary) 22%, transparent);
 }
 
 .dash-primary:disabled,
@@ -576,8 +558,8 @@
 }
 
 .dash-spinner-dark {
-  border-color: color-mix(in srgb, var(--dash-accent) 26%, transparent);
-  border-top-color: var(--dash-accent);
+  border-color: color-mix(in srgb, var(--primary) 26%, transparent);
+  border-top-color: var(--primary);
 }
 
 .dash-pane-enter-active,
@@ -777,24 +759,6 @@
 
 @media (prefers-color-scheme: dark) {
   .dash-page {
-    --dash-bg: var(--bg);
-    --dash-surface: var(--surface);
-    --dash-surface-soft: var(--surface-low);
-    --dash-surface-strong: var(--surface);
-    --dash-text-1: var(--text-1);
-    --dash-text-2: var(--text-2);
-    --dash-text-3: var(--text-3);
-    --dash-outline: var(--outline);
-    --dash-accent: var(--primary);
-    --dash-accent-strong: var(--on-primary-container);
-    --dash-accent-soft: var(--primary-container);
-    --dash-green: var(--success);
-    --dash-green-soft: color-mix(in srgb, var(--success) 18%, var(--surface));
-    --dash-warn: var(--warning);
-    --dash-warn-soft: color-mix(in srgb, var(--warning) 20%, var(--surface));
-    --dash-red: var(--error);
-    --dash-red-soft: color-mix(in srgb, var(--error) 18%, var(--surface));
-    --dash-shadow: var(--shadow-soft);
     background:
       linear-gradient(180deg, color-mix(in srgb, var(--primary-container) 58%, var(--bg)) 0, transparent 360px),
       linear-gradient(135deg, var(--bg) 0%, color-mix(in srgb, var(--secondary) 9%, var(--bg)) 58%, color-mix(in srgb, var(--tertiary) 8%, var(--bg)) 100%);

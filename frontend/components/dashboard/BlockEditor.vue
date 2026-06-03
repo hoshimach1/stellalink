@@ -54,10 +54,10 @@ function save() {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--dash-outline, rgba(203, 213, 225, 0.18));
+  border: 1px solid var(--outline, rgba(203, 213, 225, 0.18));
   border-radius: 8px;
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-1, #10182b);
+  background: var(--surface, #fff);
+  color: var(--text-1, #10182b);
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.34);
 }
 
@@ -67,17 +67,17 @@ function save() {
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
-  border-color: var(--dash-outline, rgba(203, 213, 225, 0.18));
+  border-color: var(--outline, rgba(203, 213, 225, 0.18));
 }
 
 .be-header {
   justify-content: space-between;
-  border-bottom: 1px solid var(--dash-outline, rgba(203, 213, 225, 0.18));
+  border-bottom: 1px solid var(--outline, rgba(203, 213, 225, 0.18));
 }
 
 .be-footer {
   justify-content: flex-end;
-  border-top: 1px solid var(--dash-outline, rgba(203, 213, 225, 0.18));
+  border-top: 1px solid var(--outline, rgba(203, 213, 225, 0.18));
 }
 
 .be-title {
@@ -95,10 +95,10 @@ function save() {
 .be-close,
 .be-cancel,
 .be-save {
-  border: 1px solid var(--dash-outline, rgba(203, 213, 225, 0.18));
+  border: 1px solid var(--outline, rgba(203, 213, 225, 0.18));
   border-radius: 999px;
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-1, #10182b);
+  background: var(--surface, #fff);
+  color: var(--text-1, #10182b);
   font: inherit;
   font-weight: 900;
   cursor: pointer;
@@ -121,7 +121,7 @@ function save() {
 
 .be-save {
   border-color: transparent;
-  background: var(--dash-accent, #345EA8);
+  background: var(--primary, #345EA8);
   color: #fff;
 }
 </style>

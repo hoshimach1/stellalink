@@ -670,10 +670,10 @@ async function sendTestEmail() {
 .admin-toolbar,
 .health-card,
 .admin-card {
-  border: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline, #d4dbe8) 86%, transparent);
   border-radius: 18px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 94%, transparent);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--dash-text-1, #10182b) 7%, transparent);
+  background: color-mix(in srgb, var(--surface, #fff) 94%, transparent);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--text-1, #10182b) 7%, transparent);
 }
 
 .admin-toolbar {
@@ -700,7 +700,7 @@ async function sendTestEmail() {
 }
 
 .admin-title h2 {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 22px;
   line-height: 1.12;
 }
@@ -708,7 +708,7 @@ async function sendTestEmail() {
 .admin-title span,
 .card-head p,
 .health-card span {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 13px;
   line-height: 1.45;
 }
@@ -739,14 +739,14 @@ async function sendTestEmail() {
   place-items: center;
   flex: 0 0 auto;
   border-radius: 14px;
-  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
-  color: var(--dash-accent-strong, #163E86);
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
   font-size: 18px;
 }
 
 .health-card strong {
   display: block;
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 14px;
   line-height: 1.25;
   font-weight: 900;
@@ -761,18 +761,18 @@ async function sendTestEmail() {
 }
 
 .health-card.ok .health-icon {
-  background: var(--dash-green-soft, #E1F6EA);
-  color: var(--dash-green, #188A55);
+  background: var(--success-container, #E1F6EA);
+  color: var(--success, #188A55);
 }
 
 .health-card.warn .health-icon {
-  background: var(--dash-warn-soft, #FFF0CF);
-  color: var(--dash-warn, #9B6200);
+  background: var(--warning-container, #FFF0CF);
+  color: var(--warning, #9B6200);
 }
 
 .health-card.muted .health-icon {
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-3, #66789c);
+  background: var(--surface-low, #F2F4F8);
+  color: var(--text-3, #66789c);
 }
 
 .admin-grid {
@@ -807,13 +807,13 @@ async function sendTestEmail() {
   place-items: center;
   flex: 0 0 auto;
   border-radius: 14px;
-  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
-  color: var(--dash-accent-strong, #163E86);
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
   font-size: 19px;
 }
 
 .card-head h3 {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 17px;
   line-height: 1.2;
 }
@@ -827,9 +827,9 @@ async function sendTestEmail() {
   display: grid;
   gap: 12px;
   padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 84%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline, #d4dbe8) 84%, transparent);
   border-radius: 18px;
-  background: color-mix(in srgb, var(--dash-surface-soft, #F2F4F8) 72%, transparent);
+  background: color-mix(in srgb, var(--surface-low, #F2F4F8) 72%, transparent);
 }
 
 .oauth-provider-head {
@@ -846,8 +846,8 @@ async function sendTestEmail() {
   place-items: center;
   flex: 0 0 auto;
   border-radius: 14px;
-  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
-  color: var(--dash-accent-strong, #163E86);
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
   font-size: 18px;
 }
 
@@ -863,14 +863,14 @@ async function sendTestEmail() {
 }
 
 .oauth-provider-head strong {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 14px;
   line-height: 1.25;
 }
 
 .oauth-provider-head span {
   margin-top: 2px;
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -892,7 +892,7 @@ async function sendTestEmail() {
 }
 
 .admin-field > span {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 900;
 }
@@ -901,10 +901,10 @@ async function sendTestEmail() {
 .admin-field select {
   width: 100%;
   min-height: 44px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 14px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 96%, transparent);
-  color: var(--dash-text-1, #10182b);
+  background: color-mix(in srgb, var(--surface, #fff) 96%, transparent);
+  color: var(--text-1, #10182b);
   font: inherit;
   outline: none;
   padding: 0 12px;
@@ -916,9 +916,9 @@ async function sendTestEmail() {
 
 .admin-field input:focus,
 .admin-field select:focus {
-  border-color: var(--dash-accent, #345EA8);
-  background: var(--dash-surface-strong, #fff);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent, #345EA8) 15%, transparent);
+  border-color: var(--primary, #345EA8);
+  background: var(--surface, #fff);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary, #345EA8) 15%, transparent);
 }
 
 .admin-switch {
@@ -927,10 +927,10 @@ async function sendTestEmail() {
   align-items: center;
   gap: 10px;
   padding: 9px 11px;
-  border: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline, #d4dbe8) 82%, transparent);
   border-radius: 16px;
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-1, #10182b);
+  background: var(--surface-low, #F2F4F8);
+  color: var(--text-1, #10182b);
   cursor: pointer;
 }
 
@@ -938,7 +938,7 @@ async function sendTestEmail() {
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
-  accent-color: var(--dash-accent, #345EA8);
+  accent-color: var(--primary, #345EA8);
 }
 
 .admin-switch span {
@@ -952,7 +952,7 @@ async function sendTestEmail() {
 }
 
 .admin-switch small {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -964,7 +964,7 @@ async function sendTestEmail() {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 999px;
   padding: 0 16px;
   font: inherit;
@@ -978,12 +978,12 @@ async function sendTestEmail() {
 }
 
 .outline-btn {
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-1, #10182b);
+  background: var(--surface, #fff);
+  color: var(--text-1, #10182b);
 }
 
 .filled-btn {
-  background: var(--dash-accent, #345EA8);
+  background: var(--primary, #345EA8);
   color: #fff;
   border-color: transparent;
 }
@@ -997,29 +997,29 @@ async function sendTestEmail() {
 .admin-note {
   padding: 10px 12px;
   border-radius: 14px;
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-2, #475778);
+  background: var(--surface-low, #F2F4F8);
+  color: var(--text-2, #475778);
   font-size: 13px;
   line-height: 1.45;
 }
 
 .admin-note strong {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   overflow-wrap: anywhere;
 }
 
 .admin-note.muted {
-  color: var(--dash-text-3, #66789c);
+  color: var(--text-3, #66789c);
 }
 
 .admin-note.success {
-  background: var(--dash-green-soft, #E1F6EA);
-  color: var(--dash-green, #188A55);
+  background: var(--success-container, #E1F6EA);
+  color: var(--success, #188A55);
 }
 
 .admin-note.error {
-  background: var(--dash-red-soft, #FFE5E7);
-  color: var(--dash-red, #B3323A);
+  background: var(--error-container, #FFE5E7);
+  color: var(--error, #B3323A);
 }
 
 .admin-spinner {
@@ -1033,8 +1033,8 @@ async function sendTestEmail() {
 }
 
 .admin-spinner.dark {
-  border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 26%, transparent);
-  border-top-color: var(--dash-accent, #345EA8);
+  border-color: color-mix(in srgb, var(--primary, #345EA8) 26%, transparent);
+  border-top-color: var(--primary, #345EA8);
 }
 
 .outline-btn:focus-visible,
@@ -1042,7 +1042,7 @@ async function sendTestEmail() {
 .admin-switch:focus-within,
 .admin-field input:focus-visible,
 .admin-field select:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--dash-accent, #345EA8) 32%, transparent);
+  outline: 3px solid color-mix(in srgb, var(--primary, #345EA8) 32%, transparent);
   outline-offset: 2px;
 }
 

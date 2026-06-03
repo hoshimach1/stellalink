@@ -51,10 +51,9 @@
             >
               <div class="block-toolbar">
                 <div class="block-title">
-                  <span
+                  <button
                     class="drag-handle"
-                    role="button"
-                    tabindex="0"
+                    type="button"
                     aria-roledescription="draggable"
                     :aria-label="dragHandleLabel(block)"
                     title="Перетащить"
@@ -65,7 +64,7 @@
                     @keydown.space.prevent.stop="openBlockEditor(block)"
                   >
                     <i class="ri-draggable" />
-                  </span>
+                  </button>
                   <span class="block-icon">
                     <FaceitLogo v-if="block.block_type === 'widget_faceit'" class="faceit-logo" />
                     <i v-else :class="displayBlockIcon(block)" />
@@ -411,15 +410,31 @@
                   ghost-class="mini-ghost"
                   @end="onDragEnd"
                 >
-                  <button
+                  <article
                     v-for="block in draggableBlocks"
                     :key="block.id"
                     class="mini-block"
                     :class="{ hidden: !block.is_visible }"
-                    type="button"
+                    role="button"
+                    tabindex="0"
                     @click="openBlockEditor(block)"
+                    @keydown.enter.self.prevent="openBlockEditor(block)"
+                    @keydown.space.self.prevent="openBlockEditor(block)"
                   >
-                    <span class="mini-handle" title="Перетащить" @click.stop><i class="ri-draggable" /></span>
+                    <button
+                      class="mini-handle"
+                      type="button"
+                      aria-roledescription="draggable"
+                      :aria-label="dragHandleLabel(block)"
+                      title="Перетащить"
+                      @click.stop
+                      @keydown.up.prevent.stop="moveBlockByKeyboard(block, -1)"
+                      @keydown.down.prevent.stop="moveBlockByKeyboard(block, 1)"
+                      @keydown.enter.prevent.stop="openBlockEditor(block)"
+                      @keydown.space.prevent.stop="openBlockEditor(block)"
+                    >
+                      <i class="ri-draggable" />
+                    </button>
                     <span class="mini-icon">
                       <FaceitLogo v-if="block.block_type === 'widget_faceit'" class="faceit-logo" />
                       <i v-else :class="displayBlockIcon(block)" />
@@ -433,7 +448,7 @@
                         <i class="ri-delete-bin-line" />
                       </button>
                     </span>
-                  </button>
+                  </article>
                 </VueDraggable>
               </ClientOnly>
             </div>
@@ -1221,10 +1236,10 @@ async function onAvatarCropSave(blob: Blob) {
 .studio-preview-bar,
 .studio-inspector,
 .public-card {
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 8px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 88%, transparent);
-  box-shadow: var(--dash-shadow, 0 16px 42px rgba(48, 63, 92, 0.11));
+  background: color-mix(in srgb, var(--surface, #fff) 88%, transparent);
+  box-shadow: var(--shadow-soft, 0 16px 42px rgba(48, 63, 92, 0.11));
 }
 
 .studio-preview-bar {
@@ -1257,13 +1272,13 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .status-pill {
-  background: var(--dash-warn-soft, #FFF0CF);
-  color: var(--dash-warn, #9B6200);
+  background: var(--warning-container, #FFF0CF);
+  color: var(--warning, #9B6200);
 }
 
 .status-pill.published {
-  background: var(--dash-green-soft, #E1F6EA);
-  color: var(--dash-green, #188A55);
+  background: var(--success-container, #E1F6EA);
+  color: var(--success, #188A55);
 }
 
 .url-pill {
@@ -1271,8 +1286,8 @@ async function onAvatarCropSave(blob: Blob) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-2, #475778);
+  background: var(--surface-low, #F2F4F8);
+  color: var(--text-2, #475778);
 }
 
 .icon-action,
@@ -1288,9 +1303,9 @@ async function onAvatarCropSave(blob: Blob) {
 .back-btn,
 .avatar-upload {
   position: relative;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-2, #475778);
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
+  background: var(--surface, #fff);
+  color: var(--text-2, #475778);
   font: inherit;
   cursor: pointer;
   overflow: hidden;
@@ -1569,11 +1584,17 @@ async function onAvatarCropSave(blob: Blob) {
 
 .drag-handle,
 .mini-handle {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--card-muted);
   cursor: grab;
+  font: inherit;
 }
 
-.drag-handle {
+.drag-handle,
+.mini-handle {
   display: inline-grid;
   place-items: center;
   width: 28px;
@@ -1582,9 +1603,16 @@ async function onAvatarCropSave(blob: Blob) {
   outline: none;
 }
 
-.drag-handle:focus-visible {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--profile-accent, var(--dash-accent, #345EA8)) 28%, transparent);
+.drag-handle:focus-visible,
+.mini-handle:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--profile-accent, var(--primary, #345EA8)) 28%, transparent);
   color: var(--card-text);
+}
+
+.mini-block:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--primary, #345EA8) 44%, var(--outline, rgba(82, 103, 138, 0.18)));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #345EA8) 18%, transparent);
 }
 
 .block-icon,
@@ -1596,8 +1624,8 @@ async function onAvatarCropSave(blob: Blob) {
   place-items: center;
   flex: 0 0 auto;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--profile-accent, var(--dash-accent, #345EA8)) 16%, transparent);
-  color: color-mix(in srgb, var(--profile-accent, var(--dash-accent, #345EA8)) 74%, #fff);
+  background: color-mix(in srgb, var(--profile-accent, var(--primary, #345EA8)) 16%, transparent);
+  color: color-mix(in srgb, var(--profile-accent, var(--primary, #345EA8)) 74%, #fff);
   font-size: 18px;
 }
 
@@ -1845,8 +1873,8 @@ async function onAvatarCropSave(blob: Blob) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
   padding: 8px;
-  border-bottom: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
-  background: color-mix(in srgb, var(--dash-surface-soft, #F2F4F8) 60%, transparent);
+  border-bottom: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
+  background: color-mix(in srgb, var(--surface-low, #F2F4F8) 60%, transparent);
 }
 
 .inspector-tab {
@@ -1860,8 +1888,8 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .inspector-tab.active {
-  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
-  color: var(--dash-accent-strong, #163E86);
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
   border-color: transparent;
 }
 
@@ -1883,14 +1911,14 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .section-head h3 {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 20px;
   line-height: 1.15;
 }
 
 .section-head p {
   margin-top: 3px;
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 13px;
   line-height: 1.45;
 }
@@ -1921,7 +1949,7 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .studio-field > span {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 900;
 }
@@ -1930,10 +1958,10 @@ async function onAvatarCropSave(blob: Blob) {
 .studio-field textarea,
 .slug-input {
   width: 100%;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 8px;
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-1, #10182b);
+  background: var(--surface, #fff);
+  color: var(--text-1, #10182b);
   font: inherit;
   outline: none;
   transition: border-color 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 180ms cubic-bezier(0.2, 0, 0, 1);
@@ -1964,7 +1992,7 @@ async function onAvatarCropSave(blob: Blob) {
 
 .slug-input span {
   flex: 0 0 auto;
-  color: var(--dash-text-3, #66789c);
+  color: var(--text-3, #66789c);
   font-size: 12px;
   font-weight: 800;
 }
@@ -1980,8 +2008,8 @@ async function onAvatarCropSave(blob: Blob) {
 .studio-field input:focus,
 .studio-field textarea:focus,
 .slug-input:focus-within {
-  border-color: var(--dash-accent, #345EA8);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent, #345EA8) 16%, transparent);
+  border-color: var(--primary, #345EA8);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary, #345EA8) 16%, transparent);
 }
 
 .form-actions {
@@ -1994,7 +2022,7 @@ async function onAvatarCropSave(blob: Blob) {
   position: sticky;
   bottom: 0;
   padding-top: 8px;
-  background: linear-gradient(180deg, transparent, var(--dash-surface-strong, #fff) 24%);
+  background: linear-gradient(180deg, transparent, var(--surface, #fff) 24%);
 }
 
 .filled-btn,
@@ -2010,13 +2038,13 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .filled-btn {
-  background: var(--dash-accent, #345EA8);
+  background: var(--primary, #345EA8);
   color: #fff;
   border-color: transparent;
 }
 
 .ghost-btn {
-  background: var(--dash-surface-strong, #fff);
+  background: var(--surface, #fff);
 }
 
 .filled-btn:disabled,
@@ -2027,11 +2055,11 @@ async function onAvatarCropSave(blob: Blob) {
 
 .divider {
   height: 1px;
-  background: var(--dash-outline, rgba(82, 103, 138, 0.18));
+  background: var(--outline, rgba(82, 103, 138, 0.18));
 }
 
 .section-subhead {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 13px;
 }
 
@@ -2052,15 +2080,15 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .theme-option.active {
-  border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 44%, var(--dash-outline, #d4dbe8));
-  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
+  border-color: color-mix(in srgb, var(--primary, #345EA8) 44%, var(--outline, #d4dbe8));
+  background: var(--primary-container, rgba(52,94,168,0.12));
 }
 
 .theme-swatch {
   width: 58px;
   height: 48px;
   border-radius: 8px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   background: linear-gradient(135deg, var(--profile-accent), #111827);
 }
 
@@ -2078,13 +2106,13 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .theme-option strong {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 14px;
 }
 
 .theme-option small {
   margin-top: 2px;
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -2104,12 +2132,12 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .accent-dot.active {
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent, #345EA8) 18%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary, #345EA8) 18%, transparent);
 }
 
 .accent-dot.custom {
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-2, #475778);
+  background: var(--surface-low, #F2F4F8);
+  color: var(--text-2, #475778);
 }
 
 .material3-theme-controls {
@@ -2125,10 +2153,10 @@ async function onAvatarCropSave(blob: Blob) {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 18px;
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-1, #10182b);
+  background: var(--surface, #fff);
+  color: var(--text-1, #10182b);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -2156,7 +2184,7 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .switch-setting-copy small {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -2167,9 +2195,9 @@ async function onAvatarCropSave(blob: Blob) {
   display: inline-flex;
   align-items: center;
   padding: 3px;
-  border: 1px solid color-mix(in srgb, var(--dash-outline, rgba(82, 103, 138, 0.18)) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline, rgba(82, 103, 138, 0.18)) 82%, transparent);
   border-radius: 999px;
-  background: var(--dash-surface-soft, #F2F4F8);
+  background: var(--surface-low, #F2F4F8);
   transition:
     background 220ms cubic-bezier(0.2, 0, 0, 1),
     border-color 220ms cubic-bezier(0.2, 0, 0, 1);
@@ -2181,9 +2209,9 @@ async function onAvatarCropSave(blob: Blob) {
   display: inline-grid;
   place-items: center;
   border-radius: 999px;
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-2, #475778);
-  box-shadow: 0 3px 9px color-mix(in srgb, var(--dash-text-1, #10182b) 12%, transparent);
+  background: var(--surface, #fff);
+  color: var(--text-2, #475778);
+  box-shadow: 0 3px 9px color-mix(in srgb, var(--text-1, #10182b) 12%, transparent);
   transform: translateX(0);
   transition:
     transform 280ms var(--m3-spring, cubic-bezier(0.2, 0, 0, 1)),
@@ -2192,16 +2220,16 @@ async function onAvatarCropSave(blob: Blob) {
 
 .custom-switch.active {
   border-color: transparent;
-  background: var(--dash-accent, #345EA8);
+  background: var(--primary, #345EA8);
 }
 
 .custom-switch.active span {
-  color: var(--dash-accent-strong, #163E86);
+  color: var(--on-primary-container, #163E86);
   transform: translateX(28px);
 }
 
 .wide-switch.active {
-  background: linear-gradient(135deg, var(--dash-accent, #345EA8), color-mix(in srgb, var(--dash-accent, #345EA8) 54%, #F59E0B));
+  background: linear-gradient(135deg, var(--primary, #345EA8), color-mix(in srgb, var(--primary, #345EA8) 54%, #F59E0B));
 }
 
 .mini-block-list,
@@ -2228,12 +2256,12 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .mini-handle {
-  color: var(--dash-text-3, #66789c);
+  color: var(--text-3, #66789c);
 }
 
 .mini-label {
   overflow: hidden;
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 14px;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -2265,8 +2293,8 @@ async function onAvatarCropSave(blob: Blob) {
   display: inline-grid;
   place-items: center;
   border-radius: 8px;
-  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
-  color: var(--dash-accent-strong, #163E86);
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
   font-size: 18px;
 }
 
@@ -2276,13 +2304,13 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .library-item strong {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 14px;
 }
 
 .library-item small {
   margin-top: 3px;
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -2290,8 +2318,8 @@ async function onAvatarCropSave(blob: Blob) {
 .muted-panel {
   padding: 14px;
   border-radius: 8px;
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-2, #475778);
+  background: var(--surface-low, #F2F4F8);
+  color: var(--text-2, #475778);
   font-size: 13px;
 }
 
@@ -2327,9 +2355,9 @@ async function onAvatarCropSave(blob: Blob) {
   display: grid;
   gap: 18px;
   padding: 26px;
-  border: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 64%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline, #d4dbe8) 64%, transparent);
   border-radius: 28px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 96%, transparent);
+  background: color-mix(in srgb, var(--surface, #fff) 96%, transparent);
   box-shadow: 0 24px 70px color-mix(in srgb, #05070c 32%, transparent);
 }
 
@@ -2343,8 +2371,8 @@ async function onAvatarCropSave(blob: Blob) {
   place-items: center;
   border: 0;
   border-radius: 999px;
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-2, #475778);
+  background: var(--surface-low, #F2F4F8);
+  color: var(--text-2, #475778);
   cursor: pointer;
   font: inherit;
   font-size: 20px;
@@ -2364,8 +2392,8 @@ async function onAvatarCropSave(blob: Blob) {
   display: inline-grid;
   place-items: center;
   border-radius: 20px;
-  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
-  color: var(--dash-accent-strong, #163E86);
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
   font-size: 28px;
 }
 
@@ -2375,13 +2403,13 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .git-provider-head h2 {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 28px;
   line-height: 1.1;
 }
 
 .git-provider-head p {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 14px;
   line-height: 1.35;
 }
@@ -2400,10 +2428,10 @@ async function onAvatarCropSave(blob: Blob) {
   justify-items: start;
   gap: 8px;
   padding: 13px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 18px;
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-1, #10182b);
+  background: var(--surface, #fff);
+  color: var(--text-1, #10182b);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -2415,8 +2443,8 @@ async function onAvatarCropSave(blob: Blob) {
   display: inline-grid;
   place-items: center;
   border-radius: 14px;
-  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
-  color: var(--dash-accent-strong, #163E86);
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
   font-size: 22px;
 }
 
@@ -2431,7 +2459,7 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .git-provider-choice small {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -2624,25 +2652,25 @@ async function onAvatarCropSave(blob: Blob) {
   align-items: start;
   justify-items: center;
   padding: 18px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 8px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--dash-surface-strong, #fff) 58%, transparent), transparent 260px),
-    color-mix(in srgb, var(--dash-surface-soft, #F2F4F8) 78%, transparent);
+    linear-gradient(180deg, color-mix(in srgb, var(--surface, #fff) 58%, transparent), transparent 260px),
+    color-mix(in srgb, var(--surface-low, #F2F4F8) 78%, transparent);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
 }
 
 .public-card {
   width: min(100%, 760px);
   justify-self: center;
-  box-shadow: var(--dash-shadow, 0 16px 42px rgba(48, 63, 92, 0.11));
+  box-shadow: var(--shadow-soft, 0 16px 42px rgba(48, 63, 92, 0.11));
 }
 
 .studio-inspector {
   top: 92px;
   max-height: calc(100vh - 110px);
   overflow: auto;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 94%, transparent);
+  background: color-mix(in srgb, var(--surface, #fff) 94%, transparent);
 }
 
 .studio-preview-bar {
@@ -2650,9 +2678,9 @@ async function onAvatarCropSave(blob: Blob) {
   gap: 10px;
   padding: 12px;
   border: 0;
-  border-bottom: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border-bottom: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 0;
-  background: color-mix(in srgb, var(--dash-surface-soft, #F2F4F8) 54%, transparent);
+  background: color-mix(in srgb, var(--surface-low, #F2F4F8) 54%, transparent);
   box-shadow: none;
 }
 
@@ -2677,11 +2705,11 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .inspector-tabs {
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 88%, transparent);
+  background: color-mix(in srgb, var(--surface, #fff) 88%, transparent);
 }
 
 .inspector-tab.active {
-  background: color-mix(in srgb, var(--dash-accent-soft, rgba(52,94,168,0.12)) 88%, white);
+  background: color-mix(in srgb, var(--primary-container, rgba(52,94,168,0.12)) 88%, white);
 }
 
 @media (max-width: 1120px) {
@@ -2783,11 +2811,11 @@ async function onAvatarCropSave(blob: Blob) {
   padding: clamp(10px, 1.2vw, 16px);
   border-radius: 28px;
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--dash-accent, #345EA8) 6%, transparent), transparent 42%),
-    linear-gradient(180deg, color-mix(in srgb, var(--dash-surface-strong, #fff) 86%, transparent), color-mix(in srgb, var(--dash-surface-soft, #F2F4F8) 74%, transparent));
+    linear-gradient(135deg, color-mix(in srgb, var(--primary, #345EA8) 6%, transparent), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface, #fff) 86%, transparent), color-mix(in srgb, var(--surface-low, #F2F4F8) 74%, transparent));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 16px 42px color-mix(in srgb, var(--dash-text-1, #10182b) 7%, transparent);
+    0 16px 42px color-mix(in srgb, var(--text-1, #10182b) 7%, transparent);
 }
 
 .count-pill {
@@ -2796,10 +2824,10 @@ async function onAvatarCropSave(blob: Blob) {
   gap: 6px;
   min-height: 36px;
   padding: 0 11px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 78%, transparent);
-  color: var(--dash-text-2, #475778);
+  background: color-mix(in srgb, var(--surface, #fff) 78%, transparent);
+  color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 900;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
@@ -2816,9 +2844,9 @@ async function onAvatarCropSave(blob: Blob) {
   gap: 6px;
   margin: 8px 8px 0;
   padding: 6px;
-  border: 1px solid color-mix(in srgb, var(--dash-outline, rgba(82, 103, 138, 0.18)) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline, rgba(82, 103, 138, 0.18)) 82%, transparent);
   border-radius: 18px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 82%, transparent);
+  background: color-mix(in srgb, var(--surface, #fff) 82%, transparent);
   box-shadow: none;
   backdrop-filter: blur(18px) saturate(140%);
 }
@@ -2854,7 +2882,7 @@ async function onAvatarCropSave(blob: Blob) {
   font-size: 11px;
   line-height: 1.25;
   font-weight: 800;
-  color: var(--dash-accent-strong, #173F86);
+  color: var(--on-primary-container, #173F86);
 }
 
 .studio-quick-actions {
@@ -2873,7 +2901,7 @@ async function onAvatarCropSave(blob: Blob) {
   gap: 6px;
   padding: 0;
   border-radius: 999px;
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 900;
 }
@@ -2893,7 +2921,7 @@ async function onAvatarCropSave(blob: Blob) {
   min-width: 0;
   padding-inline: 12px;
   border-color: transparent;
-  background: var(--dash-accent, #345EA8);
+  background: var(--primary, #345EA8);
   color: #fff;
   box-shadow: none;
 }
@@ -2904,7 +2932,7 @@ async function onAvatarCropSave(blob: Blob) {
   padding: clamp(14px, 1.5vw, 20px);
   border-radius: 24px;
   box-shadow:
-    0 18px 46px color-mix(in srgb, var(--dash-text-1, #10182b) 14%, transparent),
+    0 18px 46px color-mix(in srgb, var(--text-1, #10182b) 14%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
@@ -2968,9 +2996,9 @@ async function onAvatarCropSave(blob: Blob) {
   overflow: hidden;
   border-radius: 28px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--dash-surface-strong, #fff) 96%, transparent), color-mix(in srgb, var(--dash-surface-soft, #F2F4F8) 70%, transparent));
+    linear-gradient(180deg, color-mix(in srgb, var(--surface, #fff) 96%, transparent), color-mix(in srgb, var(--surface-low, #F2F4F8) 70%, transparent));
   box-shadow:
-    0 20px 48px color-mix(in srgb, var(--dash-text-1, #10182b) 10%, transparent),
+    0 20px 48px color-mix(in srgb, var(--text-1, #10182b) 10%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
@@ -2981,7 +3009,7 @@ async function onAvatarCropSave(blob: Blob) {
   padding: 5px;
   border: 0;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--dash-surface-soft, #F2F4F8) 78%, transparent);
+  background: color-mix(in srgb, var(--surface-low, #F2F4F8) 78%, transparent);
 }
 
 .inspector-tab {
@@ -2990,9 +3018,9 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .inspector-tab.active {
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-accent-strong, #163E86);
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--dash-text-1, #10182b) 8%, transparent);
+  background: var(--surface, #fff);
+  color: var(--on-primary-container, #163E86);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--text-1, #10182b) 8%, transparent);
 }
 
 .inspector-section {
@@ -3021,7 +3049,7 @@ async function onAvatarCropSave(blob: Blob) {
 .studio-field textarea,
 .slug-input {
   border-radius: 18px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 92%, transparent);
+  background: color-mix(in srgb, var(--surface, #fff) 92%, transparent);
 }
 
 .theme-option,
@@ -3044,7 +3072,7 @@ async function onAvatarCropSave(blob: Blob) {
 .theme-option.active,
 .library-item:hover,
 .mini-block:hover {
-  box-shadow: 0 10px 26px color-mix(in srgb, var(--dash-text-1, #10182b) 8%, transparent);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--text-1, #10182b) 8%, transparent);
 }
 
 .theme-swatch {

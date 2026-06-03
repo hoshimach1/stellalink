@@ -378,10 +378,10 @@ async function changePassword() {
 .account-card {
   width: 100%;
   min-width: 0;
-  border: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline, #d4dbe8) 86%, transparent);
   border-radius: 18px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 94%, transparent);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--dash-text-1, #10182b) 7%, transparent);
+  background: color-mix(in srgb, var(--surface, #fff) 94%, transparent);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--text-1, #10182b) 7%, transparent);
 }
 
 .account-person {
@@ -402,7 +402,7 @@ async function changePassword() {
   border-radius: 18px;
   background:
     radial-gradient(circle at 28% 20%, rgba(255,255,255,0.35), transparent 30%),
-    linear-gradient(135deg, var(--dash-accent, #345EA8), color-mix(in srgb, var(--dash-accent, #345EA8) 50%, var(--dash-green, #188A55)));
+    linear-gradient(135deg, var(--primary, #345EA8), color-mix(in srgb, var(--primary, #345EA8) 50%, var(--success, #188A55)));
   color: #fff;
   font-size: 28px;
   font-weight: 900;
@@ -425,13 +425,13 @@ async function changePassword() {
   height: 32px;
   display: grid;
   place-items: center;
-  border: 3px solid var(--dash-surface-strong, #fff);
+  border: 3px solid var(--surface, #fff);
   border-radius: 50%;
-  background: var(--dash-accent, #345EA8);
+  background: var(--primary, #345EA8);
   color: #fff;
   cursor: pointer;
   line-height: 1;
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--dash-text-1, #10182b) 18%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--text-1, #10182b) 18%, transparent);
   transition: transform 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)), background 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
 }
 
@@ -461,7 +461,7 @@ async function changePassword() {
 }
 
 .account-copy strong {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 22px;
   line-height: 1.12;
   font-weight: 900;
@@ -469,7 +469,7 @@ async function changePassword() {
 }
 
 .account-copy span {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 13px;
   overflow-wrap: anywhere;
 }
@@ -484,8 +484,8 @@ async function changePassword() {
   margin-top: 2px;
   padding: 0 12px;
   border-radius: 999px;
-  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
-  color: var(--dash-accent-strong, #163E86);
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
   font-size: 12px;
   font-weight: 800;
   text-decoration: none;
@@ -512,16 +512,16 @@ async function changePassword() {
   gap: 7px;
   padding: 0 11px;
   border-radius: 999px;
-  background: var(--dash-warn-soft, #FFF0CF);
-  color: var(--dash-warn, #9B6200);
+  background: var(--warning-container, #FFF0CF);
+  color: var(--warning, #9B6200);
   font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
 }
 
 .account-chip.ok {
-  background: var(--dash-green-soft, #E1F6EA);
-  color: var(--dash-green, #188A55);
+  background: var(--success-container, #E1F6EA);
+  color: var(--success, #188A55);
 }
 
 .account-wide-note {
@@ -558,7 +558,7 @@ async function changePassword() {
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   padding-bottom: 14px;
-  border-bottom: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 72%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--outline, #d4dbe8) 72%, transparent);
 }
 
 .account-card-main .account-status-row {
@@ -581,14 +581,14 @@ async function changePassword() {
 }
 
 .card-head h3 {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 17px;
   line-height: 1.2;
 }
 
 .card-head p {
   margin-top: 3px;
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -602,14 +602,14 @@ async function changePassword() {
   place-items: center;
   flex: 0 0 auto;
   border-radius: 14px;
-  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
-  color: var(--dash-accent-strong, #163E86);
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
   font-size: 18px;
 }
 
 .mini-icon.ok {
-  background: var(--dash-green-soft, #E1F6EA);
-  color: var(--dash-green, #188A55);
+  background: var(--success-container, #E1F6EA);
+  color: var(--success, #188A55);
 }
 
 .mini-icon.email-status {
@@ -622,16 +622,16 @@ async function changePassword() {
   justify-content: center;
   padding: 0 11px;
   border-radius: 999px;
-  background: var(--dash-warn-soft, #FFF0CF);
-  color: var(--dash-warn, #9B6200);
+  background: var(--warning-container, #FFF0CF);
+  color: var(--warning, #9B6200);
   font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
 }
 
 .mini-icon.email-status.ok {
-  background: var(--dash-green-soft, #E1F6EA);
-  color: var(--dash-green, #188A55);
+  background: var(--success-container, #E1F6EA);
+  color: var(--success, #188A55);
 }
 
 .mini-icon.email-status i {
@@ -668,7 +668,7 @@ async function changePassword() {
   border-radius: 12px;
   background: #151A24;
   color: #F8FAFC;
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--dash-text-1, #10182b) 22%, transparent);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--text-1, #10182b) 22%, transparent);
   font-size: 12px;
   font-weight: 800;
   line-height: 1.35;
@@ -693,7 +693,7 @@ async function changePassword() {
 }
 
 .account-field > span {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 900;
 }
@@ -702,10 +702,10 @@ async function changePassword() {
 .slug-field {
   width: 100%;
   min-height: 44px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 14px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 96%, transparent);
-  color: var(--dash-text-1, #10182b);
+  background: color-mix(in srgb, var(--surface, #fff) 96%, transparent);
+  color: var(--text-1, #10182b);
   font: inherit;
   outline: none;
   transition:
@@ -728,7 +728,7 @@ async function changePassword() {
 .slug-field span {
   flex: 0 1 auto;
   min-width: 0;
-  color: var(--dash-text-3, #66789c);
+  color: var(--text-3, #66789c);
   font-size: 12px;
   font-weight: 800;
   overflow: hidden;
@@ -746,9 +746,9 @@ async function changePassword() {
 
 .account-field input:focus,
 .slug-field:focus-within {
-  border-color: var(--dash-accent, #345EA8);
-  background: var(--dash-surface-strong, #fff);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent, #345EA8) 15%, transparent);
+  border-color: var(--primary, #345EA8);
+  background: var(--surface, #fff);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary, #345EA8) 15%, transparent);
 }
 
 .form-actions {
@@ -760,7 +760,7 @@ async function changePassword() {
 }
 
 .form-hint {
-  color: var(--dash-text-3, #66789c);
+  color: var(--text-3, #66789c);
   font-size: 12px;
   font-weight: 800;
 }
@@ -772,7 +772,7 @@ async function changePassword() {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 999px;
   padding: 0 16px;
   font: inherit;
@@ -786,12 +786,12 @@ async function changePassword() {
 }
 
 .outline-btn {
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-1, #10182b);
+  background: var(--surface, #fff);
+  color: var(--text-1, #10182b);
 }
 
 .filled-btn {
-  background: var(--dash-accent, #345EA8);
+  background: var(--primary, #345EA8);
   color: #fff;
   border-color: transparent;
 }
@@ -806,24 +806,24 @@ async function changePassword() {
   height: 7px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--dash-surface-soft, #F2F4F8);
+  background: var(--surface-low, #F2F4F8);
 }
 
 .strength-meter span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--dash-red, #B3323A);
+  background: var(--error, #B3323A);
   transition: width 220ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)), background 220ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .strength-meter.medium span {
-  background: var(--dash-warn, #9B6200);
+  background: var(--warning, #9B6200);
 }
 
 .strength-meter.good span,
 .strength-meter.strong span {
-  background: var(--dash-green, #188A55);
+  background: var(--success, #188A55);
 }
 
 .account-spinner {
@@ -837,8 +837,8 @@ async function changePassword() {
 }
 
 .account-spinner.dark {
-  border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 26%, transparent);
-  border-top-color: var(--dash-accent, #345EA8);
+  border-color: color-mix(in srgb, var(--primary, #345EA8) 26%, transparent);
+  border-top-color: var(--primary, #345EA8);
 }
 
 .account-link:focus-visible,
@@ -847,7 +847,7 @@ async function changePassword() {
 .outline-btn:focus-visible,
 .filled-btn:focus-visible,
 .account-field input:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--dash-accent, #345EA8) 32%, transparent);
+  outline: 3px solid color-mix(in srgb, var(--primary, #345EA8) 32%, transparent);
   outline-offset: 2px;
 }
 
@@ -859,7 +859,7 @@ async function changePassword() {
   }
 
   .account-link:hover {
-    background: color-mix(in srgb, var(--dash-accent-soft, rgba(52,94,168,0.12)) 72%, white);
+    background: color-mix(in srgb, var(--primary-container, rgba(52,94,168,0.12)) 72%, white);
   }
 
   .mini-icon[data-tooltip]:hover::before,

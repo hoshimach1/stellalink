@@ -808,10 +808,10 @@ async function connectService(type: IntegrationType) {
 .integrations-summary,
 .service-card,
 .integration-notice {
-  border: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline, #d4dbe8) 86%, transparent);
   border-radius: 18px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 94%, transparent);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--dash-text-1, #10182b) 7%, transparent);
+  background: color-mix(in srgb, var(--surface, #fff) 94%, transparent);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--text-1, #10182b) 7%, transparent);
 }
 
 .integrations-summary {
@@ -834,14 +834,14 @@ async function connectService(type: IntegrationType) {
 }
 
 .summary-copy h2 {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 22px;
   line-height: 1.12;
 }
 
 .summary-copy p {
   margin-top: 4px;
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 13px;
   line-height: 1.45;
 }
@@ -860,16 +860,16 @@ async function connectService(type: IntegrationType) {
   gap: 6px;
   padding: 0 12px;
   border-radius: 999px;
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-2, #475778);
+  background: var(--surface-low, #F2F4F8);
+  color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
 }
 
 .summary-pill.strong {
-  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
-  color: var(--dash-accent-strong, #163E86);
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
 }
 
 .summary-pill strong {
@@ -897,11 +897,11 @@ async function connectService(type: IntegrationType) {
 }
 
 .service-card.connected {
-  border-color: color-mix(in srgb, var(--dash-green, #188A55) 28%, var(--dash-outline, #d4dbe8));
+  border-color: color-mix(in srgb, var(--success, #188A55) 28%, var(--outline, #d4dbe8));
 }
 
 .service-card.available {
-  border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 20%, var(--dash-outline, #d4dbe8));
+  border-color: color-mix(in srgb, var(--primary, #345EA8) 20%, var(--outline, #d4dbe8));
 }
 
 .service-main {
@@ -918,14 +918,14 @@ async function connectService(type: IntegrationType) {
   place-items: center;
   flex: 0 0 auto;
   border-radius: 16px;
-  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
-  color: var(--dash-accent-strong, #163E86);
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
   font-size: 23px;
 }
 
 .service-card.connected .service-icon {
-  background: var(--dash-green-soft, #E1F6EA);
-  color: var(--dash-green, #188A55);
+  background: var(--success-container, #E1F6EA);
+  color: var(--success, #188A55);
 }
 
 .faceit-logo {
@@ -952,7 +952,7 @@ async function connectService(type: IntegrationType) {
 }
 
 .service-copy h3 {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 17px;
   line-height: 1.2;
   overflow-wrap: anywhere;
@@ -960,7 +960,7 @@ async function connectService(type: IntegrationType) {
 
 .service-copy p {
   margin-top: 4px;
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 13px;
   line-height: 1.45;
 }
@@ -972,21 +972,21 @@ async function connectService(type: IntegrationType) {
   gap: 6px;
   padding: 0 9px;
   border-radius: 999px;
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-2, #475778);
+  background: var(--surface-low, #F2F4F8);
+  color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
 }
 
 .service-status.connected {
-  background: var(--dash-green-soft, #E1F6EA);
-  color: var(--dash-green, #188A55);
+  background: var(--success-container, #E1F6EA);
+  color: var(--success, #188A55);
 }
 
 .service-status.available {
-  background: color-mix(in srgb, var(--dash-accent, #345EA8) 12%, var(--dash-surface-soft, #F2F4F8));
-  color: var(--dash-accent-strong, #163E86);
+  background: color-mix(in srgb, var(--primary, #345EA8) 12%, var(--surface-low, #F2F4F8));
+  color: var(--on-primary-container, #163E86);
 }
 
 .service-controls,
@@ -1013,7 +1013,7 @@ async function connectService(type: IntegrationType) {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 999px;
   padding: 0 14px;
   font: inherit;
@@ -1034,28 +1034,28 @@ async function connectService(type: IntegrationType) {
 }
 
 .service-action {
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-2, #475778);
+  background: var(--surface-low, #F2F4F8);
+  color: var(--text-2, #475778);
   cursor: default;
 }
 
 .service-action.primary {
   border-color: transparent;
-  background: var(--dash-accent, #345EA8);
+  background: var(--primary, #345EA8);
   color: #fff;
   cursor: pointer;
 }
 
 .service-action.complete {
-  border-color: color-mix(in srgb, var(--dash-green, #188A55) 28%, var(--dash-outline, #d4dbe8));
-  background: var(--dash-green-soft, #E1F6EA);
-  color: var(--dash-green, #188A55);
+  border-color: color-mix(in srgb, var(--success, #188A55) 28%, var(--outline, #d4dbe8));
+  background: var(--success-container, #E1F6EA);
+  color: var(--success, #188A55);
 }
 
 .service-action.danger {
-  border-color: color-mix(in srgb, var(--dash-red, #B3323A) 24%, var(--dash-outline, #d4dbe8));
-  background: color-mix(in srgb, var(--dash-red-soft, #FFE5E7) 62%, white);
-  color: var(--dash-red, #B3323A);
+  border-color: color-mix(in srgb, var(--error, #B3323A) 24%, var(--outline, #d4dbe8));
+  background: color-mix(in srgb, var(--error-container, #FFE5E7) 62%, white);
+  color: var(--error, #B3323A);
   cursor: pointer;
 }
 
@@ -1084,20 +1084,20 @@ async function connectService(type: IntegrationType) {
   justify-items: end;
   gap: 2px;
   padding: 10px 12px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 16px;
-  background: var(--dash-surface-soft, #F2F4F8);
+  background: var(--surface-low, #F2F4F8);
 }
 
 .code-provider-summary strong {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 13px;
   font-weight: 950;
   overflow-wrap: anywhere;
 }
 
 .code-provider-summary span {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 800;
   overflow-wrap: anywhere;
@@ -1110,7 +1110,7 @@ async function connectService(type: IntegrationType) {
 }
 
 .provider-field span {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 900;
 }
@@ -1118,10 +1118,10 @@ async function connectService(type: IntegrationType) {
 .provider-field input {
   width: 100%;
   min-height: 42px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 16px;
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-1, #10182b);
+  background: var(--surface, #fff);
+  color: var(--text-1, #10182b);
   font: inherit;
   outline: none;
   padding: 0 12px;
@@ -1131,8 +1131,8 @@ async function connectService(type: IntegrationType) {
 }
 
 .provider-field input:focus {
-  border-color: var(--dash-accent, #345EA8);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent, #345EA8) 15%, transparent);
+  border-color: var(--primary, #345EA8);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary, #345EA8) 15%, transparent);
 }
 
 .integration-modal-overlay {
@@ -1152,9 +1152,9 @@ async function connectService(type: IntegrationType) {
   display: grid;
   gap: 18px;
   padding: 28px;
-  border: 1px solid color-mix(in srgb, var(--dash-outline, #d4dbe8) 64%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline, #d4dbe8) 64%, transparent);
   border-radius: 28px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 96%, transparent);
+  background: color-mix(in srgb, var(--surface, #fff) 96%, transparent);
   box-shadow: 0 24px 70px color-mix(in srgb, #05070c 32%, transparent);
 }
 
@@ -1168,8 +1168,8 @@ async function connectService(type: IntegrationType) {
   place-items: center;
   border: 0;
   border-radius: 999px;
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-2, #475778);
+  background: var(--surface-low, #F2F4F8);
+  color: var(--text-2, #475778);
   cursor: pointer;
   font: inherit;
   font-size: 20px;
@@ -1189,8 +1189,8 @@ async function connectService(type: IntegrationType) {
   display: inline-grid;
   place-items: center;
   border-radius: 20px;
-  background: var(--dash-accent-soft, rgba(52,94,168,0.12));
-  color: var(--dash-accent-strong, #163E86);
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
   font-size: 29px;
 }
 
@@ -1200,14 +1200,14 @@ async function connectService(type: IntegrationType) {
 }
 
 .integration-modal-head h2 {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 30px;
   line-height: 1.1;
   letter-spacing: 0;
 }
 
 .integration-modal-head p {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 18px;
   line-height: 1.35;
 }
@@ -1238,13 +1238,13 @@ async function connectService(type: IntegrationType) {
 }
 
 .modal-auth-button.primary {
-  border-color: var(--dash-outline, rgba(82, 103, 138, 0.18));
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-1, #10182b);
+  border-color: var(--outline, rgba(82, 103, 138, 0.18));
+  background: var(--surface, #fff);
+  color: var(--text-1, #10182b);
 }
 
 .modal-auth-button.secondary {
-  background: var(--dash-accent, #345EA8);
+  background: var(--primary, #345EA8);
   color: #fff;
 }
 
@@ -1260,7 +1260,7 @@ async function connectService(type: IntegrationType) {
 }
 
 .modal-hint {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 800;
   text-align: center;
@@ -1275,7 +1275,7 @@ async function connectService(type: IntegrationType) {
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font: inherit;
   font-size: 13px;
   font-weight: 900;
@@ -1312,8 +1312,8 @@ async function connectService(type: IntegrationType) {
   align-items: center;
   padding: 0 10px;
   border-radius: 999px;
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-2, #475778);
+  background: var(--surface-low, #F2F4F8);
+  color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 900;
 }
@@ -1334,8 +1334,8 @@ async function connectService(type: IntegrationType) {
   align-items: center;
   gap: 9px;
   padding: 10px 14px;
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-2, #475778);
+  background: var(--surface-low, #F2F4F8);
+  color: var(--text-2, #475778);
   font-size: 13px;
   font-weight: 800;
 }
@@ -1351,8 +1351,8 @@ async function connectService(type: IntegrationType) {
 }
 
 .integration-spinner.dark {
-  border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 24%, transparent);
-  border-top-color: var(--dash-accent, #345EA8);
+  border-color: color-mix(in srgb, var(--primary, #345EA8) 24%, transparent);
+  border-top-color: var(--primary, #345EA8);
 }
 
 .steam-login:focus-visible,
@@ -1360,15 +1360,15 @@ async function connectService(type: IntegrationType) {
 .integration-modal-close:focus-visible,
 .modal-auth-button:focus-visible,
 .integration-modal-back:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--dash-accent, #345EA8) 32%, transparent);
+  outline: 3px solid color-mix(in srgb, var(--primary, #345EA8) 32%, transparent);
   outline-offset: 2px;
 }
 
 @media (hover: hover) {
   .service-card:hover {
     transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 28%, var(--dash-outline, #d4dbe8));
-    box-shadow: 0 14px 34px color-mix(in srgb, var(--dash-text-1, #10182b) 9%, transparent);
+    border-color: color-mix(in srgb, var(--primary, #345EA8) 28%, var(--outline, #d4dbe8));
+    box-shadow: 0 14px 34px color-mix(in srgb, var(--text-1, #10182b) 9%, transparent);
   }
 
   .service-action.primary:hover:not(:disabled),

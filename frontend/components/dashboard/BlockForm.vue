@@ -354,9 +354,9 @@ function gitSubLabel(): string {
 .bf-link {
   display: grid;
   gap: 12px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 8px;
-  background: color-mix(in srgb, var(--dash-surface-soft, #f2f4f8) 68%, transparent);
+  background: color-mix(in srgb, var(--surface-low, #f2f4f8) 68%, transparent);
 }
 
 .bf-section {
@@ -365,7 +365,7 @@ function gitSubLabel(): string {
 
 .bf-link {
   padding: 12px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 88%, transparent);
+  background: color-mix(in srgb, var(--surface, #fff) 88%, transparent);
 }
 
 .bf-section-head,
@@ -384,7 +384,7 @@ function gitSubLabel(): string {
 .bf-section-head strong,
 .bf-link-head strong {
   display: block;
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 14px;
   font-weight: 900;
 }
@@ -392,7 +392,7 @@ function gitSubLabel(): string {
 .bf-section-head span {
   display: block;
   margin-top: 2px;
-  color: var(--dash-text-3, #66789c);
+  color: var(--text-3, #66789c);
   font-size: 12px;
   line-height: 1.4;
 }
@@ -414,7 +414,7 @@ function gitSubLabel(): string {
 }
 
 .bf-field > span {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0;
@@ -423,10 +423,10 @@ function gitSubLabel(): string {
 .bf-field input,
 .bf-field textarea {
   width: 100%;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 8px;
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-1, #10182b);
+  background: var(--surface, #fff);
+  color: var(--text-1, #10182b);
   font: inherit;
   outline: none;
   transition: border-color 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 180ms cubic-bezier(0.2, 0, 0, 1);
@@ -445,8 +445,8 @@ function gitSubLabel(): string {
 
 .bf-field input:focus,
 .bf-field textarea:focus {
-  border-color: var(--dash-accent, #345EA8);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dash-accent, #345EA8) 16%, transparent);
+  border-color: var(--primary, #345EA8);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary, #345EA8) 16%, transparent);
 }
 
 .bf-icons {
@@ -459,9 +459,9 @@ function gitSubLabel(): string {
 .bf-icon-choice,
 .bf-secondary,
 .bf-segment {
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-2, #475778);
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
+  background: var(--surface, #fff);
+  color: var(--text-2, #475778);
   font: inherit;
   cursor: pointer;
   transition:
@@ -491,16 +491,16 @@ function gitSubLabel(): string {
   justify-content: center;
   flex: 0 0 auto;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--dash-accent, #345EA8) 12%, transparent);
-  color: var(--dash-accent, #345EA8);
+  background: color-mix(in srgb, var(--primary, #345EA8) 12%, transparent);
+  color: var(--primary, #345EA8);
   font-size: 18px;
 }
 
 .bf-icon-choice.active,
 .bf-segment.active {
-  border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 38%, var(--dash-outline, #d4dbe8));
-  background: color-mix(in srgb, var(--dash-accent, #345EA8) 12%, var(--dash-surface-strong, #fff));
-  color: var(--dash-accent, #345EA8);
+  border-color: color-mix(in srgb, var(--primary, #345EA8) 38%, var(--outline, #d4dbe8));
+  background: color-mix(in srgb, var(--primary, #345EA8) 12%, var(--surface, #fff));
+  color: var(--primary, #345EA8);
 }
 
 .bf-secondary {
@@ -524,25 +524,25 @@ function gitSubLabel(): string {
   gap: 10px;
   min-height: 44px;
   padding: 10px 12px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 8px;
-  background: var(--dash-surface-strong, #fff);
-  color: var(--dash-text-1, #10182b);
+  background: var(--surface, #fff);
+  color: var(--text-1, #10182b);
   font-size: 14px;
 }
 
 .bf-check input {
   width: 18px;
   height: 18px;
-  accent-color: var(--dash-accent, #345EA8);
+  accent-color: var(--primary, #345EA8);
 }
 
 .bf-note {
   padding: 10px 12px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 8px;
-  background: var(--dash-surface-soft, #F2F4F8);
-  color: var(--dash-text-2, #475778);
+  background: var(--surface-low, #F2F4F8);
+  color: var(--text-2, #475778);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -551,26 +551,26 @@ function gitSubLabel(): string {
   display: grid;
   gap: 4px;
   padding: 12px;
-  border: 1px solid var(--dash-outline, rgba(82, 103, 138, 0.18));
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 8px;
-  background: var(--dash-surface-strong, #fff);
+  background: var(--surface, #fff);
 }
 
 .bf-readonly span {
-  color: var(--dash-text-2, #475778);
+  color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 900;
 }
 
 .bf-readonly strong {
-  color: var(--dash-text-1, #10182b);
+  color: var(--text-1, #10182b);
   font-size: 15px;
   font-weight: 950;
   overflow-wrap: anywhere;
 }
 
 .bf-readonly small {
-  color: var(--dash-text-3, #66789c);
+  color: var(--text-3, #66789c);
   font-size: 12px;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -601,9 +601,9 @@ function gitSubLabel(): string {
 }
 
 .danger:hover {
-  border-color: color-mix(in srgb, var(--dash-red, #B3323A) 34%, var(--dash-outline, #d4dbe8));
-  background: var(--dash-red-soft, #FFE5E7);
-  color: var(--dash-red, #B3323A);
+  border-color: color-mix(in srgb, var(--error, #B3323A) 34%, var(--outline, #d4dbe8));
+  background: var(--error-container, #FFE5E7);
+  color: var(--error, #B3323A);
 }
 
 @media (hover: hover) {
@@ -645,12 +645,12 @@ function gitSubLabel(): string {
 
 .bf-section {
   padding: 14px;
-  background: color-mix(in srgb, var(--dash-surface-soft, #f2f4f8) 76%, transparent);
+  background: color-mix(in srgb, var(--surface-low, #f2f4f8) 76%, transparent);
 }
 
 .bf-link {
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 94%, transparent);
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--dash-text-1, #10182b) 5%, transparent);
+  background: color-mix(in srgb, var(--surface, #fff) 94%, transparent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--text-1, #10182b) 5%, transparent);
 }
 
 .bf-section-head strong,
@@ -661,7 +661,7 @@ function gitSubLabel(): string {
 .bf-field input,
 .bf-field textarea {
   border-radius: 18px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 94%, transparent);
+  background: color-mix(in srgb, var(--surface, #fff) 94%, transparent);
 }
 
 .bf-field input {
@@ -703,14 +703,14 @@ function gitSubLabel(): string {
 }
 
 .bf-secondary {
-  background: color-mix(in srgb, var(--dash-accent-soft, rgba(52,94,168,0.12)) 68%, var(--dash-surface-strong, #fff));
-  color: var(--dash-accent-strong, #163E86);
+  background: color-mix(in srgb, var(--primary-container, rgba(52,94,168,0.12)) 68%, var(--surface, #fff));
+  color: var(--on-primary-container, #163E86);
 }
 
 .bf-check {
   min-height: 56px;
   border-radius: 18px;
-  background: color-mix(in srgb, var(--dash-surface-strong, #fff) 94%, transparent);
+  background: color-mix(in srgb, var(--surface, #fff) 94%, transparent);
 }
 
 .bf-check input {
@@ -720,13 +720,13 @@ function gitSubLabel(): string {
 
 .bf-segment.active,
 .bf-icon-choice.active {
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--dash-accent, #345EA8) 12%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--primary, #345EA8) 12%, transparent);
 }
 
 @media (hover: hover) {
   .bf-check:hover,
   .bf-link:hover {
-    border-color: color-mix(in srgb, var(--dash-accent, #345EA8) 26%, var(--dash-outline, #d4dbe8));
+    border-color: color-mix(in srgb, var(--primary, #345EA8) 26%, var(--outline, #d4dbe8));
   }
 }
 </style>

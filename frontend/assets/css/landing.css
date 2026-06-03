@@ -13,16 +13,31 @@
   --md-sys-color-primary-container: var(--primary-container);
   --md-sys-color-on-primary-container: var(--on-primary-container);
   --md-sys-color-secondary: var(--secondary);
+  --md-sys-color-on-secondary: var(--on-secondary);
   --md-sys-color-secondary-container: var(--secondary-container);
+  --md-sys-color-on-secondary-container: var(--on-secondary-container);
   --md-sys-color-tertiary: var(--tertiary);
+  --md-sys-color-on-tertiary: var(--on-tertiary);
   --md-sys-color-tertiary-container: var(--tertiary-container);
+  --md-sys-color-on-tertiary-container: var(--on-tertiary-container);
+  --md-sys-color-error: var(--error);
+  --md-sys-color-on-error: var(--on-error);
+  --md-sys-color-error-container: var(--error-container);
+  --md-sys-color-on-error-container: var(--on-error-container);
   --md-sys-color-surface: var(--bg);
   --md-sys-color-on-surface: var(--text-1);
-  --md-sys-color-surface-container-low: var(--surface-low);
-  --md-sys-color-surface-container: var(--surface-mid);
-  --md-sys-color-surface-container-high: var(--surface-warm);
-  --md-sys-color-outline: oklch(0.58 0.033 240);
-  --md-sys-color-outline-variant: var(--outline);
+  --md-sys-color-surface-variant: var(--surface-variant);
+  --md-sys-color-on-surface-variant: var(--on-surface-variant);
+  --md-sys-color-inverse-surface: var(--inverse-surface);
+  --md-sys-color-inverse-on-surface: var(--inverse-on-surface);
+  --md-sys-color-inverse-primary: var(--inverse-primary);
+  --md-sys-color-surface-container-lowest: var(--surface-container-lowest);
+  --md-sys-color-surface-container-low: var(--surface-container-low);
+  --md-sys-color-surface-container: var(--surface-container);
+  --md-sys-color-surface-container-high: var(--surface-container-high);
+  --md-sys-color-surface-container-highest: var(--surface-container-highest);
+  --md-sys-color-outline: var(--outline);
+  --md-sys-color-outline-variant: var(--outline-variant);
 }
 
 html {
