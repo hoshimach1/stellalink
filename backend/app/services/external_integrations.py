@@ -45,7 +45,7 @@ CODE_PROVIDER_LABELS = {
 }
 CODE_PROVIDER_SCOPES = {
     "github": "read:user repo",
-    "gitlab": "read_user read_repository",
+    "gitlab": "read_user read_api",
     "gitea": "read:user read:repository",
 }
 CODE_PROVIDER_ACTIVITY_DAYS = 90
@@ -66,7 +66,10 @@ def _clean_text(value: Any) -> Optional[str]:
 
 def _hinted_error(service: str, status_code: int, body: str = "") -> ExternalApiError:
     if status_code == 401 or status_code == 403:
-        return ExternalApiError(f"{service}: API key was rejected.", status_code=400)
+        return ExternalApiError(
+            f"{service}: API key was rejected or lacks required permissions.",
+            status_code=400,
+        )
     if status_code == 404:
         return ExternalApiError(
             f"{service}: requested profile was not found.", status_code=404

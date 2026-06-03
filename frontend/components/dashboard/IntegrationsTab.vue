@@ -247,7 +247,7 @@ type CodeProviderMode = 'token' | 'oauth'
 const TOKEN_NAME = 'Stellalink'
 const TOKEN_SCOPES: Record<CodeProvider, string[]> = {
   github: ['read:user', 'repo'],
-  gitlab: ['read_user', 'read_repository'],
+  gitlab: ['read_user', 'read_api'],
   gitea: ['read:user', 'read:repository'],
 }
 type ConnectedAccount = {
