@@ -66,6 +66,12 @@ def _clean_text(value: Any) -> Optional[str]:
 
 def _hinted_error(service: str, status_code: int, body: str = "") -> ExternalApiError:
     if status_code == 401 or status_code == 403:
+        if service == "GitLab":
+            return ExternalApiError(
+                "GitLab: token was rejected. Use a Personal Access Token "
+                "with read_api and read_user scopes.",
+                status_code=400,
+            )
         return ExternalApiError(
             f"{service}: API key was rejected or lacks required permissions.",
             status_code=400,
