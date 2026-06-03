@@ -211,7 +211,7 @@ function onTouchEnd() {
   display: flex; flex-direction: column; align-items: center; gap: 14px;
   box-shadow: 0 24px 64px rgba(0,0,0,0.6);
 }
-.crop-title { font-size: 15px; font-weight: 700; color: #ececef; align-self: flex-start; font-family: 'Onest', sans-serif; }
+.crop-title { font-size: 15px; font-weight: 700; color: #ececef; align-self: flex-start; font-family: 'Roboto Flex', 'Segoe UI', sans-serif; }
 .crop-canvas-wrap {
   position: relative; border-radius: 50%; overflow: hidden;
   width: 320px; height: 320px; flex-shrink: 0;
@@ -219,17 +219,17 @@ function onTouchEnd() {
 }
 .crop-canvas-wrap.dragging { cursor: grabbing; }
 .crop-canvas { display: block; width: 320px; height: 320px; }
-.crop-hint { font-size: 11px; color: #71717a; font-family: 'Onest', sans-serif; }
+.crop-hint { font-size: 11px; color: #71717a; font-family: 'Roboto Flex', 'Segoe UI', sans-serif; }
 .crop-actions { display: flex; gap: 10px; align-self: flex-end; }
 .crop-btn-cancel {
   background: none; border: 1px solid rgba(255,255,255,0.08);
   border-radius: 8px; padding: 8px 18px; color: #a1a1aa;
-  font-size: 13px; font-weight: 600; font-family: 'Onest', sans-serif; cursor: pointer;
+  font-size: 13px; font-weight: 600; font-family: 'Roboto Flex', 'Segoe UI', sans-serif; cursor: pointer;
 }
 .crop-btn-save {
   background: #fafafa; border: none;
   border-radius: 8px; padding: 8px 22px; color: #09090b;
-  font-size: 13px; font-weight: 700; font-family: 'Onest', sans-serif;
+  font-size: 13px; font-weight: 700; font-family: 'Roboto Flex', 'Segoe UI', sans-serif;
   cursor: pointer; display: flex; align-items: center; gap: 8px;
 }
 .crop-btn-save:disabled { opacity: 0.55; cursor: not-allowed; }

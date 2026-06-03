@@ -123,7 +123,7 @@
                   </div>
                 </div>
               </div>
-              <span class="live-badge">live</span>
+              <span class="live-badge" role="status" aria-live="polite">live</span>
             </div>
 
             <div class="console-grid">

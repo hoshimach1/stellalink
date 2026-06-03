@@ -224,7 +224,7 @@ async function submit() {
   background: transparent; border: none; border-radius: 7px;
   font-size: 14px; font-weight: 600; color: #71717a;
   cursor: pointer; transition: background 0.2s, color 0.2s;
-  font-family: 'Onest', sans-serif;
+  font-family: 'Roboto Flex', 'Segoe UI', sans-serif;
 }
 .auth-tabs button.active {
   background: rgba(255,255,255,0.08);
@@ -243,7 +243,7 @@ async function submit() {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 10px; color: #ececef;
-  font-size: 14px; font-family: 'Onest', sans-serif;
+  font-size: 14px; font-family: 'Roboto Flex', 'Segoe UI', sans-serif;
   outline: none; transition: border-color 0.2s, background 0.2s;
 }
 .auth-field input:focus {
@@ -286,7 +286,7 @@ async function submit() {
 }
 .auth-switch button {
   background: none; border: none; color: #d4d4d8;
-  font-size: 13px; font-family: 'Onest', sans-serif;
+  font-size: 13px; font-family: 'Roboto Flex', 'Segoe UI', sans-serif;
   cursor: pointer; text-decoration: underline;
 }
 

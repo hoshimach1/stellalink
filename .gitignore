@@ -21,7 +21,7 @@ __pycache__/
 venv/
 backend/__pycache__/
 
-# Logs and mcp
+# Logs, reports and mcp
 *.log
 logs/
 .playwright-mcp/*
@@ -29,6 +29,7 @@ logs/
 .mcp.json
 settings.local.json
 artifacts/*
+reports/*
 
 # Uploads (user files – never commit)
 backend/uploads/avatars/*

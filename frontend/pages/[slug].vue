@@ -1045,7 +1045,7 @@ function faceitStatsList(block: Block) {
 
 .pub-notfound {
   min-height: 100vh; background: #09090b; color: #ececef;
-  font-family: 'Onest', sans-serif;
+  font-family: 'Roboto Flex', 'Segoe UI', sans-serif;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; padding: 24px; gap: 12px;
 }
@@ -1158,7 +1158,7 @@ function faceitStatsList(block: Block) {
 /* ── Page ───────────────────────────────────────────────────────────────────── */
 .pub-page {
   min-height: 100vh; background: var(--t-bg); color: var(--t-text);
-  font-family: 'Onest', sans-serif;
+  font-family: 'Roboto Flex', 'Segoe UI', sans-serif;
   display: flex; flex-direction: column; align-items: center;
   justify-content: flex-start;
   padding: 24px 16px 48px; position: relative; overflow-x: clip;
@@ -1801,7 +1801,7 @@ function faceitStatsList(block: Block) {
 }
 .pub-fluent-tag {
   font-size: 12px;
-  font-family: 'Onest', sans-serif;
+  font-family: 'Roboto Flex', 'Segoe UI', sans-serif;
 }
 .pub-fluent-link-card {
   margin-bottom: 5px;

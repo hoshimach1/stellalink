@@ -1,5 +1,3 @@
-import vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
-
 export default defineNuxtConfig({
   devtools: { enabled: true },
 
@@ -9,38 +7,19 @@ export default defineNuxtConfig({
         { rel: 'icon', type: 'image/png', href: '/images/logos/logo.png' },
         { rel: 'apple-touch-icon', href: '/images/logos/logo_big.png' },
       ],
-      script: [
-        { src: '/glass/displacement-utils.js', defer: true },
-        { src: '/glass/glass-element.js', defer: true },
-      ],
     },
   },
 
-  build: {
-    transpile: ['vuetify'],
-  },
-
-  modules: [
-    '@pinia/nuxt',
-    (_options, nuxt) => {
-      nuxt.hooks.hook('vite:extendConfig', (config) => {
-        config.plugins?.push(vuetify({ autoImport: true }))
-      })
-    },
-  ],
+  modules: ['@pinia/nuxt'],
 
   vite: {
     vue: {
       template: {
-        transformAssetUrls,
         compilerOptions: {
           isCustomElement: (tag: string) =>
-            tag.startsWith('fluent-') || tag.startsWith('md-') || tag === 'glass-element',
+            tag.startsWith('fluent-') || tag.startsWith('md-'),
         },
       },
-    },
-    ssr: {
-      noExternal: ['vuetify'],
     },
   },
 

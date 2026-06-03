@@ -106,7 +106,7 @@ function gitProviderLabel(config: Record<string, unknown>): string {
   border-radius: 8px;
   background: #11151d;
   color: #f8fafc;
-  font-family: Onest, "Segoe UI", sans-serif;
+  font-family: "Roboto Flex", "Segoe UI", sans-serif;
 }
 
 .preview-header {
