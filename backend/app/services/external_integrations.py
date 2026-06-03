@@ -679,23 +679,6 @@ def _repository_stats(repositories: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _select_pinned_repositories(
-    repositories: list[dict[str, Any]], limit: int = 6
-) -> list[dict[str, Any]]:
-    candidates = [repo for repo in repositories if not repo.get("is_archived")]
-    if not candidates:
-        candidates = repositories
-    return sorted(
-        candidates,
-        key=lambda repo: (
-            _to_int(repo.get("stars")),
-            str(repo.get("updated_at") or ""),
-            str(repo.get("name") or "").lower(),
-        ),
-        reverse=True,
-    )[:limit]
-
-
 async def fetch_github_pinned_repositories(
     base_url: str,
     access_token: str,
@@ -941,18 +924,20 @@ async def fetch_code_provider_repositories(
         _summarize_repo(provider, repo) for repo in payload if isinstance(repo, dict)
     ]
     stats = _repository_stats(repositories)
-    pinned_source = "selected_by_stars_and_activity"
-    pinned_repositories = _select_pinned_repositories(repositories)
+    pinned_source = "unsupported"
+    pinned_repositories: list[dict[str, Any]] = []
     if provider == "github":
+        pinned_source = "github_pinned_items"
         try:
             github_pinned = await fetch_github_pinned_repositories(
                 base_url, access_token, username, auth_method, repositories
             )
             if github_pinned:
                 pinned_repositories = github_pinned
-                pinned_source = "github_pinned_items"
+            else:
+                pinned_source = "github_pinned_items_empty"
         except ExternalApiError:
-            pinned_source = "selected_by_stars_and_activity"
+            pinned_source = "github_pinned_items_unavailable"
     return {
         "repositories": repositories,
         "pinned_repositories": pinned_repositories,

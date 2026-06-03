@@ -161,7 +161,7 @@
                   <p v-if="previewConfig(block).show_contributions && gitActivitySummary(previewConfig(block))" class="empty-line">
                     {{ gitActivitySummary(previewConfig(block)) }}
                   </p>
-                  <div v-if="gitUsername(previewConfig(block)) && previewConfig(block).show_pinned_repos" class="repo-row">
+                  <div v-if="gitUsername(previewConfig(block)) && previewConfig(block).show_pinned_repos && gitPinnedRepositories(previewConfig(block)).length" class="repo-row">
                     <span v-for="repo in gitPinnedRepositories(previewConfig(block))" :key="repo.id || repo.full_name">{{ repo.name }}</span>
                   </div>
                 </template>

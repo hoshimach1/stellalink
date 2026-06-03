@@ -460,7 +460,7 @@ async function ensureGitBlock(provider: CodeProvider) {
   if (!profile.profile) return
   const account = codeProviderAccount(provider)
   if (!account) return
-  const existing = profile.profile?.blocks.find((block: Block) => block.block_type === 'widget_github')
+  const existing = profile.profile?.blocks.find((block: Block) => block.block_type === 'widget_github' && gitBlockProvider(block) === provider)
   const currentConfig = existing ? sanitizedGitBlockConfig(existing.config) : null
   const username = account.metadata?.username || account.display_name || ''
   const nextConfig: Record<string, unknown> = {
@@ -482,6 +482,11 @@ async function ensureGitBlock(provider: CodeProvider) {
   } else {
     await profile.createBlock('widget_github', nextConfig)
   }
+}
+
+function gitBlockProvider(block: Block): CodeProvider {
+  const provider = String(block.config.provider || block.config.git_provider || 'github')
+  return ['github', 'gitlab', 'gitea'].includes(provider) ? provider as CodeProvider : 'github'
 }
 
 function sanitizedGitBlockConfig(value: Record<string, unknown>) {

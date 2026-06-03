@@ -196,7 +196,7 @@
                 <div v-if="block.config.show_contributions && gitActivitySummary(block)" class="pub-gh-count">
                   {{ gitActivitySummary(block) }}
                 </div>
-                <template v-if="block.config.show_pinned_repos">
+                <template v-if="block.config.show_pinned_repos && gitPinnedRepositories(block).length">
                   <div class="pub-sub-label pub-m3-pin-label">Закреплённые репозитории</div>
                   <div class="pub-gh-repos">
                     <a v-for="r in gitPinnedRepositories(block)" :key="r.id || r.full_name" class="pub-gh-repo pub-m3-repo" :href="r.url || '#'" target="_blank" rel="noopener">
@@ -434,7 +434,7 @@
                   <div v-if="block.config.show_contributions && gitActivitySummary(block)" class="pub-gh-count">
                     {{ gitActivitySummary(block) }}
                   </div>
-                  <template v-if="block.config.show_pinned_repos">
+                  <template v-if="block.config.show_pinned_repos && gitPinnedRepositories(block).length">
                     <div class="pub-sub-label" style="margin-top:12px">Закреплённые репозитории</div>
                     <div class="pub-gh-repos">
                       <a v-for="r in gitPinnedRepositories(block)" :key="r.id || r.full_name" class="pub-gh-repo" :href="r.url || '#'" target="_blank" rel="noopener">
@@ -678,7 +678,7 @@
                   <div v-if="block.config.show_contributions && gitActivitySummary(block)" class="pub-gh-count">
                     {{ gitActivitySummary(block) }}
                   </div>
-                  <template v-if="block.config.show_pinned_repos">
+                  <template v-if="block.config.show_pinned_repos && gitPinnedRepositories(block).length">
                     <div class="pub-sub-label" style="margin-top:12px">Закреплённые репозитории</div>
                     <div class="pub-gh-repos">
                       <a v-for="r in gitPinnedRepositories(block)" :key="r.id || r.full_name" class="pub-gh-repo" :href="r.url || '#'" target="_blank" rel="noopener">

@@ -113,6 +113,14 @@ def _slice_git_contributions(activity: dict | None, days: int) -> dict:
     }
 
 
+def _git_provider_label(provider: str) -> str:
+    return {
+        "github": "GitHub",
+        "gitlab": "GitLab",
+        "gitea": "Gitea",
+    }.get(provider, provider)
+
+
 def _sanitize_block_config(block_type: str, config: dict | None) -> dict:
     clean = dict(config or {})
     synced_keys = {
@@ -241,10 +249,10 @@ def _enriched_block_config(profile, block) -> dict:
         )
         if requested_provider not in code_accounts:
             requested_provider = "github"
-        git_account = code_accounts.get(requested_provider) or next(
-            (account for account in code_accounts.values() if account),
-            None,
-        )
+        git_account = code_accounts.get(requested_provider)
+        config["provider"] = requested_provider
+        config["git_provider"] = requested_provider
+        config["git_provider_label"] = _git_provider_label(requested_provider)
         if git_account:
             git_metadata = _account_metadata(git_account)
             provider = git_account.provider
@@ -272,11 +280,7 @@ def _enriched_block_config(profile, block) -> dict:
             ]
             config["provider"] = provider
             config["git_provider"] = provider
-            config["git_provider_label"] = {
-                "github": "GitHub",
-                "gitlab": "GitLab",
-                "gitea": "Gitea",
-            }.get(provider, provider)
+            config["git_provider_label"] = _git_provider_label(provider)
             config["git_display_name"] = display_name
             config["git_profile"] = git_metadata
             config["git_repository_stats"] = _git_repository_stats(repositories)
@@ -305,8 +309,6 @@ def _enriched_block_config(profile, block) -> dict:
             )
         else:
             for key in (
-                "git_provider",
-                "git_provider_label",
                 "git_display_name",
                 "git_profile",
                 "git_repository_stats",
