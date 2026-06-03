@@ -35,10 +35,9 @@
         <div class="pub-m3-hero-row">
           <div class="pub-m3-avatar-wrap">
             <div class="pub-avatar pub-avatar-m3">
-              <img v-if="profile.avatar_url" :src="avatarSrc ?? undefined" class="pub-avatar-img" alt="avatar">
+              <img v-if="avatarSrc" :src="avatarSrc" class="pub-avatar-img" alt="">
               <span v-else>{{ initial }}</span>
             </div>
-            <span class="pub-m3-presence" aria-hidden="true" />
           </div>
           <div class="pub-m3-identity">
             <h1 class="pub-name">{{ profile.display_name }}</h1>
@@ -71,12 +70,12 @@
                 class="pub-link pub-link-m3"
               >
                 <span class="pub-link-icon-wrap pub-m3-link-icon">
-                  <i v-if="link.icon" :class="`ri-${link.icon}-fill`" class="pub-link-icon" />
-                  <i v-else class="ri-link pub-link-icon" />
+                  <i aria-hidden="true" v-if="link.icon" :class="`ri-${link.icon}-fill`" class="pub-link-icon" />
+                  <i aria-hidden="true" v-else class="ri-link pub-link-icon" />
                 </span>
                 <span class="pub-link-label">{{ link.label || link.url }}</span>
                 <span class="pub-m3-link-action" aria-hidden="true">
-                  <i class="ri-arrow-right-up-line pub-link-arrow" />
+                  <i aria-hidden="true" class="ri-arrow-right-up-line pub-link-arrow" />
                 </span>
               </a>
             </div>
@@ -94,16 +93,16 @@
               <div class="pub-wh pub-m3-widget-head">
                 <div class="pub-wh-left">
                   <div class="pub-w-ico-bg pub-m3-service-icon pub-m3-steam">
-                    <i class="ri-steam-fill" />
+                    <i aria-hidden="true" class="ri-steam-fill" />
                   </div>
                   <div>
                     <div class="pub-w-name">Steam</div>
                     <div class="pub-w-id">{{ steamDisplayName(block) }}</div>
                   </div>
                 </div>
-                <span class="pub-m3-status-pill">
+                <span v-if="steamStatusLabel(block)" class="pub-m3-status-pill" :class="steamStatusClass(block)">
                   <span class="pub-m3-status-dot" aria-hidden="true" />
-                  Online
+                  {{ steamStatusLabel(block) }}
                 </span>
               </div>
               <template v-if="block.config.show_recent_games && steamGamesList(block).length">
@@ -135,7 +134,7 @@
               <div class="pub-wh pub-m3-widget-head">
                 <div class="pub-wh-left">
                   <div class="pub-w-ico-bg pub-m3-service-icon pub-m3-lastfm">
-                    <i class="ri-music-2-fill" />
+                    <i aria-hidden="true" class="ri-music-2-fill" />
                   </div>
                   <div>
                     <div class="pub-w-name">Last.fm</div>
@@ -149,7 +148,7 @@
               <template v-if="block.config.show_now_playing && block.config.username">
                 <div class="pub-divider" />
                 <div class="pub-np-row">
-                  <div class="pub-np-disc"><i class="ri-disc-fill" /></div>
+                  <div class="pub-np-disc"><i aria-hidden="true" class="ri-disc-fill" /></div>
                   <div>
                     <div class="pub-np-label">Сейчас слушает</div>
                     <div class="pub-np-track">{{ mock.lastfmTrack(block.config.username as string).track }}</div>
@@ -163,7 +162,7 @@
               <div class="pub-wh pub-m3-widget-head">
                 <div class="pub-wh-left">
                   <div class="pub-w-ico-bg pub-m3-service-icon pub-m3-github">
-                    <i :class="gitProviderIcon(block)" />
+                    <i aria-hidden="true" :class="gitProviderIcon(block)" />
                   </div>
                   <div>
                     <div class="pub-w-name">{{ gitProviderLabel(block) }}</div>
@@ -200,7 +199,7 @@
                   <div class="pub-sub-label pub-m3-pin-label">Закреплённые репозитории</div>
                   <div class="pub-gh-repos">
                     <a v-for="r in gitPinnedRepositories(block)" :key="r.id || r.full_name" class="pub-gh-repo pub-m3-repo" :href="r.url || '#'" target="_blank" rel="noopener">
-                      <i class="ri-git-repository-line" />
+                      <i aria-hidden="true" class="ri-git-repository-line" />
                       <span>{{ r.full_name || r.name }}</span>
                     </a>
                   </div>
@@ -212,7 +211,7 @@
               <div class="pub-wh pub-m3-widget-head">
                 <div class="pub-wh-left">
                   <div class="pub-w-ico-bg pub-m3-service-icon pub-m3-pc">
-                    <i class="ri-computer-fill" />
+                    <i aria-hidden="true" class="ri-computer-fill" />
                   </div>
                   <div class="pub-w-name">{{ (block.config.title as string) || 'PC Config' }}</div>
                 </div>
@@ -270,7 +269,7 @@
     </section>
 
     <!-- ═══════════ LIQUID GLASS THEME ═══════════ -->
-    <ClientOnly v-else-if="theme === 'glass'">
+    <template v-else-if="theme === 'glass'">
       <div class="pub-card pub-card-glass">
         <div class="pub-card-glass-scroll">
         <!-- Header -->
@@ -278,10 +277,9 @@
           <div class="pub-header-glass-row">
             <div class="pub-avatar-glass-wrap">
               <div class="pub-avatar pub-avatar-glass">
-                <img v-if="profile.avatar_url" :src="avatarSrc ?? undefined" class="pub-avatar-img" alt="avatar">
+                <img v-if="avatarSrc" :src="avatarSrc" class="pub-avatar-img" alt="">
                 <span v-else>{{ initial }}</span>
               </div>
-              <span class="pub-avatar-online" />
             </div>
             <div class="pub-header-glass-info">
               <h1 class="pub-name">{{ profile.display_name }}</h1>
@@ -314,11 +312,11 @@
                     class="pub-link pub-link-glass"
                   >
                     <span class="pub-link-icon-wrap">
-                      <i v-if="link.icon" :class="`ri-${link.icon}-fill`" class="pub-link-icon" />
-                      <i v-else class="ri-link pub-link-icon" />
+                      <i aria-hidden="true" v-if="link.icon" :class="`ri-${link.icon}-fill`" class="pub-link-icon" />
+                      <i aria-hidden="true" v-else class="ri-link pub-link-icon" />
                     </span>
                     <span class="pub-link-label">{{ link.label || link.url }}</span>
-                    <i class="ri-arrow-right-up-line pub-link-arrow" />
+                    <i aria-hidden="true" class="ri-arrow-right-up-line pub-link-arrow" />
                   </a>
                 </div>
               </div>
@@ -344,7 +342,9 @@
                       <div class="pub-w-id">{{ steamDisplayName(block) }}</div>
                     </div>
                   </div>
-                  <span class="pub-badge-green">● Online</span>
+                  <span v-if="steamStatusLabel(block)" class="pub-badge-green" :class="steamStatusClass(block)">
+                    {{ steamStatusLabel(block) }}
+                  </span>
                 </div>
                 <template v-if="block.config.show_recent_games && steamGamesList(block).length">
                   <div class="pub-divider" />
@@ -402,7 +402,7 @@
               <template v-else-if="block.block_type === 'widget_github'">
                 <div class="pub-wh">
                   <div class="pub-wh-left">
-                    <div class="pub-w-ico-bg" style="background:rgba(255,255,255,0.06);color:#ececef"><i :class="gitProviderIcon(block)" /></div>
+                    <div class="pub-w-ico-bg" style="background:rgba(255,255,255,0.06);color:#ececef"><i aria-hidden="true" :class="gitProviderIcon(block)" /></div>
                     <div>
                       <div class="pub-w-name">{{ gitProviderLabel(block) }}</div>
                       <div class="pub-w-id">@{{ gitUsername(block) || '—' }}</div>
@@ -438,7 +438,7 @@
                     <div class="pub-sub-label" style="margin-top:12px">Закреплённые репозитории</div>
                     <div class="pub-gh-repos">
                       <a v-for="r in gitPinnedRepositories(block)" :key="r.id || r.full_name" class="pub-gh-repo" :href="r.url || '#'" target="_blank" rel="noopener">
-                        <i class="ri-git-repository-line" />
+                        <i aria-hidden="true" class="ri-git-repository-line" />
                         <span>{{ r.full_name || r.name }}</span>
                       </a>
                     </div>
@@ -508,30 +508,16 @@
         </div><!-- /pub-card-glass-scroll -->
       </div>
 
-      <template #fallback>
-        <div class="pub-card">
-          <div class="pub-header">
-            <div class="pub-avatar">
-              <img v-if="profile.avatar_url" :src="avatarSrc ?? undefined" class="pub-avatar-img" alt="avatar">
-              <span v-else>{{ initial }}</span>
-            </div>
-            <h1 class="pub-name">{{ profile.display_name }}</h1>
-          </div>
-          <div class="pub-footer">
-            <span class="pub-loading-text">Загрузка эффектов...</span>
-          </div>
-        </div>
-      </template>
-    </ClientOnly>
+    </template>
 
     <!-- ═══════════ FLUENT THEME ═══════════ -->
-    <ClientOnly v-else-if="theme === 'fluent'">
+    <template v-else-if="theme === 'fluent'">
       <div class="pub-card pub-card-fluent">
         <!-- Header -->
         <fluent-card class="pub-fluent-section pub-fluent-header-card">
           <div class="pub-header">
             <div class="pub-avatar">
-              <img v-if="profile.avatar_url" :src="avatarSrc ?? undefined" class="pub-avatar-img" alt="avatar">
+              <img v-if="avatarSrc" :src="avatarSrc" class="pub-avatar-img" alt="">
               <span v-else>{{ initial }}</span>
             </div>
             <h1 class="pub-name">{{ profile.display_name }}</h1>
@@ -561,11 +547,11 @@
                     class="pub-link pub-link-fluent"
                   >
                     <span class="pub-link-icon-wrap">
-                      <i v-if="link.icon" :class="`ri-${link.icon}-fill`" class="pub-link-icon" />
-                      <i v-else class="ri-link pub-link-icon" />
+                      <i aria-hidden="true" v-if="link.icon" :class="`ri-${link.icon}-fill`" class="pub-link-icon" />
+                      <i aria-hidden="true" v-else class="ri-link pub-link-icon" />
                     </span>
                     <span class="pub-link-label">{{ link.label || link.url }}</span>
-                    <i class="ri-arrow-right-up-line pub-link-arrow" />
+                    <i aria-hidden="true" class="ri-arrow-right-up-line pub-link-arrow" />
                   </a>
                 </fluent-card>
               </div>
@@ -588,7 +574,13 @@
                       <div class="pub-w-id">{{ steamDisplayName(block) }}</div>
                     </div>
                   </div>
-                  <fluent-badge appearance="accent" class="pub-fluent-badge-online">Online</fluent-badge>
+                  <fluent-badge
+                    v-if="steamStatusLabel(block)"
+                    :appearance="steamIsOnline(block) ? 'accent' : 'neutral'"
+                    class="pub-fluent-badge-online"
+                  >
+                    {{ steamStatusLabel(block) }}
+                  </fluent-badge>
                 </div>
                 <template v-if="block.config.show_recent_games && steamGamesList(block).length">
                   <div class="pub-divider" />
@@ -646,7 +638,7 @@
               <div v-else-if="block.block_type === 'widget_github'" class="pub-block-inner">
                 <div class="pub-wh">
                   <div class="pub-wh-left">
-                    <div class="pub-w-ico-bg" style="background:rgba(255,255,255,0.06);color:#ececef"><i :class="gitProviderIcon(block)" /></div>
+                    <div class="pub-w-ico-bg" style="background:rgba(255,255,255,0.06);color:#ececef"><i aria-hidden="true" :class="gitProviderIcon(block)" /></div>
                     <div>
                       <div class="pub-w-name">{{ gitProviderLabel(block) }}</div>
                       <div class="pub-w-id">@{{ gitUsername(block) || '—' }}</div>
@@ -682,7 +674,7 @@
                     <div class="pub-sub-label" style="margin-top:12px">Закреплённые репозитории</div>
                     <div class="pub-gh-repos">
                       <a v-for="r in gitPinnedRepositories(block)" :key="r.id || r.full_name" class="pub-gh-repo" :href="r.url || '#'" target="_blank" rel="noopener">
-                        <i class="ri-git-repository-line" />
+                        <i aria-hidden="true" class="ri-git-repository-line" />
                         <span>{{ r.full_name || r.name }}</span>
                       </a>
                     </div>
@@ -750,18 +742,7 @@
         </div>
       </div>
 
-      <template #fallback>
-        <div class="pub-card">
-          <div class="pub-header">
-            <div class="pub-avatar">
-              <img v-if="profile.avatar_url" :src="avatarSrc ?? undefined" class="pub-avatar-img" alt="avatar">
-              <span v-else>{{ initial }}</span>
-            </div>
-            <h1 class="pub-name">{{ profile.display_name }}</h1>
-          </div>
-        </div>
-      </template>
-    </ClientOnly>
+    </template>
   </div>
 </template>
 
@@ -886,11 +867,28 @@ const material3AccentColor = computed(() => theme.value === 'material3' ? (profi
 const initial = computed(() => profile.value?.display_name?.[0]?.toUpperCase() ?? '?')
 const visibleBlocks = computed(() => profile.value?.blocks.filter(b => b.is_visible) ?? [])
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const normalized = hex.trim().replace('#', '')
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) return null
+  return {
+    r: Number.parseInt(normalized.slice(0, 2), 16),
+    g: Number.parseInt(normalized.slice(2, 4), 16),
+    b: Number.parseInt(normalized.slice(4, 6), 16),
+  }
+}
+
 const accentVars = computed(() => {
   if (theme.value !== 'material3') return ''
   const c = profile.value?.accent_color
   if (!c) return ''
-  return `--t-accent:${c};--t-accent20:${c}20;--t-accent30:${c}30;--t-accent12:${c}1e`
+  const rgb = hexToRgb(c)
+  if (!rgb) return `--t-accent:${c}`
+  return [
+    `--t-accent:${c}`,
+    `--t-accent20:rgba(${rgb.r},${rgb.g},${rgb.b},0.20)`,
+    `--t-accent30:rgba(${rgb.r},${rgb.g},${rgb.b},0.30)`,
+    `--t-accent12:rgba(${rgb.r},${rgb.g},${rgb.b},0.12)`,
+  ].join(';')
 })
 
 // Liquid Glass — SVG displacement filter applied once after mount
@@ -899,6 +897,7 @@ type DisplacementUtils = {
 }
 
 let glassApplied = false
+let glassResizeTimeout: ReturnType<typeof setTimeout> | null = null
 
 function applyLiquidGlass() {
   if (typeof window === 'undefined') return
@@ -906,7 +905,6 @@ function applyLiquidGlass() {
 
   const utils = (window as unknown as { DisplacementUtils?: DisplacementUtils }).DisplacementUtils
   if (!utils) {
-    setTimeout(applyLiquidGlass, 80)
     return
   }
 
@@ -936,7 +934,27 @@ function applyLiquidGlass() {
   glassApplied = true
 }
 
-onMounted(() => nextTick(() => setTimeout(applyLiquidGlass, 200)))
+function scheduleLiquidGlass() {
+  if (typeof window === 'undefined') return
+  if (glassResizeTimeout) window.clearTimeout(glassResizeTimeout)
+  glassResizeTimeout = window.setTimeout(() => {
+    glassResizeTimeout = null
+    glassApplied = false
+    applyLiquidGlass()
+  }, 180)
+}
+
+onMounted(() => {
+  nextTick(() => setTimeout(applyLiquidGlass, 200))
+  window.addEventListener('resize', scheduleLiquidGlass, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  if (typeof window === 'undefined') return
+  window.removeEventListener('resize', scheduleLiquidGlass)
+  if (glassResizeTimeout) window.clearTimeout(glassResizeTimeout)
+})
+
 watch(theme, () => { glassApplied = false; nextTick(() => setTimeout(applyLiquidGlass, 200)) })
 
 function normalizeUrl(url: string | undefined): string {
@@ -952,6 +970,40 @@ function steamGamesList(block: Block): SteamGame[] {
 function steamDisplayName(block: Block): string {
   const steamProfile = block.config.steam_profile as Record<string, unknown> | undefined
   return String(block.config.steam_display_name || steamProfile?.personaname || 'Steam не привязан')
+}
+
+function steamPersonaState(block: Block): number | null {
+  const steamProfile = block.config.steam_profile as Record<string, unknown> | undefined
+  const rawState = steamProfile?.personastate ?? block.config.steam_persona_state
+  const state = Number(rawState)
+  return Number.isFinite(state) ? state : null
+}
+
+function steamStatusLabel(block: Block): string {
+  const state = steamPersonaState(block)
+  if (state === null) return ''
+  const labels: Record<number, string> = {
+    0: 'Не в сети',
+    1: 'Online',
+    2: 'Занят',
+    3: 'Отошел',
+    4: 'Спит',
+    5: 'Готов к обмену',
+    6: 'Готов играть',
+  }
+  return labels[state] ?? 'Статус Steam'
+}
+
+function steamIsOnline(block: Block): boolean {
+  return steamPersonaState(block) === 1
+}
+
+function steamStatusClass(block: Block): Record<string, boolean> {
+  return {
+    online: steamIsOnline(block),
+    offline: steamPersonaState(block) === 0,
+    away: [2, 3, 4, 5, 6].includes(steamPersonaState(block) ?? -1),
+  }
 }
 
 function steamTotalHours(game: SteamGame): string {
@@ -1413,7 +1465,7 @@ function faceitStatsList(block: Block) {
 /* ── Material 3 Expressive ─────────────────────────────────────────────────── */
 .pub-card-m3 {
   max-width: 420px;
-  max-height: min(860px, calc(100svh - 28px));
+  max-height: none;
   color: var(--t-text);
   background:
     linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,251,255,0.98)),
@@ -1421,7 +1473,7 @@ function faceitStatsList(block: Block) {
   border: 1px solid rgba(255,255,255,0.72);
   border-radius: 34px;
   box-shadow: var(--t-card-shadow);
-  overflow: hidden;
+  overflow: clip;
   isolation: isolate;
 }
 .pub-card-m3::before {
@@ -1541,6 +1593,7 @@ function faceitStatsList(block: Block) {
   width: 82px;
   height: 82px;
   border-radius: 28px 28px 22px 28px;
+  overflow: hidden;
   background:
     linear-gradient(145deg, var(--m3-primary), color-mix(in srgb, var(--m3-primary) 58%, var(--m3-tertiary)));
   color: var(--m3-on-primary);
@@ -1553,17 +1606,6 @@ function faceitStatsList(block: Block) {
 .pub-card-m3:hover .pub-avatar-m3 {
   border-radius: 24px 30px 24px 30px;
   transform: translateY(-1px) rotate(-1deg);
-}
-.pub-m3-presence {
-  position: absolute;
-  right: -2px;
-  bottom: 4px;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background: #24d18f;
-  border: 4px solid var(--m3-primary-container);
-  box-shadow: 0 3px 10px rgba(0,0,0,0.18);
 }
 .pub-m3-identity {
   min-width: 0;
@@ -1615,12 +1657,33 @@ function faceitStatsList(block: Block) {
   color: #0b3d2d;
   background: color-mix(in srgb, #a9f2df 78%, #ffffff);
 }
+
+.pub-m3-status-pill.offline {
+  color: var(--t-muted);
+  background: color-mix(in srgb, var(--m3-surface-container) 88%, #ffffff);
+}
+
+.pub-m3-status-pill.away {
+  color: #7a4b00;
+  background: color-mix(in srgb, #ffe2a8 76%, #ffffff);
+}
+
 .pub-m3-status-dot {
   width: 7px;
   height: 7px;
   border-radius: 999px;
   background: #0f9f6e;
   box-shadow: 0 0 0 5px rgba(15,159,110,0.12);
+}
+
+.pub-m3-status-pill.offline .pub-m3-status-dot {
+  background: #8b95a5;
+  box-shadow: 0 0 0 5px rgba(139,149,165,0.14);
+}
+
+.pub-m3-status-pill.away .pub-m3-status-dot {
+  background: #d08300;
+  box-shadow: 0 0 0 5px rgba(208,131,0,0.16);
 }
 .pub-m3-divider {
   margin: 0;
@@ -1633,6 +1696,11 @@ function faceitStatsList(block: Block) {
   gap: 10px;
   overscroll-behavior: contain;
 }
+
+.pub-card-m3:not(.pub-card-m3-wide) .pub-blocks {
+  overflow-y: visible;
+}
+
 .pub-card-m3 .pub-blocks::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--t-accent) 30%, rgba(73,69,79,0.22));
 }
@@ -1897,6 +1965,13 @@ function faceitStatsList(block: Block) {
   box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.2);
   overflow: clip;
 }
+
+[data-theme="fluent"][data-mode="light"] .pub-card-fluent {
+  background: rgba(255,255,255,0.88);
+  border-color: rgba(31,35,43,0.10);
+  box-shadow: 0 12px 42px rgba(40,48,65,0.16);
+}
+
 .pub-fluent-section {
   --card-fill-color: transparent;
 }
@@ -1909,6 +1984,14 @@ function faceitStatsList(block: Block) {
   padding: 0;
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
+
+[data-theme="fluent"][data-mode="light"] .pub-card-fluent :deep(fluent-card) {
+  --fill-color: rgba(255,255,255,0.74);
+  background: rgba(255,255,255,0.74);
+  border-color: rgba(31,35,43,0.10);
+  color: var(--t-text);
+}
+
 .pub-card-fluent :deep(fluent-card):hover {
   --fill-color: rgba(255,255,255,0.09);
   background: rgba(255,255,255,0.09);
@@ -1978,14 +2061,6 @@ function faceitStatsList(block: Block) {
   width: 54px !important;
   height: 54px !important;
   font-size: 22px !important;
-}
-.pub-avatar-online {
-  position: absolute;
-  bottom: 1px; right: 1px;
-  width: 11px; height: 11px;
-  border-radius: 50%;
-  background: #4ade80;
-  border: 2px solid rgba(10,7,30,0.9);
 }
 .pub-header-glass-info {
   display: flex;
@@ -2131,6 +2206,7 @@ function faceitStatsList(block: Block) {
   width: 82px;
   height: 82px;
   border-radius: 28px 28px 22px 28px;
+  overflow: hidden;
   background:
     linear-gradient(145deg, var(--m3-primary), color-mix(in srgb, var(--m3-primary) 58%, var(--m3-tertiary)));
   color: var(--m3-on-primary);
@@ -2200,6 +2276,18 @@ function faceitStatsList(block: Block) {
   font-size: 11px; font-weight: 600; color: #4ade80;
   background: rgba(74,222,128,0.10); border: 1px solid rgba(74,222,128,0.20);
   border-radius: 100px; padding: 2px 9px;
+}
+
+.pub-badge-green.offline {
+  color: #a1a1aa;
+  background: rgba(161,161,170,0.10);
+  border-color: rgba(161,161,170,0.20);
+}
+
+.pub-badge-green.away {
+  color: #fbbf24;
+  background: rgba(251,191,36,0.10);
+  border-color: rgba(251,191,36,0.22);
 }
 
 /* ── Steam ──────────────────────────────────────────────────────────────────── */
@@ -2362,7 +2450,7 @@ function faceitStatsList(block: Block) {
   .pub-blocks { padding: 8px 10px 12px; }
   [data-theme="material3"].pub-page { padding: 10px; }
   .pub-card-m3 {
-    max-height: calc(100svh - 20px);
+    max-height: none;
     border-radius: 28px;
   }
   .pub-m3-hero {

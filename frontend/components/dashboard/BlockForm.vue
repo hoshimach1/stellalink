@@ -8,7 +8,7 @@
             <span>Заголовок можно оставить пустым.</span>
           </div>
           <button class="bf-icon danger" type="button" title="Удалить группу" @click="removeLinkGroup(groupIndex)">
-            <i class="ri-delete-bin-line" />
+            <i aria-hidden="true" class="ri-delete-bin-line" />
           </button>
         </div>
 
@@ -22,7 +22,7 @@
             <div class="bf-link-head">
               <strong>Ссылка {{ linkIndex + 1 }}</strong>
               <button class="bf-icon danger" type="button" title="Удалить ссылку" @click="group.links.splice(linkIndex, 1)">
-                <i class="ri-close-line" />
+                <i aria-hidden="true" class="ri-close-line" />
               </button>
             </div>
 
@@ -49,25 +49,34 @@
                   :title="icon"
                   @click="link.icon = link.icon === icon ? '' : icon"
                 >
-                  <i :class="`ri-${icon}-fill`" />
+                  <i aria-hidden="true" :class="`ri-${icon}-fill`" />
                 </button>
               </div>
               <div class="bf-inline">
-                <span v-if="link.icon" class="bf-icon-preview"><i :class="`ri-${link.icon}-fill`" /></span>
-                <input v-model="link.icon" type="text" placeholder="github, vk, telegram">
+                <span v-if="link.icon" class="bf-icon-preview"><i aria-hidden="true" :class="linkIconClass(link.icon)" /></span>
+                <input
+                  v-model="link.icon"
+                  type="text"
+                  placeholder="github, vk, telegram"
+                  :aria-invalid="Boolean(link.icon && !isValidRemixIconName(link.icon))"
+                  @blur="link.icon = normalizeRemixIconName(link.icon)"
+                >
               </div>
+              <small v-if="link.icon && !isValidRemixIconName(link.icon)" class="bf-warning">
+                Используйте имя Remix Icon без префикса ri- и без суффикса -fill/-line.
+              </small>
             </label>
           </article>
         </div>
 
         <button class="bf-secondary" type="button" @click="addLink(groupIndex)">
-          <i class="ri-add-line" />
+          <i aria-hidden="true" class="ri-add-line" />
           <span>Добавить ссылку</span>
         </button>
       </section>
 
       <button class="bf-secondary wide" type="button" @click="addLinkGroup">
-        <i class="ri-folder-add-line" />
+        <i aria-hidden="true" class="ri-folder-add-line" />
         <span>Добавить группу</span>
       </button>
     </template>
@@ -199,7 +208,7 @@
               <div class="bf-inline">
                 <input v-model="component.name" type="text" placeholder="AMD Ryzen 5 7500F">
                 <button class="bf-icon danger" type="button" title="Удалить компонент" @click="pcComponents().splice(index, 1)">
-                  <i class="ri-close-line" />
+                  <i aria-hidden="true" class="ri-close-line" />
                 </button>
               </div>
             </label>
@@ -207,7 +216,7 @@
         </div>
 
         <button class="bf-secondary" type="button" @click="addComponent">
-          <i class="ri-add-line" />
+          <i aria-hidden="true" class="ri-add-line" />
           <span>Добавить компонент</span>
         </button>
       </section>
@@ -283,6 +292,24 @@ function addLink(index: number) {
   if (!group) return
   if (!Array.isArray(group.links)) group.links = []
   group.links.push({ label: '', url: '', icon: '' })
+}
+
+function normalizeRemixIconName(value?: string): string {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^ri-/, '')
+    .replace(/-(fill|line)$/, '')
+}
+
+function isValidRemixIconName(value?: string): boolean {
+  const normalized = normalizeRemixIconName(value)
+  return normalized.length > 0 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(normalized)
+}
+
+function linkIconClass(value?: string): string {
+  const normalized = normalizeRemixIconName(value)
+  return isValidRemixIconName(normalized) ? `ri-${normalized}-fill` : 'ri-link'
 }
 
 function pcComponents(): Component[] {
@@ -447,6 +474,18 @@ function gitSubLabel(): string {
 .bf-field textarea:focus {
   border-color: var(--primary, #345EA8);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary, #345EA8) 16%, transparent);
+}
+
+.bf-field input[aria-invalid="true"] {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 4px rgba(220,38,38,0.12);
+}
+
+.bf-warning {
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .bf-icons {

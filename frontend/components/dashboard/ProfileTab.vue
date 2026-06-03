@@ -1,10 +1,12 @@
 <template>
-  <CropAvatarModal
-    :file="avatarCropFile"
-    :saving="avatarUploading"
-    @save="onAvatarCropSave"
-    @cancel="avatarCropFile = null"
-  />
+  <ClientOnly>
+    <CropAvatarModal
+      :file="avatarCropFile"
+      :saving="avatarUploading"
+      @save="onAvatarCropSave"
+      @cancel="avatarCropFile = null"
+    />
+  </ClientOnly>
 
   <div v-if="profile.profile" class="studio-shell">
     <section class="studio-preview-pane" aria-label="Живое превью профиля">
@@ -17,7 +19,7 @@
             </div>
             <label class="avatar-upload" :class="{ loading: avatarUploading }" title="Загрузить аватар">
               <span v-if="avatarUploading" class="studio-spinner dark" />
-              <i v-else class="ri-camera-line" />
+              <i aria-hidden="true" v-else class="ri-camera-line" />
               <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden @change="onAvatarFileChange">
             </label>
           </div>
@@ -32,6 +34,8 @@
             </div>
           </div>
         </header>
+
+        <p class="preview-note">Превью упрощено. Для точного вида откройте публичный профиль.</p>
 
         <ClientOnly>
           <VueDraggable
@@ -63,11 +67,11 @@
                     @keydown.enter.prevent.stop="openBlockEditor(block)"
                     @keydown.space.prevent.stop="openBlockEditor(block)"
                   >
-                    <i class="ri-draggable" />
+                    <i aria-hidden="true" class="ri-draggable" />
                   </button>
                   <span class="block-icon">
                     <FaceitLogo v-if="block.block_type === 'widget_faceit'" class="faceit-logo" />
-                    <i v-else :class="displayBlockIcon(block)" />
+                    <i aria-hidden="true" v-else :class="displayBlockIcon(block)" />
                   </span>
                   <div>
                     <strong>{{ displayBlockLabel(block) }}</strong>
@@ -76,10 +80,10 @@
                 </div>
                 <div class="block-actions">
                   <button class="tiny-action" :class="{ active: block.is_visible }" type="button" :title="visibilityToggleLabel(block)" :aria-label="visibilityToggleLabel(block)" :aria-pressed="block.is_visible" @click.stop="toggleVisible(block)">
-                    <i :class="block.is_visible ? 'ri-eye-line' : 'ri-eye-off-line'" />
+                    <i aria-hidden="true" :class="block.is_visible ? 'ri-eye-line' : 'ri-eye-off-line'" />
                   </button>
                   <button class="tiny-action danger" type="button" :aria-label="deleteBlockLabel(block)" title="Удалить" @click.stop="deleteBlock(block.id)">
-                    <i class="ri-delete-bin-line" />
+                    <i aria-hidden="true" class="ri-delete-bin-line" />
                   </button>
                 </div>
               </div>
@@ -89,7 +93,7 @@
                   <div v-for="(group, index) in asGroups(previewConfig(block))" :key="`${group.title}-${index}`" class="links-group">
                     <p v-if="group.title" class="group-title">{{ group.title }}</p>
                     <a v-for="link in group.links" :key="`${link.label}-${link.url}`" class="link-row" :href="link.url || '#'" target="_blank" rel="noopener noreferrer" @click.prevent>
-                      <i :class="link.icon ? `ri-${link.icon}-fill` : 'ri-link'" />
+                      <i aria-hidden="true" :class="link.icon ? `ri-${link.icon}-fill` : 'ri-link'" />
                       <span>{{ link.label || link.url || 'Новая ссылка' }}</span>
                     </a>
                   </div>
@@ -219,7 +223,7 @@
         </ClientOnly>
 
         <button v-if="!blocks.length" class="empty-add" type="button" @click="panel = 'blocks'">
-          <i class="ri-add-circle-line" />
+          <i aria-hidden="true" class="ri-add-circle-line" />
           <span>Добавить первый блок</span>
         </button>
       </article>
@@ -229,11 +233,11 @@
       <div class="studio-preview-bar">
         <div class="studio-status" aria-label="Сводка профиля">
           <span class="status-pill" :class="{ published: profile.isPublished }">
-            <i :class="profile.isPublished ? 'ri-broadcast-line' : 'ri-draft-line'" />
+            <i aria-hidden="true" :class="profile.isPublished ? 'ri-broadcast-line' : 'ri-draft-line'" />
             {{ profile.isPublished ? 'Опубликован' : 'Черновик' }}
           </span>
           <span class="count-pill" title="Видимые блоки">
-            <i class="ri-stack-line" />
+            <i aria-hidden="true" class="ri-stack-line" />
             {{ visibleBlocksCount }} / {{ blocks.length }}
           </span>
           <span class="url-pill">{{ publicUrlLabel }}</span>
@@ -241,15 +245,15 @@
 
         <div class="studio-quick-actions">
           <button class="icon-action publish-action" type="button" :title="profile.isPublished ? 'Снять с публикации' : 'Опубликовать'" @click="toggleStatus">
-            <i :class="profile.isPublished ? 'ri-eye-off-line' : 'ri-rocket-line'" />
+            <i aria-hidden="true" :class="profile.isPublished ? 'ri-eye-off-line' : 'ri-rocket-line'" />
             <span>{{ profile.isPublished ? 'Снять' : 'Опубликовать' }}</span>
           </button>
           <a class="icon-action" :href="publicPath" target="_blank" rel="noopener noreferrer" title="Открыть профиль">
-            <i class="ri-external-link-line" />
+            <i aria-hidden="true" class="ri-external-link-line" />
             <span>Открыть</span>
           </a>
           <button class="icon-action" type="button" title="Скопировать ссылку" @click="copyLink">
-            <i class="ri-file-copy-line" />
+            <i aria-hidden="true" class="ri-file-copy-line" />
             <span>Копировать</span>
           </button>
         </div>
@@ -257,11 +261,11 @@
 
       <div class="inspector-tabs">
         <button class="inspector-tab" :class="{ active: panel === 'profile' && !editingBlockId }" type="button" @click="openPanel('profile')">
-          <i class="ri-user-settings-line" />
+          <i aria-hidden="true" class="ri-user-settings-line" />
           <span>Профиль</span>
         </button>
         <button class="inspector-tab" :class="{ active: panel === 'blocks' || Boolean(editingBlockId) }" type="button" @click="openPanel('blocks')">
-          <i class="ri-layout-grid-line" />
+          <i aria-hidden="true" class="ri-layout-grid-line" />
           <span>Блоки</span>
         </button>
       </div>
@@ -270,7 +274,7 @@
         <Transition name="inspector-pane" mode="out-in">
           <section v-if="panel === 'profile' && !editingBlockId" key="profile" class="inspector-section">
             <div class="section-head compact">
-              <span class="section-icon"><i class="ri-user-smile-line" /></span>
+              <span class="section-icon"><i aria-hidden="true" class="ri-user-smile-line" /></span>
               <div>
                 <h3>Профиль</h3>
               </div>
@@ -346,7 +350,7 @@
                 <small>{{ currentColorMode === 'dark' ? 'Глубокие поверхности и мягкий контраст.' : 'Чистые поверхности и спокойный контраст.' }}</small>
               </span>
               <span class="custom-switch" :class="{ active: currentColorMode === 'dark' }" aria-hidden="true">
-                <span><i :class="currentColorMode === 'dark' ? 'ri-moon-clear-line' : 'ri-sun-line'" /></span>
+                <span><i aria-hidden="true" :class="currentColorMode === 'dark' ? 'ri-moon-clear-line' : 'ri-sun-line'" /></span>
               </span>
             </button>
 
@@ -366,7 +370,7 @@
                   @click="setAccent(color.value)"
                 />
                 <label class="accent-dot custom" title="Свой цвет">
-                  <i class="ri-add-line" />
+                  <i aria-hidden="true" class="ri-add-line" />
                   <input type="color" :value="currentAccent" hidden @input="setAccent(($event.target as HTMLInputElement).value)">
                 </label>
               </div>
@@ -386,7 +390,7 @@
                   <small>{{ isMaterial3Wide ? 'Профиль раскрывается в две колонки.' : 'Классический вертикальный профиль.' }}</small>
                 </span>
                 <span class="custom-switch wide-switch" :class="{ active: isMaterial3Wide }" aria-hidden="true">
-                  <span><i :class="isMaterial3Wide ? 'ri-layout-column-line' : 'ri-smartphone-line'" /></span>
+                  <span><i aria-hidden="true" :class="isMaterial3Wide ? 'ri-layout-column-line' : 'ri-smartphone-line'" /></span>
                 </span>
               </button>
             </div>
@@ -394,7 +398,7 @@
 
           <section v-else-if="panel === 'blocks' && !editingBlockId" key="blocks" class="inspector-section">
             <div class="section-head compact">
-              <span class="section-icon"><i class="ri-stack-line" /></span>
+              <span class="section-icon"><i aria-hidden="true" class="ri-stack-line" /></span>
               <div>
                 <h3>Блоки</h3>
               </div>
@@ -433,19 +437,19 @@
                       @keydown.enter.prevent.stop="openBlockEditor(block)"
                       @keydown.space.prevent.stop="openBlockEditor(block)"
                     >
-                      <i class="ri-draggable" />
+                      <i aria-hidden="true" class="ri-draggable" />
                     </button>
                     <span class="mini-icon">
                       <FaceitLogo v-if="block.block_type === 'widget_faceit'" class="faceit-logo" />
-                      <i v-else :class="displayBlockIcon(block)" />
+                      <i aria-hidden="true" v-else :class="displayBlockIcon(block)" />
                     </span>
                     <span class="mini-label">{{ displayBlockLabel(block) }}</span>
                     <span class="mini-actions">
                       <button class="tiny-action" :class="{ active: block.is_visible }" type="button" :title="visibilityToggleLabel(block)" :aria-label="visibilityToggleLabel(block)" :aria-pressed="block.is_visible" @click.stop="toggleVisible(block)">
-                        <i :class="block.is_visible ? 'ri-eye-line' : 'ri-eye-off-line'" />
+                        <i aria-hidden="true" :class="block.is_visible ? 'ri-eye-line' : 'ri-eye-off-line'" />
                       </button>
                       <button class="tiny-action danger" type="button" :aria-label="deleteBlockLabel(block)" title="Удалить" @click.stop="deleteBlock(block.id)">
-                        <i class="ri-delete-bin-line" />
+                        <i aria-hidden="true" class="ri-delete-bin-line" />
                       </button>
                     </span>
                   </article>
@@ -462,7 +466,7 @@
               <button v-for="item in BLOCK_LIBRARY" :key="item.type" class="library-item" type="button" @click="addBlock(item.type)">
                 <span class="library-item-icon">
                   <FaceitLogo v-if="item.type === 'widget_faceit'" class="faceit-logo" />
-                  <i v-else :class="item.icon" />
+                  <i aria-hidden="true" v-else :class="item.icon" />
                 </span>
                 <span>
                   <strong>{{ item.label }}</strong>
@@ -475,11 +479,11 @@
           <section v-else-if="activeBlock" :key="`edit-${activeBlock.id}`" class="inspector-section">
             <div class="section-head">
               <button class="back-btn" type="button" title="Назад" @click="closeBlockEditor">
-                <i class="ri-arrow-left-line" />
+                <i aria-hidden="true" class="ri-arrow-left-line" />
               </button>
               <span class="section-icon">
                 <FaceitLogo v-if="activeBlock.block_type === 'widget_faceit'" class="faceit-logo" />
-                <i v-else :class="displayBlockIcon(activeBlock)" />
+                <i aria-hidden="true" v-else :class="displayBlockIcon(activeBlock)" />
               </span>
               <div>
                 <h3>{{ displayBlockLabel(activeBlock) }}</h3>
@@ -507,11 +511,11 @@
       <div v-if="gitProviderModalOpen" class="git-provider-overlay" @click.self="closeGitProviderModal">
         <section class="git-provider-modal" role="dialog" aria-modal="true" aria-labelledby="git-provider-title">
           <button class="git-provider-close" type="button" aria-label="Закрыть" @click="closeGitProviderModal">
-            <i class="ri-close-line" />
+            <i aria-hidden="true" class="ri-close-line" />
           </button>
 
           <div class="git-provider-head">
-            <span class="git-provider-head-icon"><i class="ri-git-branch-line" /></span>
+            <span class="git-provider-head-icon"><i aria-hidden="true" class="ri-git-branch-line" /></span>
             <h2 id="git-provider-title">Git</h2>
             <p>Выберите интеграцию для блока профиля.</p>
           </div>
@@ -525,9 +529,33 @@
               :disabled="gitBlockAdding"
               @click="createGitBlock(provider.value)"
             >
-              <span><i :class="provider.icon" /></span>
+              <span><i aria-hidden="true" :class="provider.icon" /></span>
               <strong>{{ provider.label }}</strong>
               <small>{{ provider.description }}</small>
+            </button>
+          </div>
+        </section>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <Teleport to="body">
+    <Transition name="git-provider-modal">
+      <div v-if="confirmDialog" class="git-provider-overlay" @click.self="resolveConfirm(false)">
+        <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
+          <div class="confirm-dialog-icon" :class="{ danger: confirmDialog.tone === 'danger' }">
+            <i aria-hidden="true" :class="confirmDialog.icon" />
+          </div>
+          <div class="confirm-dialog-copy">
+            <h2 id="confirm-dialog-title">{{ confirmDialog.title }}</h2>
+            <p>{{ confirmDialog.message }}</p>
+          </div>
+          <div class="confirm-dialog-actions">
+            <button class="ghost-btn" type="button" @click="resolveConfirm(false)">
+              {{ confirmDialog.cancelText }}
+            </button>
+            <button class="filled-btn" :class="{ danger: confirmDialog.tone === 'danger' }" type="button" @click="resolveConfirm(true)">
+              {{ confirmDialog.confirmText }}
             </button>
           </div>
         </section>
@@ -604,10 +632,21 @@ interface GitContributionDay {
 }
 
 type NoticeTone = 'success' | 'info' | 'error'
+type ConfirmTone = 'default' | 'danger'
 type Panel = 'profile' | 'blocks'
 type ThemeColorMode = 'light' | 'dark'
 type Material3Layout = 'compact' | 'wide'
 type GitProvider = 'github' | 'gitlab' | 'gitea'
+
+interface ConfirmDialogState {
+  title: string
+  message: string
+  confirmText: string
+  cancelText: string
+  icon: string
+  tone: ConfirmTone
+  resolve: (confirmed: boolean) => void
+}
 
 interface ProfileThemeTokens {
   colorMode?: ThemeColorMode
@@ -649,11 +688,24 @@ const GIT_PROVIDER_CHOICES: Array<{
     description: 'Репозитории и активность Gitea.',
   },
 ]
+const DUPLICATE_WARN_BLOCK_TYPES = new Set(['widget_steam', 'widget_faceit', 'widget_lastfm', 'widget_github'])
+const LIVE_PREVIEW_CONFIG_KEYS = [
+  'steam_profile',
+  'steam_recent_games',
+  'steam_profile_stats',
+  'steam_inventory_highlight',
+  'faceit_profile',
+  'git_profile',
+  'git_repository_stats',
+  'git_pinned_repositories',
+  'git_contributions',
+]
 
 const panel = ref<Panel>('profile')
 const editingBlockId = ref<string | null>(null)
 const gitProviderModalOpen = ref(false)
 const gitBlockAdding = ref(false)
+const confirmDialog = ref<ConfirmDialogState | null>(null)
 
 const avatarTimestamp = ref(Date.now())
 const avatarCropFile = ref<File | null>(null)
@@ -767,34 +819,72 @@ function blockHasChanges() {
   return JSON.stringify(blockDraft) !== JSON.stringify(activeBlock.value.config)
 }
 
-function confirmBlockSwitch() {
-  if (!editingBlockId.value || !blockHasChanges()) return true
-  return window.confirm('Есть несохраненные изменения в блоке. Закрыть редактор?')
+function requestConfirm(options: {
+  title: string
+  message: string
+  confirmText: string
+  cancelText?: string
+  icon?: string
+  tone?: ConfirmTone
+}): Promise<boolean> {
+  return new Promise((resolve) => {
+    confirmDialog.value = {
+      title: options.title,
+      message: options.message,
+      confirmText: options.confirmText,
+      cancelText: options.cancelText ?? 'Отмена',
+      icon: options.icon ?? 'ri-question-line',
+      tone: options.tone ?? 'default',
+      resolve,
+    }
+  })
 }
 
-function openPanel(next: Panel) {
-  if (!confirmBlockSwitch()) return
+function resolveConfirm(confirmed: boolean) {
+  const dialog = confirmDialog.value
+  if (!dialog) return
+  confirmDialog.value = null
+  dialog.resolve(confirmed)
+}
+
+async function confirmBlockSwitch() {
+  if (!editingBlockId.value || !blockHasChanges()) return true
+  return requestConfirm({
+    title: 'Закрыть редактор блока?',
+    message: 'Есть несохраненные изменения. Если закрыть редактор, они будут потеряны.',
+    confirmText: 'Закрыть',
+    icon: 'ri-error-warning-line',
+  })
+}
+
+async function openPanel(next: Panel) {
+  if (!await confirmBlockSwitch()) return
   editingBlockId.value = null
   panel.value = next
   if (next === 'profile') initProfileForm()
 }
 
-function openBlockEditor(block: Block) {
+async function openBlockEditor(block: Block) {
   if (editingBlockId.value === block.id) return
-  if (!confirmBlockSwitch()) return
+  if (!await confirmBlockSwitch()) return
   clearObject(blockDraft)
   Object.assign(blockDraft, cloneConfig(block.config))
   editingBlockId.value = block.id
   panel.value = 'blocks'
 }
 
-function closeBlockEditor() {
-  if (!confirmBlockSwitch()) return
+async function closeBlockEditor() {
+  if (!await confirmBlockSwitch()) return
   editingBlockId.value = null
 }
 
 function previewConfig(block: Block) {
-  return editingBlockId.value === block.id ? blockDraft : block.config
+  if (editingBlockId.value !== block.id) return block.config
+  const merged = { ...blockDraft }
+  for (const key of LIVE_PREVIEW_CONFIG_KEYS) {
+    if (key in block.config) merged[key] = block.config[key]
+  }
+  return merged
 }
 
 function asGroups(value: Record<string, unknown>): Group[] {
@@ -881,6 +971,11 @@ function gitProviderIcon(value: Record<string, unknown>): string {
 
 function gitProviderChoiceLabel(provider: GitProvider): string {
   return GIT_PROVIDER_CHOICES.find(item => item.value === provider)?.label ?? 'Git'
+}
+
+function blockGitProvider(block: Block): GitProvider {
+  const provider = String(block.config.provider || block.config.git_provider || 'github')
+  return ['github', 'gitlab', 'gitea'].includes(provider) ? provider as GitProvider : 'github'
 }
 
 function displayBlockLabel(block: Block): string {
@@ -1040,6 +1135,16 @@ async function addBlock(type: string) {
     return
   }
 
+  if (DUPLICATE_WARN_BLOCK_TYPES.has(type) && profile.profile?.blocks.some(block => block.block_type === type)) {
+    const confirmed = await requestConfirm({
+      title: 'Добавить второй блок?',
+      message: `В профиле уже есть блок "${blockLabel(type)}". Повтор может выглядеть как дубль на публичной странице.`,
+      confirmText: 'Добавить',
+      icon: 'ri-file-copy-line',
+    })
+    if (!confirmed) return
+  }
+
   try {
     const block = await profile.createBlock(type, createDefaultBlockConfig(type))
     clearObject(blockDraft)
@@ -1058,6 +1163,19 @@ function closeGitProviderModal() {
 }
 
 async function createGitBlock(provider: GitProvider) {
+  if (profile.profile?.blocks.some(block => block.block_type === 'widget_github' && blockGitProvider(block) === provider)) {
+    const confirmed = await requestConfirm({
+      title: 'Добавить второй Git-блок?',
+      message: `В профиле уже есть блок "${gitProviderChoiceLabel(provider)}". Повтор может выглядеть как дубль на публичной странице.`,
+      confirmText: 'Добавить',
+      icon: 'ri-file-copy-line',
+    })
+    if (!confirmed) {
+      gitProviderModalOpen.value = false
+      return
+    }
+  }
+
   gitBlockAdding.value = true
   try {
     const blockConfig = {
@@ -1079,7 +1197,14 @@ async function createGitBlock(provider: GitProvider) {
 }
 
 async function deleteBlock(id: string) {
-  if (!window.confirm('Удалить этот блок?')) return
+  const confirmed = await requestConfirm({
+    title: 'Удалить блок?',
+    message: 'Блок пропадет из редактора и публичного профиля. Это действие нельзя отменить.',
+    confirmText: 'Удалить',
+    icon: 'ri-delete-bin-line',
+    tone: 'danger',
+  })
+  if (!confirmed) return
   try {
     if (editingBlockId.value === id) editingBlockId.value = null
     await profile.deleteBlock(id)
@@ -1347,6 +1472,13 @@ async function onAvatarCropSave(blob: Blob) {
   --card-bg: linear-gradient(145deg, color-mix(in srgb, var(--profile-accent) 24%, #111827), #11151E 62%, #171A22);
 }
 
+.public-card.theme-material3 .public-avatar {
+  width: 82px;
+  height: 82px;
+  border-radius: 28px 28px 22px 28px;
+  font-size: 30px;
+}
+
 .public-card.theme-glass {
   --card-bg: linear-gradient(145deg, rgba(25, 31, 42, 0.86), rgba(13, 18, 28, 0.94));
   --card-panel: rgba(255, 255, 255, 0.1);
@@ -1381,6 +1513,10 @@ async function onAvatarCropSave(blob: Blob) {
 
 .public-card[data-color-mode="light"] .bio {
   color: #49454f;
+}
+
+.public-card[data-color-mode="light"] .preview-note {
+  color: #625b71;
 }
 
 .public-card[data-color-mode="light"] .tag-row span,
@@ -1535,6 +1671,22 @@ async function onAvatarCropSave(blob: Blob) {
   color: rgba(248, 250, 252, 0.82);
   font-size: 12px;
   font-weight: 800;
+}
+
+.public-card.theme-material3 .tag-row span {
+  min-height: 30px;
+  padding: 0 12px;
+  border-color: rgba(73, 69, 79, 0.10);
+  background: color-mix(in srgb, var(--profile-accent) 18%, #ffffff);
+  color: color-mix(in srgb, var(--profile-accent) 64%, #1d1b20);
+}
+
+.preview-note {
+  margin: -4px 4px 0;
+  color: var(--card-muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .public-blocks {
@@ -2361,6 +2513,66 @@ async function onAvatarCropSave(blob: Blob) {
   box-shadow: 0 24px 70px color-mix(in srgb, #05070c 32%, transparent);
 }
 
+.confirm-dialog {
+  width: min(100%, 440px);
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid color-mix(in srgb, var(--outline, #d4dbe8) 64%, transparent);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--surface, #fff) 96%, transparent);
+  box-shadow: 0 24px 70px color-mix(in srgb, #05070c 32%, transparent);
+}
+
+.confirm-dialog-icon {
+  width: 52px;
+  height: 52px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 20px;
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
+  font-size: 26px;
+}
+
+.confirm-dialog-icon.danger {
+  background: color-mix(in srgb, #dc2626 14%, var(--surface-low, #F2F4F8));
+  color: #b91c1c;
+}
+
+.confirm-dialog-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.confirm-dialog-copy h2,
+.confirm-dialog-copy p {
+  margin: 0;
+}
+
+.confirm-dialog-copy h2 {
+  color: var(--text-1, #10182b);
+  font-size: 24px;
+  line-height: 1.12;
+}
+
+.confirm-dialog-copy p {
+  color: var(--text-2, #475778);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.filled-btn.danger {
+  background: #dc2626;
+  color: #fff;
+}
+
 .git-provider-close {
   position: absolute;
   top: 12px;
@@ -2493,6 +2705,16 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 @media (max-width: 640px) {
+  .confirm-dialog {
+    padding: 22px 18px;
+    border-radius: 24px;
+  }
+
+  .confirm-dialog-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
   .git-provider-modal {
     padding: 24px 18px;
     border-radius: 24px;
@@ -2593,6 +2815,13 @@ async function onAvatarCropSave(blob: Blob) {
     width: 84px;
     height: 84px;
     font-size: 32px;
+  }
+
+  .public-card.theme-material3 .public-avatar {
+    width: 68px;
+    height: 68px;
+    border-radius: 24px 24px 18px 24px;
+    font-size: 25px;
   }
 
   .public-copy h2 {

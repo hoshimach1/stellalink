@@ -33,14 +33,14 @@
           <span class="service-icon">
             <FaceitLogo v-if="service.type === 'widget_faceit'" class="faceit-logo" />
             <GiteaLogo v-else-if="service.type === 'code_gitea'" class="gitea-logo" />
-            <i v-else :class="service.icon" />
+            <i aria-hidden="true" v-else :class="service.icon" />
           </span>
 
           <div class="service-copy">
             <div class="service-title-row">
               <h3>{{ service.label }}</h3>
-              <span class="service-status" :class="{ connected: service.connected, available: service.canConnect }">
-                <i :class="service.statusIcon" />
+              <span class="service-status" :class="service.statusTone">
+                <i aria-hidden="true" :class="service.statusIcon" />
                 {{ service.statusLabel }}
               </span>
             </div>
@@ -52,7 +52,7 @@
           <div v-if="service.type === 'widget_steam'" class="steam-connect">
             <button v-if="!steamAccount" class="steam-login" type="button" :disabled="steamOauthBusy" @click="startSteamLogin">
               <span v-if="steamOauthBusy" class="integration-spinner" />
-              <i v-else class="ri-steam-fill" />
+              <i aria-hidden="true" v-else class="ri-steam-fill" />
               <span>Войти через Steam</span>
             </button>
 
@@ -60,12 +60,12 @@
               <button class="service-action primary" type="button" :disabled="steamBusy" @click="syncSteamConnection">
                 <span v-if="steamBusy" class="integration-spinner" />
                 <template v-else>
-                  <i class="ri-refresh-line" />
+                  <i aria-hidden="true" class="ri-refresh-line" />
                   <span>Синхронизировать</span>
                 </template>
               </button>
               <button class="service-action danger" type="button" :disabled="steamBusy" @click="disconnectSteamConnection">
-                <i class="ri-link-unlink-m" />
+                <i aria-hidden="true" class="ri-link-unlink-m" />
                 <span>Отключить</span>
               </button>
             </div>
@@ -89,12 +89,12 @@
                 <button class="service-action primary" type="button" :disabled="codeBusy === `${service.provider}:sync`" @click="syncCodeProvider(service.provider)">
                   <span v-if="codeBusy === `${service.provider}:sync`" class="integration-spinner" />
                   <template v-else>
-                    <i class="ri-refresh-line" />
+                    <i aria-hidden="true" class="ri-refresh-line" />
                     <span>Синхронизировать</span>
                   </template>
                 </button>
                 <button class="service-action danger" type="button" :disabled="codeBusy === `${service.provider}:disconnect`" @click="disconnectCodeProvider(service.provider)">
-                  <i class="ri-link-unlink-m" />
+                  <i aria-hidden="true" class="ri-link-unlink-m" />
                   <span>Отключить</span>
                 </button>
               </div>
@@ -109,7 +109,7 @@
             >
               <span v-if="codeBusy === `${service.provider}:connect`" class="integration-spinner" />
               <template v-else>
-                <i class="ri-link-m" />
+                <i aria-hidden="true" class="ri-link-m" />
                 <span>Подключить</span>
               </template>
             </button>
@@ -124,7 +124,7 @@
             @click="connectService(service.type)"
           >
             <span v-if="connectingType === service.type" class="integration-spinner" />
-            <i v-else :class="service.actionIcon" />
+            <i aria-hidden="true" v-else :class="service.actionIcon" />
             <span>{{ service.actionLabel }}</span>
           </button>
         </div>
@@ -136,13 +136,13 @@
         <div v-if="codeProviderModal.provider && activeCodeProvider" class="integration-modal-overlay" @click.self="closeCodeProviderModal">
           <section class="integration-modal" role="dialog" aria-modal="true" :aria-labelledby="`code-provider-title-${activeCodeProvider.provider}`">
             <button class="integration-modal-close" type="button" aria-label="Закрыть" @click="closeCodeProviderModal">
-              <i class="ri-close-line" />
+              <i aria-hidden="true" class="ri-close-line" />
             </button>
 
             <div class="integration-modal-head">
               <span class="integration-modal-icon">
                 <GiteaLogo v-if="activeCodeProvider.provider === 'gitea'" class="gitea-logo" />
-                <i v-else :class="activeCodeProvider.icon" />
+                <i aria-hidden="true" v-else :class="activeCodeProvider.icon" />
               </span>
               <h2 :id="`code-provider-title-${activeCodeProvider.provider}`">
                 {{ codeProviderModal.step === 'choice' ? activeCodeProvider.label : 'Через token' }}
@@ -160,12 +160,12 @@
                 <span v-if="codeBusy === `${activeCodeProvider.provider}:connect`" class="integration-spinner dark" />
                 <template v-else>
                   <span>Авторизоваться {{ activeCodeProvider.label }}</span>
-                  <i :class="activeCodeProvider.provider === 'gitea' ? 'ri-login-circle-line' : activeCodeProvider.icon" />
+                  <i aria-hidden="true" :class="activeCodeProvider.provider === 'gitea' ? 'ri-login-circle-line' : activeCodeProvider.icon" />
                 </template>
               </button>
 
               <button class="modal-auth-button secondary" type="button" @click="showCodeProviderTokenServer(activeCodeProvider.provider)">
-                <i class="ri-key-2-line" />
+                <i aria-hidden="true" class="ri-key-2-line" />
                 <span>Привязать через token</span>
               </button>
 
@@ -191,7 +191,7 @@
                 :disabled="!codeProviderBaseInput(activeCodeProvider.provider)"
                 @click="openTokenCreateUrl(activeCodeProvider.provider)"
               >
-                <i class="ri-external-link-line" />
+                <i aria-hidden="true" class="ri-external-link-line" />
                 <span>Создать token</span>
               </button>
             </div>
@@ -210,14 +210,14 @@
               >
                 <span v-if="codeBusy === `${activeCodeProvider.provider}:connect`" class="integration-spinner dark" />
                 <template v-else>
-                  <i class="ri-link-m" />
+                  <i aria-hidden="true" class="ri-link-m" />
                   <span>Привязать</span>
                 </template>
               </button>
             </div>
 
             <button v-if="codeProviderModal.step !== 'choice'" class="integration-modal-back" type="button" @click="codeProviderModal.step = 'choice'">
-              <i class="ri-arrow-left-line" />
+              <i aria-hidden="true" class="ri-arrow-left-line" />
               <span>Назад</span>
             </button>
           </section>
@@ -366,6 +366,7 @@ const serviceCards = computed(() => {
         description: descriptions[type] ?? item.description,
         statusIcon: connected ? 'ri-checkbox-circle-line' : type === 'widget_faceit' ? 'ri-link-m' : 'ri-add-circle-line',
         statusLabel: connected ? (type === 'widget_faceit' ? 'Через Steam' : 'Подключён') : type === 'widget_faceit' ? 'Автопоиск' : 'Доступно',
+        statusTone: connected ? (type === 'widget_faceit' ? 'derived' : 'connected') : connectableTypes.has(type) ? 'available' : 'default',
       }
     })
   const codeCards = codeProviderDefinitions.map((item) => {
@@ -378,6 +379,7 @@ const serviceCards = computed(() => {
       connected,
       statusIcon: connected ? 'ri-checkbox-circle-line' : 'ri-key-2-line',
       statusLabel: connected ? 'Подключён' : 'Token / OAuth',
+      statusTone: connected ? 'connected' : 'available',
     }
   })
   const byType = new Map([...baseCards, ...codeCards].map(card => [card.type, card]))
@@ -985,6 +987,11 @@ async function connectService(type: IntegrationType) {
 }
 
 .service-status.available {
+  background: color-mix(in srgb, var(--primary, #345EA8) 12%, var(--surface-low, #F2F4F8));
+  color: var(--on-primary-container, #163E86);
+}
+
+.service-status.derived {
   background: color-mix(in srgb, var(--primary, #345EA8) 12%, var(--surface-low, #F2F4F8));
   color: var(--on-primary-container, #163E86);
 }

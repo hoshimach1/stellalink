@@ -8,19 +8,19 @@
 
       <nav class="dash-tabs" aria-label="Разделы dashboard">
         <button class="dash-tab" :class="{ active: tab === 'profile' }" type="button" @click="switchTab('profile')">
-          <i class="ri-layout-masonry-line" />
+          <i aria-hidden="true" class="ri-layout-masonry-line" />
           <span>Профиль</span>
         </button>
         <button class="dash-tab" :class="{ active: tab === 'account' }" type="button" @click="switchTab('account')">
-          <i class="ri-shield-user-line" />
+          <i aria-hidden="true" class="ri-shield-user-line" />
           <span>Аккаунт</span>
         </button>
         <button class="dash-tab" :class="{ active: tab === 'integrations' }" type="button" @click="switchTab('integrations')">
-          <i class="ri-plug-line" />
+          <i aria-hidden="true" class="ri-plug-line" />
           <span>Сервисы</span>
         </button>
         <button v-if="auth.user?.is_admin" class="dash-tab" :class="{ active: tab === 'admin' }" type="button" @click="switchTab('admin')">
-          <i class="ri-settings-4-line" />
+          <i aria-hidden="true" class="ri-settings-4-line" />
           <span>Админка</span>
         </button>
       </nav>
@@ -34,7 +34,7 @@
           rel="noopener noreferrer"
           title="Открыть публичную страницу"
         >
-          <i class="ri-external-link-line" />
+          <i aria-hidden="true" class="ri-external-link-line" />
           <span>Открыть</span>
         </a>
         <button class="dash-user" type="button" @click="switchTab('account')">
@@ -48,7 +48,7 @@
           </span>
         </button>
         <button class="dash-action dash-logout" type="button" aria-label="Выйти" title="Выйти" @click="logout">
-          <i class="ri-logout-box-r-line" />
+          <i aria-hidden="true" class="ri-logout-box-r-line" />
         </button>
       </div>
     </header>
@@ -58,7 +58,7 @@
         <section v-if="auth.user && !auth.user.email_verified && showEmailNotice" class="dash-mail" aria-live="polite">
           <span class="dash-mail-timer" aria-hidden="true" />
           <div class="dash-mail-icon">
-            <i class="ri-mail-check-line" />
+            <i aria-hidden="true" class="ri-mail-check-line" />
           </div>
           <div class="dash-mail-copy">
             <strong>Email не подтвержден</strong>
@@ -69,7 +69,7 @@
             <span v-else>Отправить</span>
           </button>
           <button class="dash-mail-close" type="button" aria-label="Скрыть" @click="dismissEmailNotice">
-            <i class="ri-close-line" />
+            <i aria-hidden="true" class="ri-close-line" />
           </button>
         </section>
       </Transition>

@@ -1,5 +1,7 @@
 <template>
-  <CropAvatarModal :file="cropFile" :saving="avatarLoading" @save="onCropSave" @cancel="cropFile = null" />
+  <ClientOnly>
+    <CropAvatarModal :file="cropFile" :saving="avatarLoading" @save="onCropSave" @cancel="cropFile = null" />
+  </ClientOnly>
 
   <div class="account-shell">
     <section class="account-layout">
@@ -11,7 +13,7 @@
               <span v-else>{{ userInitial }}</span>
               <label class="avatar-camera" :class="{ loading: avatarLoading }" title="Обновить аватар">
                 <span v-if="avatarLoading" class="account-spinner dark" />
-                <i v-else class="ri-camera-line" />
+                <i aria-hidden="true" v-else class="ri-camera-line" />
                 <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden @change="onAvatarFile">
               </label>
             </div>
@@ -19,7 +21,7 @@
               <strong>{{ profile.profile?.display_name || auth.user?.email || 'Stellalink' }}</strong>
               <span>{{ auth.user?.email ?? 'Email не указан' }}</span>
               <NuxtLink v-if="profile.profile" class="account-link" :to="`/${profile.profile.slug}`">
-                <i class="ri-external-link-line" />
+                <i aria-hidden="true" class="ri-external-link-line" />
                 <span>{{ requestHost }}/{{ profile.profile.slug }}</span>
               </NuxtLink>
             </div>
@@ -27,11 +29,11 @@
 
           <div class="account-status-row">
             <span class="account-chip" :class="{ ok: auth.user?.email_verified }">
-              <i :class="auth.user?.email_verified ? 'ri-shield-check-line' : 'ri-mail-warning-line'" />
+              <i aria-hidden="true" :class="auth.user?.email_verified ? 'ri-shield-check-line' : 'ri-mail-warning-line'" />
               {{ auth.user?.email_verified ? 'Email подтвержден' : 'Нужно подтвердить email' }}
             </span>
             <span v-if="createdLabel" class="account-chip">
-              <i class="ri-calendar-line" />
+              <i aria-hidden="true" class="ri-calendar-line" />
               С {{ createdLabel }}
             </span>
           </div>
@@ -85,7 +87,7 @@
               :aria-label="emailStatusTooltip"
               :data-tooltip="emailStatusTooltip"
             >
-              <i :class="auth.user?.email_verified ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'" />
+              <i aria-hidden="true" :class="auth.user?.email_verified ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'" />
               <span>{{ emailStatusLabel }}</span>
             </span>
           </div>
@@ -113,7 +115,7 @@
           <button v-if="!auth.user?.email_verified" class="outline-btn" type="button" :disabled="verifyLoading" @click="sendVerification">
             <span v-if="verifyLoading" class="account-spinner dark" />
             <template v-else>
-              <i class="ri-send-plane-line" />
+              <i aria-hidden="true" class="ri-send-plane-line" />
               <span>Отправить письмо</span>
             </template>
           </button>
@@ -126,7 +128,7 @@
               <h3>Пароль</h3>
               <p>Минимум 8 символов, буква и цифра.</p>
             </div>
-            <span class="mini-icon"><i class="ri-lock-password-line" /></span>
+            <span class="mini-icon"><i aria-hidden="true" class="ri-lock-password-line" /></span>
           </div>
 
           <form class="account-form" @submit.prevent="changePassword">
@@ -207,7 +209,7 @@ const identityHasChanges = computed(() => {
     || normalizeSlug(editSlug.value) !== profile.profile.slug
 })
 
-const editEmail = ref(auth.user?.email ?? '')
+const editEmail = ref('')
 const emailPassword = ref('')
 const emailLoading = ref(false)
 
@@ -225,8 +227,8 @@ const canSubmitEmail = computed(() =>
     && editEmail.value.trim().length > 0,
 )
 
-watch(() => auth.user?.email, (email) => {
-  editEmail.value = email ?? ''
+watch(() => auth.user?.email, () => {
+  editEmail.value = ''
   emailPassword.value = ''
 })
 
@@ -327,6 +329,7 @@ async function changeEmail() {
   emailLoading.value = true
   try {
     await auth.changeEmail(editEmail.value, emailPassword.value)
+    editEmail.value = ''
     emailPassword.value = ''
     pushToast('Email обновлен. Мы отправили письмо для подтверждения нового адреса.', 'success')
   } catch (error) {
@@ -922,6 +925,20 @@ async function changePassword() {
   .form-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .slug-field {
+    display: grid;
+    gap: 4px;
+    min-height: 58px;
+    padding: 8px 12px;
+  }
+
+  .slug-field span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .filled-btn,
