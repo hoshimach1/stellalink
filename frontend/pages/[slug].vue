@@ -984,6 +984,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthStore } from '~/stores/auth'
 import type { Block } from '~/stores/profile'
 
 
@@ -1102,8 +1103,11 @@ const emit = defineEmits<{
 definePageMeta({ layout: 'landing' })
 
 const route = useRoute()
+const auth = useAuthStore()
 const config = useRuntimeConfig()
 const requestUrl = useRequestURL()
+const SPOTIFY_POLL_INTERVAL_MS = 10000
+const SPOTIFY_PROGRESS_INTERVAL_MS = 1000
 const slug = computed(() => {
   const routeSlug = route.params.slug
   if (typeof routeSlug === 'string') return routeSlug
@@ -1125,13 +1129,17 @@ if (!props.profileOverride) {
   pending = response.pending
 }
 
-const profile = computed(() => props.profileOverride ?? fetchedProfile.value)
-const hasPublicSpotifyBlock = computed(() =>
-  !props.embedded
-  && Boolean(profile.value?.blocks.some(block => block.is_visible && block.block_type === 'widget_spotify')),
+const spotifyRealtimePayload = ref<Record<string, any> | null>(null)
+const spotifyClock = ref(Date.now())
+const baseProfile = computed(() => props.profileOverride ?? fetchedProfile.value)
+const profile = computed(() => withSpotifyRealtime(baseProfile.value, spotifyRealtimePayload.value))
+const hasSpotifyRealtimeBlock = computed(() =>
+  Boolean(profile.value?.blocks.some(block => block.is_visible && block.block_type === 'widget_spotify')),
 )
 
 let spotifyPollTimer: ReturnType<typeof setInterval> | null = null
+let spotifyProgressTimer: ReturnType<typeof setInterval> | null = null
+let spotifyRequestInFlight = false
 
 const avatarSrc = computed(() =>
   props.avatarSrcOverride ?? (profile.value?.avatar_url
@@ -1220,6 +1228,32 @@ function onEditorBlockKeydown(event: KeyboardEvent, block: Block) {
   requestBlockEdit(block, event)
 }
 
+function withSpotifyRealtime(
+  source: PublicProfileData | null,
+  payload: Record<string, any> | null,
+): PublicProfileData | null {
+  if (!source || !payload) return source
+  return {
+    ...source,
+    blocks: source.blocks.map((block) => {
+      if (block.block_type !== 'widget_spotify') return block
+      return {
+        ...block,
+        config: {
+          ...block.config,
+          spotify_playback: payload.playback,
+          spotify_recent_tracks: payload.recent_tracks ?? block.config.spotify_recent_tracks ?? [],
+          spotify_top_tracks: payload.top_tracks ?? block.config.spotify_top_tracks ?? [],
+          spotify_top_artists: payload.top_artists ?? block.config.spotify_top_artists ?? [],
+          spotify_stats: payload.stats ?? block.config.spotify_stats ?? {},
+          spotify_sync_error: payload.sync_error ?? null,
+          spotify_last_synced_at: payload.last_synced_at ?? block.config.spotify_last_synced_at ?? null,
+        },
+      }
+    }),
+  }
+}
+
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const normalized = hex.trim().replace('#', '')
   if (!/^[0-9a-f]{6}$/i.test(normalized)) return null
@@ -1298,70 +1332,83 @@ function scheduleLiquidGlass() {
 }
 
 function applySpotifyRealtime(payload: Record<string, any>) {
-  const target = fetchedProfile.value
-  if (!target) return
-  fetchedProfile.value = {
-    ...target,
-    blocks: target.blocks.map((block) => {
-      if (block.block_type !== 'widget_spotify') return block
-      return {
-        ...block,
-        config: {
-          ...block.config,
-          spotify_playback: payload.playback,
-          spotify_recent_tracks: payload.recent_tracks ?? block.config.spotify_recent_tracks ?? [],
-          spotify_top_tracks: payload.top_tracks ?? block.config.spotify_top_tracks ?? [],
-          spotify_top_artists: payload.top_artists ?? block.config.spotify_top_artists ?? [],
-          spotify_stats: payload.stats ?? block.config.spotify_stats ?? {},
-          spotify_sync_error: payload.sync_error ?? null,
-          spotify_last_synced_at: payload.last_synced_at ?? block.config.spotify_last_synced_at ?? null,
-        },
-      }
-    }),
-  }
+  spotifyRealtimePayload.value = payload
+  spotifyClock.value = Date.now()
 }
 
 async function refreshSpotifyRealtime() {
-  if (!hasPublicSpotifyBlock.value || !slug.value) return
+  if (!hasSpotifyRealtimeBlock.value || spotifyRequestInFlight) return
+  if (!props.embedded && !slug.value) return
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+
+  spotifyRequestInFlight = true
   try {
-    const payload = await $fetch<Record<string, any>>(
-      `${config.public.apiBase}/integrations/spotify/public/${encodeURIComponent(slug.value)}/playback`,
-    )
+    const payload = props.embedded
+      ? await auth.authorizedFetch<Record<string, any>>(
+          `${config.public.apiBase}/integrations/spotify/playback?ts=${Date.now()}`,
+        )
+      : await $fetch<Record<string, any>>(
+          `${config.public.apiBase}/integrations/spotify/public/${encodeURIComponent(slug.value)}/playback?ts=${Date.now()}`,
+        )
     applySpotifyRealtime(payload)
   } catch {
     // Public profiles should keep rendering the last synced Spotify snapshot.
+  } finally {
+    spotifyRequestInFlight = false
   }
 }
 
+function startSpotifyProgressClock() {
+  if (typeof window === 'undefined' || spotifyProgressTimer) return
+  spotifyProgressTimer = window.setInterval(() => {
+    spotifyClock.value = Date.now()
+  }, SPOTIFY_PROGRESS_INTERVAL_MS)
+}
+
 function startSpotifyPolling() {
-  if (typeof window === 'undefined' || !hasPublicSpotifyBlock.value || spotifyPollTimer) return
+  if (typeof window === 'undefined' || !hasSpotifyRealtimeBlock.value) return
+  startSpotifyProgressClock()
+  if (spotifyPollTimer) return
   void refreshSpotifyRealtime()
   spotifyPollTimer = window.setInterval(() => {
     void refreshSpotifyRealtime()
-  }, 30000)
+  }, SPOTIFY_POLL_INTERVAL_MS)
 }
 
 function stopSpotifyPolling() {
-  if (typeof window === 'undefined' || !spotifyPollTimer) return
-  window.clearInterval(spotifyPollTimer)
-  spotifyPollTimer = null
+  if (typeof window === 'undefined') return
+  if (spotifyPollTimer) {
+    window.clearInterval(spotifyPollTimer)
+    spotifyPollTimer = null
+  }
+  if (spotifyProgressTimer) {
+    window.clearInterval(spotifyProgressTimer)
+    spotifyProgressTimer = null
+  }
+}
+
+function onSpotifyVisibilityChange() {
+  if (typeof document === 'undefined') return
+  if (document.visibilityState === 'visible') void refreshSpotifyRealtime()
 }
 
 onMounted(() => {
   nextTick(() => setTimeout(applyLiquidGlass, 200))
   window.addEventListener('resize', scheduleLiquidGlass, { passive: true })
+  document.addEventListener('visibilitychange', onSpotifyVisibilityChange)
   startSpotifyPolling()
 })
 
 onBeforeUnmount(() => {
   if (typeof window === 'undefined') return
   window.removeEventListener('resize', scheduleLiquidGlass)
+  document.removeEventListener('visibilitychange', onSpotifyVisibilityChange)
   if (glassResizeTimeout) window.clearTimeout(glassResizeTimeout)
   stopSpotifyPolling()
 })
 
 watch(theme, () => { glassApplied = false; nextTick(() => setTimeout(applyLiquidGlass, 200)) })
-watch(hasPublicSpotifyBlock, (enabled) => {
+watch(hasSpotifyRealtimeBlock, (enabled) => {
   if (enabled) startSpotifyPolling()
   else stopSpotifyPolling()
 })
@@ -1536,7 +1583,19 @@ function spotifyCurrentUrl(block: Block): string {
 }
 
 function spotifyProgress(block: Block): number {
-  const value = Number(spotifyPlayback(block)?.progress_percent || 0)
+  const playback = spotifyPlayback(block)
+  const track = playback?.track
+  const durationMs = Number(track?.duration_ms || 0)
+  const baseProgressMs = Number(playback?.progress_ms ?? track?.progress_ms ?? 0)
+  if (playback?.is_playing && durationMs > 0 && Number.isFinite(baseProgressMs)) {
+    const checkedAt = Date.parse(String(playback.checked_at || ''))
+    const elapsedMs = Number.isFinite(checkedAt) ? Math.max(0, spotifyClock.value - checkedAt) : 0
+    return Math.max(0, Math.min(100, ((baseProgressMs + elapsedMs) / durationMs) * 100))
+  }
+  if (durationMs > 0 && Number.isFinite(baseProgressMs)) {
+    return Math.max(0, Math.min(100, (baseProgressMs / durationMs) * 100))
+  }
+  const value = Number(playback?.progress_percent ?? track?.progress_percent ?? 0)
   return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0
 }
 

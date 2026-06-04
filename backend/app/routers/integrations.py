@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -158,9 +158,11 @@ async def sync_spotify(
 
 @router.get("/spotify/playback")
 async def read_spotify_playback(
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    response.headers["Cache-Control"] = "no-store"
     account = await get_connected_account(db, current_user.id, "spotify")
     if not account:
         raise HTTPException(status_code=404, detail="Spotify account is not connected.")
@@ -168,7 +170,10 @@ async def read_spotify_playback(
 
 
 @router.get("/spotify/public/{slug}/playback")
-async def read_public_spotify_playback(slug: str, db: AsyncSession = Depends(get_db)):
+async def read_public_spotify_playback(
+    slug: str, response: Response, db: AsyncSession = Depends(get_db)
+):
+    response.headers["Cache-Control"] = "no-store"
     profile = await profile_svc.get_profile_by_slug(db, slug)
     if not profile or profile.status == "draft" or not profile.user:
         raise HTTPException(status_code=404, detail="Profile not found")
