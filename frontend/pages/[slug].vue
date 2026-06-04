@@ -794,16 +794,7 @@ interface ProfileThemeTokens {
   [key: string]: unknown
 }
 
-definePageMeta({ layout: 'landing' })
-
-const route = useRoute()
-const config = useRuntimeConfig()
-const requestUrl = useRequestURL()
-const slug = route.params.slug as string
-
-const mock = useProfileMockData()
-
-const { data: profile, pending } = await useFetch<{
+interface PublicProfileData {
   id: string
   slug: string
   status: string
@@ -815,19 +806,54 @@ const { data: profile, pending } = await useFetch<{
   theme_preset: string | null
   theme_tokens: Record<string, unknown> | null
   accent_color: string | null
-} | null>(`${config.public.apiBase}/u/${slug}`, {
-  default: () => null,
-  onResponseError() { return null },
+}
+
+const props = withDefaults(defineProps<{
+  profileOverride?: PublicProfileData | null
+  avatarSrcOverride?: string | null
+  embedded?: boolean
+}>(), {
+  profileOverride: null,
+  avatarSrcOverride: null,
+  embedded: false,
 })
 
+definePageMeta({ layout: 'landing' })
+
+const route = useRoute()
+const config = useRuntimeConfig()
+const requestUrl = useRequestURL()
+const slug = computed(() => {
+  const routeSlug = route.params.slug
+  if (typeof routeSlug === 'string') return routeSlug
+  if (Array.isArray(routeSlug)) return routeSlug.join('/')
+  return props.profileOverride?.slug ?? ''
+})
+
+const mock = useProfileMockData()
+
+let fetchedProfile = ref<PublicProfileData | null>(null)
+let pending = ref(false)
+
+if (!props.profileOverride) {
+  const response = await useFetch<PublicProfileData | null>(`${config.public.apiBase}/u/${slug.value}`, {
+    default: () => null,
+    onResponseError() { return null },
+  })
+  fetchedProfile = response.data
+  pending = response.pending
+}
+
+const profile = computed(() => props.profileOverride ?? fetchedProfile.value)
+
 const avatarSrc = computed(() =>
-  profile.value?.avatar_url
+  props.avatarSrcOverride ?? (profile.value?.avatar_url
     ? resolveAvatarUrl(profile.value.avatar_url, config.public.apiBase as string)
-    : null
+    : null)
 )
 const pageTitle = computed(() => {
   const name = profile.value?.display_name
-  return name ? `${name} — Stellalink` : `${slug} — Stellalink`
+  return name ? `${name} — Stellalink` : `${slug.value} — Stellalink`
 })
 const seoDescription = computed(() =>
   profile.value?.bio || 'Живой профиль Stellalink в одном URL',
@@ -837,18 +863,20 @@ const seoImage = computed(() => {
   return new URL(image, requestUrl.origin).toString()
 })
 
-useSeoMeta({
-  title: () => pageTitle.value,
-  description: () => seoDescription.value,
-  ogTitle: () => pageTitle.value,
-  ogDescription: () => seoDescription.value,
-  ogImage: () => seoImage.value,
-  ogUrl: () => new URL(route.fullPath, requestUrl.origin).toString(),
-  twitterCard: 'summary_large_image',
-  twitterTitle: () => pageTitle.value,
-  twitterDescription: () => seoDescription.value,
-  twitterImage: () => seoImage.value,
-})
+if (!props.embedded) {
+  useSeoMeta({
+    title: () => pageTitle.value,
+    description: () => seoDescription.value,
+    ogTitle: () => pageTitle.value,
+    ogDescription: () => seoDescription.value,
+    ogImage: () => seoImage.value,
+    ogUrl: () => new URL(route.fullPath, requestUrl.origin).toString(),
+    twitterCard: 'summary_large_image',
+    twitterTitle: () => pageTitle.value,
+    twitterDescription: () => seoDescription.value,
+    twitterImage: () => seoImage.value,
+  })
+}
 
 const theme = computed(() => profile.value?.theme_preset || 'material3')
 const themeTokens = computed<ProfileThemeTokens>(() => {

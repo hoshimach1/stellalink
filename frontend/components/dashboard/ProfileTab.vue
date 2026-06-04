@@ -10,232 +10,14 @@
 
   <div v-if="profile.profile" class="studio-shell">
     <section class="studio-preview-pane" aria-label="Живое превью профиля">
-      <div v-if="profile.isPublished" class="exact-preview-shell">
-        <iframe
-          :key="publicPreviewKey"
-          class="exact-preview-frame"
-          :src="publicPath"
-          title="Точный публичный вид профиля"
+      <Suspense>
+        <PublicProfilePage
+          :profile-override="editorPreviewProfile"
+          :avatar-src-override="avatarDisplaySrc"
+          embedded
         />
-      </div>
+      </Suspense>
 
-      <article v-else class="public-card" :class="previewCardClasses" :data-color-mode="currentColorMode" :style="profileAccentStyle">
-        <header class="public-header">
-          <div class="avatar-wrap">
-            <div class="public-avatar">
-              <img v-if="avatarDisplaySrc" :src="avatarDisplaySrc" alt="" class="avatar-img">
-              <span v-else>{{ profileInitial }}</span>
-            </div>
-            <label class="avatar-upload" :class="{ loading: avatarUploading }" title="Загрузить аватар">
-              <span v-if="avatarUploading" class="studio-spinner dark" />
-              <i aria-hidden="true" v-else class="ri-camera-line" />
-              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden @change="onAvatarFileChange">
-            </label>
-          </div>
-
-          <div class="public-copy">
-            <h2>{{ profile.profile.display_name || 'Без имени' }}</h2>
-            <span>{{ publicUrlLabel }}</span>
-            <p v-if="profile.profile.bio" class="bio">{{ profile.profile.bio }}</p>
-            <p v-else class="bio muted">Био пока не заполнено.</p>
-            <div v-if="profile.profile.tags.length" class="tag-row">
-              <span v-for="tag in profile.profile.tags" :key="tag">{{ tag }}</span>
-            </div>
-          </div>
-        </header>
-
-        <p class="preview-note">Превью упрощено. Для точного вида откройте публичный профиль.</p>
-
-        <ClientOnly>
-          <VueDraggable
-            v-model="draggableBlocks"
-            class="public-blocks"
-            handle=".drag-handle"
-            :animation="220"
-            ghost-class="block-ghost"
-            @end="onDragEnd"
-          >
-            <article
-              v-for="block in draggableBlocks"
-              :key="block.id"
-              class="public-block"
-              :class="{ hidden: !block.is_visible, editing: editingBlockId === block.id }"
-              @click="openBlockEditor(block)"
-            >
-              <div class="block-toolbar">
-                <div class="block-title">
-                  <button
-                    class="drag-handle"
-                    type="button"
-                    aria-roledescription="draggable"
-                    :aria-label="dragHandleLabel(block)"
-                    title="Перетащить"
-                    @click.stop
-                    @keydown.up.prevent.stop="moveBlockByKeyboard(block, -1)"
-                    @keydown.down.prevent.stop="moveBlockByKeyboard(block, 1)"
-                    @keydown.enter.prevent.stop="openBlockEditor(block)"
-                    @keydown.space.prevent.stop="openBlockEditor(block)"
-                  >
-                    <i aria-hidden="true" class="ri-draggable" />
-                  </button>
-                  <span class="block-icon">
-                    <FaceitLogo v-if="block.block_type === 'widget_faceit'" class="faceit-logo" />
-                    <i aria-hidden="true" v-else :class="displayBlockIcon(block)" />
-                  </span>
-                  <div>
-                    <strong>{{ displayBlockLabel(block) }}</strong>
-                    <small>{{ block.is_visible ? displayBlockDescription(block) : 'Скрыт на публичной странице' }}</small>
-                  </div>
-                </div>
-                <div class="block-actions">
-                  <button class="tiny-action" :class="{ active: block.is_visible }" type="button" :title="visibilityToggleLabel(block)" :aria-label="visibilityToggleLabel(block)" :aria-pressed="block.is_visible" @click.stop="toggleVisible(block)">
-                    <i aria-hidden="true" :class="block.is_visible ? 'ri-eye-line' : 'ri-eye-off-line'" />
-                  </button>
-                  <button class="tiny-action danger" type="button" :aria-label="deleteBlockLabel(block)" title="Удалить" @click.stop="deleteBlock(block.id)">
-                    <i aria-hidden="true" class="ri-delete-bin-line" />
-                  </button>
-                </div>
-              </div>
-
-              <div class="block-preview">
-                <template v-if="block.block_type === 'links'">
-                  <div v-for="(group, index) in asGroups(previewConfig(block))" :key="`${group.title}-${index}`" class="links-group">
-                    <p v-if="group.title" class="group-title">{{ group.title }}</p>
-                    <a v-for="link in group.links" :key="`${link.label}-${link.url}`" class="link-row" :href="link.url || '#'" target="_blank" rel="noopener noreferrer" @click.prevent>
-                      <i aria-hidden="true" :class="link.icon ? `ri-${link.icon}-fill` : 'ri-link'" />
-                      <span>{{ link.label || link.url || 'Новая ссылка' }}</span>
-                    </a>
-                  </div>
-                  <p v-if="!asGroups(previewConfig(block)).some(group => group.links.length)" class="empty-line">Добавьте первую ссылку.</p>
-                </template>
-
-                <template v-else-if="block.block_type === 'text'">
-                  <p class="text-preview">{{ (previewConfig(block).content as string) || 'Текст блока появится здесь.' }}</p>
-                </template>
-
-                <template v-else-if="block.block_type === 'widget_steam'">
-                  <div class="widget-head">
-                    <div>
-                      <p>Steam</p>
-                      <span>{{ steamDisplayName(previewConfig(block)) }}</span>
-                    </div>
-                    <span class="soft-badge">Игры</span>
-                  </div>
-                  <div v-if="previewConfig(block).show_recent_games && steamGamesList(previewConfig(block)).length" class="widget-list">
-                    <div v-for="game in steamGamesList(previewConfig(block))" :key="`${game.appid || game.name}`">
-                      <span class="widget-game-copy">
-                        <span>{{ game.name }}</span>
-                        <small v-if="steamGameMeta(game)">{{ steamGameMeta(game) }}</small>
-                      </span>
-                      <strong>{{ steamTotalHours(game) }} ч</strong>
-                    </div>
-                  </div>
-                  <p v-else-if="previewConfig(block).show_recent_games" class="empty-line">
-                    Последние игры появятся после синхронизации Steam.
-                  </p>
-                  <div v-if="previewConfig(block).show_profile_stats && steamStatsList(previewConfig(block)).length" class="stat-grid">
-                    <div v-for="stat in steamStatsList(previewConfig(block))" :key="stat.label">
-                      <strong>{{ stat.value }}</strong><span>{{ stat.label }}</span>
-                    </div>
-                  </div>
-                  <p v-if="previewConfig(block).show_inventory_highlight && inventoryStatus(previewConfig(block))" class="empty-line">
-                    {{ inventoryStatus(previewConfig(block))?.title }}: {{ inventoryStatus(previewConfig(block))?.reason }}
-                  </p>
-                </template>
-
-                <template v-else-if="block.block_type === 'widget_lastfm'">
-                  <div class="widget-head">
-                    <div>
-                      <p>Last.fm</p>
-                      <span>@{{ (previewConfig(block).username as string) || 'username' }}</span>
-                    </div>
-                    <div v-if="previewConfig(block).show_now_playing && previewConfig(block).username" class="sound-bars" aria-hidden="true">
-                      <span v-for="bar in 4" :key="bar" :style="{ animationDelay: `${(bar - 1) * 0.12}s` }" />
-                    </div>
-                  </div>
-                  <p v-if="previewConfig(block).username" class="now-playing">
-                    {{ mock.lastfmTrack(previewConfig(block).username as string).track }}
-                    <span>{{ mock.lastfmTrack(previewConfig(block).username as string).artist }}</span>
-                  </p>
-                </template>
-
-                <template v-else-if="block.block_type === 'widget_github'">
-                  <div class="widget-head">
-                    <div>
-                      <p>{{ gitProviderLabel(previewConfig(block)) }}</p>
-                      <span>{{ gitAccountCaption(previewConfig(block)) }}</span>
-                    </div>
-                    <span v-if="gitRepositoryTotal(previewConfig(block)) !== null" class="soft-badge">
-                      {{ gitRepositoryTotal(previewConfig(block)) }} repo
-                    </span>
-                  </div>
-                  <div v-if="previewConfig(block).show_repository_stats && gitRepositoryStatsList(previewConfig(block)).length" class="stat-grid">
-                    <div v-for="stat in gitRepositoryStatsList(previewConfig(block))" :key="stat.label">
-                      <strong>{{ stat.value }}</strong><span>{{ stat.label }}</span>
-                    </div>
-                  </div>
-                  <div v-if="previewConfig(block).show_contributions && gitContributionCells(previewConfig(block)).length" class="heatmap" :aria-label="gitActivitySummary(previewConfig(block))">
-                    <span
-                      v-for="(day, index) in gitContributionCells(previewConfig(block))"
-                      :key="day.date || `pad-${index}`"
-                      :class="`level-${gitContributionLevel(day)}`"
-                      :title="gitContributionTitle(day)"
-                    />
-                  </div>
-                  <p v-if="previewConfig(block).show_contributions && gitActivitySummary(previewConfig(block))" class="empty-line">
-                    {{ gitActivitySummary(previewConfig(block)) }}
-                  </p>
-                  <div v-if="gitUsername(previewConfig(block)) && previewConfig(block).show_pinned_repos && gitPinnedRepositories(previewConfig(block)).length" class="repo-row">
-                    <span v-for="repo in gitPinnedRepositories(previewConfig(block))" :key="repo.id || repo.full_name">{{ repo.name }}</span>
-                  </div>
-                </template>
-
-                <template v-else-if="block.block_type === 'widget_faceit'">
-                  <div class="widget-head">
-                    <div>
-                      <p>FACEIT</p>
-                      <span>{{ faceitDisplayName(previewConfig(block)) }}</span>
-                    </div>
-                    <FaceitSkillLevel
-                      v-if="faceitPreviewData(previewConfig(block))"
-                      class="faceit-level"
-                      :level="faceitPreviewData(previewConfig(block))?.level || 0"
-                      :accent-color="faceitAccentColor"
-                    />
-                  </div>
-                  <div v-if="faceitPreviewData(previewConfig(block))" class="stat-grid">
-                    <div><strong>{{ faceitPreviewData(previewConfig(block))?.elo }}</strong><span>ELO</span></div>
-                    <div><strong>{{ faceitPreviewData(previewConfig(block))?.kd }}</strong><span>K/D</span></div>
-                    <div><strong>{{ faceitPreviewData(previewConfig(block))?.winRate }}</strong><span>Win rate</span></div>
-                  </div>
-                  <p v-else class="empty-line">FACEIT подтянется автоматически, если профиль найден по Steam.</p>
-                </template>
-
-                <template v-else-if="block.block_type === 'pc_config'">
-                  <div class="widget-head">
-                    <div>
-                      <p>{{ (previewConfig(block).title as string) || 'Конфиг ПК' }}</p>
-                      <span>{{ asComponents(previewConfig(block)).length }} компонентов</span>
-                    </div>
-                  </div>
-                  <div class="widget-list">
-                    <div v-for="component in asComponents(previewConfig(block))" :key="`${component.category}-${component.name}`">
-                      <span>{{ component.category || 'Категория' }}</span>
-                      <strong>{{ component.name || 'Компонент' }}</strong>
-                    </div>
-                    <p v-if="!asComponents(previewConfig(block)).length" class="empty-line">Добавьте компоненты сетапа.</p>
-                  </div>
-                </template>
-              </div>
-            </article>
-          </VueDraggable>
-        </ClientOnly>
-
-        <button v-if="!blocks.length" class="empty-add" type="button" @click="panel = 'blocks'">
-          <i aria-hidden="true" class="ri-add-circle-line" />
-          <span>Добавить первый блок</span>
-        </button>
-      </article>
     </section>
 
     <aside class="studio-inspector" aria-label="Инспектор профиля">
@@ -581,6 +363,7 @@ import { resolveAvatarUrl } from '~/composables/useAvatarUrl'
 import { useAuthStore } from '~/stores/auth'
 import { useProfileStore, type Block } from '~/stores/profile'
 import { extractAuthError } from '~/utils/auth-feedback'
+import PublicProfilePage from '~/pages/[slug].vue'
 import {
   ACCENT_COLORS,
   BLOCK_LIBRARY,
@@ -591,54 +374,6 @@ import {
   createDefaultBlockConfig,
   type DashboardThemeId,
 } from '~/utils/dashboard-studio'
-
-interface Link {
-  label: string
-  url: string
-  icon?: string
-}
-
-interface Group {
-  title: string
-  links: Link[]
-}
-
-interface ComponentItem {
-  category: string
-  name: string
-}
-
-interface SteamGame {
-  appid?: number
-  name: string
-  playtime_2weeks?: number
-  playtime_forever?: number
-  playtime_recent_minutes?: number
-  playtime_total_minutes?: number
-  recent_hours?: number
-  total_hours?: number
-  last_played_at?: string | null
-  hours?: number
-}
-
-interface GitRepository {
-  id?: string
-  name: string
-  full_name?: string
-  url?: string
-  description?: string
-  language?: string
-  stars?: number
-  forks?: number
-  updated_at?: string | null
-}
-
-interface GitContributionDay {
-  date?: string
-  count?: number
-  level?: number
-  empty?: boolean
-}
 
 type NoticeTone = 'success' | 'info' | 'error'
 type ConfirmTone = 'default' | 'danger'
@@ -666,7 +401,6 @@ interface ProfileThemeTokens {
 const profile = useProfileStore()
 const auth = useAuthStore()
 const config = useRuntimeConfig()
-const mock = useProfileMockData()
 const request = useRequestURL()
 const requestHost = request.host
 const requestOrigin = request.origin
@@ -767,40 +501,23 @@ const currentColorMode = computed<ThemeColorMode>(() => {
 const isMaterial3Wide = computed(() =>
   currentTheme.value === 'material3' && themeTokens.value.material3Layout === 'wide',
 )
-const profileAccentStyle = computed<Record<string, string>>(() => {
-  const fallbackAccent = currentTheme.value === 'glass' ? '#a8d8ff' : '#60cdff'
-  return { '--profile-accent': currentTheme.value === 'material3' ? currentAccent.value : fallbackAccent }
-})
-const previewCardClasses = computed(() => [
-  `theme-${currentTheme.value}`,
-  { 'layout-wide': isMaterial3Wide.value },
-])
-const faceitAccentColor = computed(() => currentTheme.value === 'material3' ? currentAccent.value : null)
 const publicPath = computed(() => profile.profile ? `/${profile.profile.slug}` : '/')
 const publicUrl = computed(() => new URL(publicPath.value, requestOrigin).toString())
 const publicUrlLabel = computed(() => profile.profile ? `${requestHost}/${profile.profile.slug}` : requestHost)
-const publicPreviewKey = computed(() => {
-  if (!profile.profile) return 'empty'
-  return JSON.stringify({
-    slug: profile.profile.slug,
-    status: profile.profile.status,
-    displayName: profile.profile.display_name,
-    bio: profile.profile.bio,
-    tags: profile.profile.tags,
-    avatarUrl: profile.profile.avatar_url,
-    themePreset: profile.profile.theme_preset,
-    themeTokens: profile.profile.theme_tokens,
-    accentColor: profile.profile.accent_color,
-    blocks: profile.profile.blocks,
-    avatarTimestamp: avatarTimestamp.value,
-  })
+const editorPreviewProfile = computed(() => {
+  if (!profile.profile) return null
+  const liveBlocks = draggableBlocks.value.map(block => ({
+    ...block,
+    config: editingBlockId.value === block.id ? cloneConfig(previewConfig(block)) : cloneConfig(block.config),
+  }))
+  return {
+    ...profile.profile,
+    display_name: editName.value.trim() || profile.profile.display_name,
+    bio: editBio.value.trim() || null,
+    tags: parseTags(),
+    blocks: liveBlocks,
+  }
 })
-const profileInitial = computed(() =>
-  profile.profile?.display_name?.trim().charAt(0).toUpperCase()
-    || auth.user?.email?.trim().charAt(0).toUpperCase()
-    || '?',
-)
-
 const profileHasChanges = computed(() => {
   if (!profile.profile) return false
   return editName.value !== profile.profile.display_name
@@ -912,78 +629,6 @@ function previewConfig(block: Block) {
   return merged
 }
 
-function asGroups(value: Record<string, unknown>): Group[] {
-  return Array.isArray(value.groups) ? value.groups as Group[] : []
-}
-
-function asComponents(value: Record<string, unknown>): ComponentItem[] {
-  return Array.isArray(value.components) ? value.components as ComponentItem[] : []
-}
-
-function steamGamesList(value: Record<string, unknown>): SteamGame[] {
-  const liveGames = Array.isArray(value.steam_recent_games) ? value.steam_recent_games as SteamGame[] : []
-  return liveGames
-}
-
-function steamDisplayName(value: Record<string, unknown>): string {
-  const steamProfile = value.steam_profile as Record<string, unknown> | undefined
-  return String(value.steam_display_name || steamProfile?.personaname || 'Steam не привязан')
-}
-
-function steamTotalHours(game: SteamGame): string {
-  const hours = typeof game.total_hours === 'number'
-    ? game.total_hours
-    : typeof game.hours === 'number'
-      ? game.hours
-      : Math.round(((game.playtime_total_minutes || game.playtime_forever || 0) / 60) * 10) / 10
-  return hours.toLocaleString('ru')
-}
-
-function steamRecentHours(game: SteamGame): string {
-  const hours = typeof game.recent_hours === 'number'
-    ? game.recent_hours
-    : Math.round(((game.playtime_recent_minutes || game.playtime_2weeks || 0) / 60) * 10) / 10
-  return hours.toLocaleString('ru')
-}
-
-function steamGameMeta(game: SteamGame): string {
-  const meta: string[] = []
-  if ((game.playtime_recent_minutes || game.playtime_2weeks || game.recent_hours) && steamRecentHours(game) !== '0') {
-    meta.push(`${steamRecentHours(game)} ч за 2 недели`)
-  }
-  const lastPlayed = formatLastPlayed(game.last_played_at)
-  if (lastPlayed) {
-    meta.push(`последний запуск ${lastPlayed}`)
-  }
-  return meta.join(' · ')
-}
-
-function formatLastPlayed(value?: string | null): string {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleDateString('ru', { day: 'numeric', month: 'short' })
-}
-
-function steamStatsList(value: Record<string, unknown>) {
-  const stats = value.steam_profile_stats as Record<string, unknown> | undefined
-  if (!stats) return []
-  return [
-    { label: 'Level', value: stats.level },
-    { label: 'Badges', value: stats.badge_count },
-    { label: 'XP', value: stats.player_xp },
-  ].filter(item => item.value !== undefined && item.value !== null && item.value !== '')
-}
-
-function inventoryStatus(value: Record<string, unknown>) {
-  const item = value.steam_inventory_highlight as Record<string, unknown> | undefined
-  if (!item) return null
-  return {
-    title: String(item.title || 'Инвентарь'),
-    reason: String(item.reason || 'Источник цен не настроен.'),
-  }
-}
-
 function gitProviderLabel(value: Record<string, unknown>): string {
   const provider = String(value.git_provider || value.provider || 'github')
   return String(value.git_provider_label || ({ github: 'GitHub', gitlab: 'GitLab', gitea: 'Gitea' } as Record<string, string>)[provider] || 'Git')
@@ -1028,97 +673,6 @@ function visibilityToggleLabel(block: Block): string {
 
 function deleteBlockLabel(block: Block): string {
   return `Удалить блок ${displayBlockLabel(block)}`
-}
-
-function gitUsername(value: Record<string, unknown>): string {
-  const profile = value.git_profile as Record<string, unknown> | undefined
-  return String(value.username || profile?.username || '')
-}
-
-function gitAccountCaption(value: Record<string, unknown>): string {
-  const username = gitUsername(value)
-  return username ? `@${username}` : 'Интеграция не привязана'
-}
-
-function gitRepositoryStats(value: Record<string, unknown>): Record<string, unknown> {
-  const stats = value.git_repository_stats as Record<string, unknown> | undefined
-  return stats && typeof stats === 'object' ? stats : {}
-}
-
-function gitRepositoryTotal(value: Record<string, unknown>): number | null {
-  const total = gitRepositoryStats(value).total_repositories
-  return typeof total === 'number' ? total : null
-}
-
-function gitRepositoryStatsList(value: Record<string, unknown>) {
-  const stats = gitRepositoryStats(value)
-  return [
-    { label: 'Repos', value: stats.total_repositories },
-    { label: 'Stars', value: stats.stars },
-    { label: 'Forks', value: stats.forks },
-  ].filter(item => item.value !== undefined && item.value !== null && item.value !== '')
-}
-
-function gitPinnedRepositories(value: Record<string, unknown>): GitRepository[] {
-  const repos = Array.isArray(value.git_pinned_repositories) ? value.git_pinned_repositories as GitRepository[] : []
-  return repos.slice(0, 3)
-}
-
-function gitContributionDays(value: Record<string, unknown>): GitContributionDay[] {
-  const activity = value.git_contributions as Record<string, unknown> | undefined
-  return Array.isArray(activity?.days) ? activity.days as GitContributionDay[] : []
-}
-
-function gitContributionCells(value: Record<string, unknown>): GitContributionDay[] {
-  const days = gitContributionDays(value)
-  if (!days.length) return []
-  const first = new Date(String(days[0].date || ''))
-  const pad = Number.isNaN(first.getTime()) ? 0 : first.getDay()
-  return [
-    ...Array.from({ length: pad }, () => ({ empty: true, count: 0, level: 0 })),
-    ...days,
-  ]
-}
-
-function gitContributionLevel(day: GitContributionDay): number {
-  if (day.empty) return 0
-  const level = Number(day.level || 0)
-  return Math.max(0, Math.min(4, Number.isFinite(level) ? level : 0))
-}
-
-function gitContributionTitle(day: GitContributionDay): string {
-  if (day.empty || !day.date) return ''
-  const date = formatLastPlayed(day.date)
-  const count = Number(day.count || 0)
-  return `${date || day.date}: ${count} событий`
-}
-
-function gitActivitySummary(value: Record<string, unknown>): string {
-  const activity = value.git_contributions as Record<string, unknown> | undefined
-  if (!activity || !Array.isArray(activity.days)) return ''
-  const total = Number(activity.total || 0)
-  const days = Number(activity.window_days || value.contributions_days || 30)
-  return total > 0
-    ? `Активность за ${days} дней: ${total} событий`
-    : `Нет активности за ${days} дней`
-}
-
-function faceitPreviewData(value: Record<string, unknown>) {
-  const live = value.faceit_profile as Record<string, any> | undefined
-  if (live) {
-    return {
-      level: Number(live.skill_level || live.skill_level_label || 0),
-      elo: live.faceit_elo || '—',
-      kd: live.stats?.kd || '—',
-      winRate: live.stats?.win_rate || '—',
-    }
-  }
-  return null
-}
-
-function faceitDisplayName(value: Record<string, unknown>): string {
-  const live = value.faceit_profile as Record<string, any> | undefined
-  return String(value.faceit_display_name || value.nickname || live?.nickname || 'FACEIT не найден')
 }
 
 async function saveProfile() {
@@ -1384,34 +938,11 @@ async function onAvatarCropSave(blob: Blob) {
 }
 
 .studio-preview-bar,
-.studio-inspector,
-.public-card {
+.studio-inspector {
   border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
   border-radius: 8px;
   background: color-mix(in srgb, var(--surface, #fff) 88%, transparent);
   box-shadow: var(--shadow-soft, 0 16px 42px rgba(48, 63, 92, 0.11));
-}
-
-.exact-preview-shell {
-  width: min(100%, 520px);
-  height: min(860px, calc(100dvh - 170px));
-  min-height: 560px;
-  justify-self: center;
-  overflow: hidden;
-  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
-  border-radius: 34px;
-  background: #0f1117;
-  box-shadow:
-    0 18px 46px color-mix(in srgb, var(--text-1, #10182b) 14%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10);
-}
-
-.exact-preview-frame {
-  width: 100%;
-  height: 100%;
-  display: block;
-  border: 0;
-  background: #0f1117;
 }
 
 .studio-preview-bar {
@@ -3421,13 +2952,6 @@ async function onAvatarCropSave(blob: Blob) {
   .public-card {
     border-radius: 22px;
     padding: 14px;
-  }
-
-  .exact-preview-shell {
-    width: 100%;
-    height: min(820px, calc(100dvh - 132px));
-    min-height: 520px;
-    border-radius: 28px;
   }
 
   .public-card.theme-material3.layout-wide {
