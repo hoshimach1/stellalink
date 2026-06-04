@@ -175,6 +175,20 @@
             <input v-model="apiFaceitKey" type="password" autocomplete="new-password" :placeholder="faceitKeyPlaceholder">
           </label>
 
+          <div class="admin-note muted">
+            Spotify callback URL: <strong>{{ spotifyCallbackUrl }}</strong>
+          </div>
+
+          <label class="admin-field">
+            <span>Spotify Client ID</span>
+            <input v-model="oauthForm.spotifyClientId" type="text" autocomplete="off" placeholder="Spotify client id">
+          </label>
+
+          <label class="admin-field">
+            <span>Spotify Client Secret</span>
+            <input v-model="oauthSecrets.spotify" type="password" autocomplete="new-password" :placeholder="spotifySecretPlaceholder">
+          </label>
+
           <div class="admin-row">
             <label class="admin-field small">
               <span>Inventory AppID</span>
@@ -325,6 +339,9 @@ interface ApiSettings {
   gitea_oauth_client_id: string | null
   gitea_oauth_client_secret_set: boolean
   gitea_oauth_client_secret_hint: string | null
+  spotify_oauth_client_id: string | null
+  spotify_oauth_client_secret_set: boolean
+  spotify_oauth_client_secret_hint: string | null
   code_provider_token_auth_enabled: boolean
   steam_inventory_app_id: number
   steam_inventory_context_id: string
@@ -351,6 +368,7 @@ const oauthSecrets = reactive({
   github: '',
   gitlab: '',
   gitea: '',
+  spotify: '',
 })
 const testEmail = ref('')
 const saveNotice = ref('')
@@ -385,6 +403,7 @@ const oauthForm = reactive({
   githubClientId: '',
   gitlabClientId: '',
   giteaClientId: '',
+  spotifyClientId: '',
 })
 
 const oauthSecretState = reactive({
@@ -394,6 +413,8 @@ const oauthSecretState = reactive({
   gitlabHint: '(****)',
   giteaSet: false,
   giteaHint: '(****)',
+  spotifySet: false,
+  spotifyHint: '(****)',
 })
 
 const encryptionMode = computed({
@@ -412,6 +433,8 @@ const passwordPlaceholder = computed(() => passwordSet.value ? 'Пароль с�
 const steamKeyPlaceholder = computed(() => steamKeySet.value ? `Сохранен ${steamKeyHint.value}` : 'Введите ключ Steam')
 const faceitKeyPlaceholder = computed(() => faceitKeySet.value ? `Сохранен ${faceitKeyHint.value}` : 'Введите ключ FACEIT')
 const oauthCallbackUrl = computed(() => `${form.frontend_base_url.replace(/\/$/, '')}/api/integrations/code/oauth/callback`)
+const spotifyCallbackUrl = computed(() => `${form.frontend_base_url.replace(/\/$/, '')}/api/integrations/spotify/oauth/callback`)
+const spotifySecretPlaceholder = computed(() => oauthSecretState.spotifySet ? `Сохранен ${oauthSecretState.spotifyHint}` : 'Spotify client secret')
 const oauthProviders = computed(() => [
   {
     key: 'github',
@@ -510,11 +533,13 @@ function applyApiSettings(data: ApiSettings) {
   oauthForm.githubClientId = data.github_oauth_client_id ?? ''
   oauthForm.gitlabClientId = data.gitlab_oauth_client_id ?? ''
   oauthForm.giteaClientId = data.gitea_oauth_client_id ?? ''
+  oauthForm.spotifyClientId = data.spotify_oauth_client_id ?? ''
   apiSteamKey.value = ''
   apiFaceitKey.value = ''
   oauthSecrets.github = ''
   oauthSecrets.gitlab = ''
   oauthSecrets.gitea = ''
+  oauthSecrets.spotify = ''
   steamKeyHint.value = data.steam_api_key_hint ?? '(****)'
   faceitKeyHint.value = data.faceit_api_key_hint ?? '(****)'
   oauthSecretState.githubSet = data.github_oauth_client_secret_set
@@ -523,6 +548,8 @@ function applyApiSettings(data: ApiSettings) {
   oauthSecretState.gitlabHint = data.gitlab_oauth_client_secret_hint ?? '(****)'
   oauthSecretState.giteaSet = data.gitea_oauth_client_secret_set
   oauthSecretState.giteaHint = data.gitea_oauth_client_secret_hint ?? '(****)'
+  oauthSecretState.spotifySet = data.spotify_oauth_client_secret_set
+  oauthSecretState.spotifyHint = data.spotify_oauth_client_secret_hint ?? '(****)'
 }
 
 async function loadAllSettings() {
@@ -589,6 +616,12 @@ async function saveApiSettings() {
     }
     if (oauthSecrets.gitea.trim()) {
       body.gitea_oauth_client_secret = oauthSecrets.gitea.trim()
+    }
+    if (oauthForm.spotifyClientId.trim()) {
+      body.spotify_oauth_client_id = oauthForm.spotifyClientId.trim()
+    }
+    if (oauthSecrets.spotify.trim()) {
+      body.spotify_oauth_client_secret = oauthSecrets.spotify.trim()
     }
 
     const data = await auth.authorizedFetch<ApiSettings>(`${config.public.apiBase}/admin/api-settings`, {

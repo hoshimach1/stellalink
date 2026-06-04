@@ -123,3 +123,52 @@ def test_git_block_does_not_use_account_from_another_provider():
     assert "git_display_name" not in config
     assert "git_repositories" not in config
     assert "git_pinned_repositories" not in config
+
+
+def test_spotify_idle_playback_summary_is_explicit():
+    playback = external_integrations._summarize_spotify_current_playback(None, None)
+
+    assert playback["status"] == "idle"
+    assert playback["is_playing"] is False
+    assert playback["track"] is None
+    assert "ничего не слушает" in playback["message"].lower()
+
+
+def test_spotify_block_uses_connected_account_metadata():
+    spotify_account = SimpleNamespace(
+        id=uuid.uuid4(),
+        provider="spotify",
+        provider_uid="spotify-user",
+        display_name="Spotify User",
+        is_active=True,
+        account_metadata={
+            "spotify_profile": {
+                "uid": "spotify-user",
+                "display_name": "Spotify User",
+                "profile_url": "https://open.spotify.com/user/spotify-user",
+            },
+            "playback": {
+                "status": "playing",
+                "is_playing": True,
+                "track": {"name": "Song", "artist_names": "Artist"},
+            },
+            "recent_tracks": [{"name": "Recent Song"}],
+            "top_tracks": [{"name": "Top Song"}],
+            "top_artists": [{"name": "Artist"}],
+            "stats": {"recent_tracks_count": 1},
+        },
+        sync_error=None,
+        last_synced_at=None,
+    )
+    profile = SimpleNamespace(
+        user=SimpleNamespace(connected_accounts=[spotify_account]),
+    )
+    block = SimpleNamespace(block_type="widget_spotify", config={})
+
+    config = _enriched_block_config(profile, block)
+
+    assert config["spotify_display_name"] == "Spotify User"
+    assert config["spotify_playback"]["track"]["name"] == "Song"
+    assert config["spotify_recent_tracks"] == [{"name": "Recent Song"}]
+    assert config["spotify_top_tracks"] == [{"name": "Top Song"}]
+    assert config["spotify_top_artists"] == [{"name": "Artist"}]

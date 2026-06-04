@@ -39,6 +39,12 @@ export const BLOCK_LIBRARY: BlockCatalogItem[] = [
     description: 'Музыка и трек, который сейчас играет.',
   },
   {
+    type: 'widget_spotify',
+    icon: 'ri-spotify-fill',
+    label: 'Spotify',
+    description: 'Текущий трек, последние прослушивания и музыкальные топы Spotify.',
+  },
+  {
     type: 'widget_github',
     icon: 'ri-github-fill',
     label: 'Git',
@@ -93,6 +99,14 @@ const DEFAULT_CONFIGS: Record<string, Record<string, unknown>> = {
     show_inventory_highlight: true,
   },
   widget_lastfm: { username: '', show_now_playing: true },
+  widget_spotify: {
+    use_connected_account: true,
+    show_now_playing: true,
+    show_recent_tracks: true,
+    show_top_tracks: true,
+    show_top_artists: true,
+    show_stats: true,
+  },
   widget_github: {
     provider: 'github',
     use_connected_account: true,

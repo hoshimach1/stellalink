@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import json
 import re
 import secrets
@@ -49,6 +50,15 @@ CODE_PROVIDER_SCOPES = {
     "gitea": "read:user read:repository",
 }
 CODE_PROVIDER_ACTIVITY_DAYS = 90
+SPOTIFY_API_BASE = "https://api.spotify.com/v1"
+SPOTIFY_ACCOUNTS_BASE = "https://accounts.spotify.com"
+SPOTIFY_OAUTH_STATE_TTL_SECONDS = 600
+SPOTIFY_SCOPES = (
+    "user-read-currently-playing "
+    "user-read-playback-state "
+    "user-read-recently-played "
+    "user-top-read"
+)
 
 
 class ExternalApiError(Exception):
@@ -131,6 +141,34 @@ def _read_json_value(
         raise ExternalApiError(f"{service}: returned invalid JSON.") from exc
 
 
+def _read_optional_json(
+    url: str, service: str, headers: Optional[dict[str, str]] = None, timeout: int = 12
+) -> Optional[dict[str, Any]]:
+    request = urllib.request.Request(url, headers=headers or {})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 - fixed trusted API hosts
+            if response.status == 204:
+                return None
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        if exc.code == 204:
+            return None
+        body = exc.read().decode("utf-8", errors="replace")
+        raise _hinted_error(service, exc.code, body) from exc
+    except urllib.error.URLError as exc:
+        raise ExternalApiError(f"{service}: network request failed.") from exc
+
+    if not raw.strip():
+        return None
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ExternalApiError(f"{service}: returned invalid JSON.") from exc
+    if not isinstance(parsed, dict):
+        raise ExternalApiError(f"{service}: returned an unexpected payload.")
+    return parsed
+
+
 async def _fetch_json(
     url: str,
     service: str,
@@ -147,6 +185,15 @@ async def _fetch_json_value(
     timeout: int = 12,
 ) -> Any:
     return await asyncio.to_thread(_read_json_value, url, service, headers, timeout)
+
+
+async def _fetch_optional_json(
+    url: str,
+    service: str,
+    headers: Optional[dict[str, str]] = None,
+    timeout: int = 12,
+) -> Optional[dict[str, Any]]:
+    return await asyncio.to_thread(_read_optional_json, url, service, headers, timeout)
 
 
 def _read_text_post(
@@ -945,6 +992,649 @@ async def fetch_code_provider_repositories(
         "repositories_synced_at": datetime.now(timezone.utc).isoformat(),
         "pinned_source": pinned_source,
     }
+
+
+def _spotify_oauth_state_key(state: str) -> str:
+    return f"integration:spotify_oauth:{state}"
+
+
+def _spotify_oauth_callback_url(frontend_base_url: str) -> str:
+    return f"{frontend_base_url}/api/integrations/spotify/oauth/callback"
+
+
+def _spotify_result_url(
+    frontend_base_url: str, success: bool, detail: Optional[str] = None
+) -> str:
+    query = {
+        "tab": "integrations",
+        "spotify": "connected" if success else "error",
+    }
+    if detail and not success:
+        query["spotify_error"] = detail[:160]
+    return f"{frontend_base_url}/dashboard?{urllib.parse.urlencode(query)}"
+
+
+def _spotify_url(path: str, params: Optional[dict[str, Any]] = None) -> str:
+    query = urllib.parse.urlencode(params or {})
+    return f"{SPOTIFY_API_BASE}{path}{f'?{query}' if query else ''}"
+
+
+def _spotify_basic_auth_header(client_id: str, client_secret: str) -> str:
+    raw = f"{client_id}:{client_secret}".encode("utf-8")
+    return f"Basic {base64.b64encode(raw).decode('ascii')}"
+
+
+def _spotify_auth_headers(access_token: str) -> dict[str, str]:
+    return {"Accept": "application/json", "Authorization": f"Bearer {access_token}"}
+
+
+def _spotify_images_url(value: Any) -> Optional[str]:
+    if not isinstance(value, list):
+        return None
+    for image in value:
+        if isinstance(image, dict) and _clean_text(image.get("url")):
+            return _clean_text(image.get("url"))
+    return None
+
+
+def _spotify_external_url(payload: dict[str, Any]) -> Optional[str]:
+    urls = payload.get("external_urls")
+    if isinstance(urls, dict):
+        return _clean_text(urls.get("spotify"))
+    return None
+
+
+def _summarize_spotify_artist(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": _clean_text(payload.get("id")),
+        "name": _clean_text(payload.get("name")) or "Artist",
+        "url": _spotify_external_url(payload),
+        "image_url": _spotify_images_url(payload.get("images")),
+        "genres": [
+            str(genre)
+            for genre in payload.get("genres", [])
+            if isinstance(genre, str) and genre
+        ][:8],
+        "followers": (
+            payload.get("followers", {}).get("total")
+            if isinstance(payload.get("followers"), dict)
+            else None
+        ),
+        "popularity": payload.get("popularity"),
+    }
+
+
+def _summarize_spotify_item(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
+    if not isinstance(payload, dict) or not _clean_text(payload.get("name")):
+        return None
+
+    item_type = _clean_text(payload.get("type")) or _clean_text(
+        payload.get("currently_playing_type")
+    )
+    artists_payload = (
+        payload.get("artists") if isinstance(payload.get("artists"), list) else []
+    )
+    artists = [
+        _summarize_spotify_artist(artist)
+        for artist in artists_payload
+        if isinstance(artist, dict)
+    ]
+    album = payload.get("album") if isinstance(payload.get("album"), dict) else {}
+    show = payload.get("show") if isinstance(payload.get("show"), dict) else {}
+    image_url = _spotify_images_url(album.get("images")) or _spotify_images_url(
+        payload.get("images")
+    )
+    if item_type == "episode" and not artists:
+        publisher = _clean_text(show.get("publisher") or payload.get("publisher"))
+        if publisher:
+            artists = [{"id": None, "name": publisher, "url": None, "image_url": None}]
+
+    return {
+        "id": _clean_text(payload.get("id")),
+        "type": item_type or "track",
+        "name": _clean_text(payload.get("name")) or "Track",
+        "artists": artists,
+        "artist_names": ", ".join(
+            artist["name"] for artist in artists if artist.get("name")
+        ),
+        "album_name": _clean_text(album.get("name") or show.get("name")),
+        "image_url": image_url,
+        "url": _spotify_external_url(payload),
+        "duration_ms": _to_int(payload.get("duration_ms")),
+        "explicit": bool(payload.get("explicit")),
+        "preview_url": _clean_text(payload.get("preview_url")),
+    }
+
+
+def _empty_spotify_playback(checked_at: str) -> dict[str, Any]:
+    return {
+        "available": True,
+        "is_active": False,
+        "is_playing": False,
+        "status": "idle",
+        "status_label": "Ничего не слушает",
+        "message": "Сейчас ничего не слушает",
+        "track": None,
+        "progress_ms": 0,
+        "progress_percent": 0,
+        "device": None,
+        "checked_at": checked_at,
+    }
+
+
+def _summarize_spotify_current_playback(
+    current_payload: Optional[dict[str, Any]],
+    playback_payload: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    checked_at = datetime.now(timezone.utc).isoformat()
+    source = current_payload or playback_payload
+    if not isinstance(source, dict):
+        return _empty_spotify_playback(checked_at)
+
+    item = source.get("item") if isinstance(source.get("item"), dict) else {}
+    track = _summarize_spotify_item(item) if item else None
+    if not track:
+        return _empty_spotify_playback(checked_at)
+
+    progress_ms = _to_int(source.get("progress_ms"))
+    duration_ms = _to_int(track.get("duration_ms"))
+    progress_percent = (
+        max(0, min(100, round((progress_ms / duration_ms) * 100)))
+        if duration_ms > 0
+        else 0
+    )
+    is_playing = bool(source.get("is_playing"))
+    state = playback_payload if isinstance(playback_payload, dict) else {}
+    device_payload = state.get("device") if isinstance(state.get("device"), dict) else {}
+    device = None
+    if device_payload:
+        device = {
+            "id": _clean_text(device_payload.get("id")),
+            "name": _clean_text(device_payload.get("name")),
+            "type": _clean_text(device_payload.get("type")),
+            "is_active": bool(device_payload.get("is_active")),
+            "volume_percent": device_payload.get("volume_percent"),
+        }
+
+    return {
+        "available": True,
+        "is_active": True,
+        "is_playing": is_playing,
+        "status": "playing" if is_playing else "paused",
+        "status_label": "Слушает сейчас" if is_playing else "Пауза",
+        "message": "Сейчас слушает" if is_playing else "Трек на паузе",
+        "track": track,
+        "progress_ms": progress_ms,
+        "progress_percent": progress_percent,
+        "device": device,
+        "shuffle_state": state.get("shuffle_state"),
+        "repeat_state": state.get("repeat_state"),
+        "currently_playing_type": _clean_text(source.get("currently_playing_type")),
+        "checked_at": checked_at,
+    }
+
+
+def _summarize_spotify_recent_item(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
+    track = payload.get("track") if isinstance(payload.get("track"), dict) else {}
+    summary = _summarize_spotify_item(track)
+    if not summary:
+        return None
+    summary["played_at"] = _clean_text(payload.get("played_at"))
+    return summary
+
+
+def _spotify_stats(
+    recent_tracks: list[dict[str, Any]],
+    top_tracks: list[dict[str, Any]],
+    top_artists: list[dict[str, Any]],
+) -> dict[str, Any]:
+    recent_artists = {
+        artist.get("name")
+        for track in recent_tracks
+        for artist in track.get("artists", [])
+        if isinstance(artist, dict) and artist.get("name")
+    }
+    genre_counts: dict[str, int] = {}
+    for artist in top_artists:
+        for genre in artist.get("genres", []):
+            if isinstance(genre, str) and genre:
+                genre_counts[genre] = genre_counts.get(genre, 0) + 1
+    top_genres = [
+        {"genre": genre, "artists": count}
+        for genre, count in sorted(
+            genre_counts.items(), key=lambda item: (-item[1], item[0].lower())
+        )[:6]
+    ]
+    return {
+        "recent_tracks_count": len(recent_tracks),
+        "unique_recent_artists": len(recent_artists),
+        "top_tracks_count": len(top_tracks),
+        "top_artists_count": len(top_artists),
+        "top_genres": top_genres,
+        "last_played_at": recent_tracks[0].get("played_at") if recent_tracks else None,
+    }
+
+
+async def _get_spotify_oauth_config(db: AsyncSession) -> tuple[str, str]:
+    api_settings = await get_api_settings_data(db)
+    client_id = _clean_text(api_settings.get("spotify_oauth_client_id"))
+    client_secret = _clean_text(api_settings.get("spotify_oauth_client_secret"))
+    if not client_id or not client_secret:
+        raise ExternalApiError("Spotify OAuth app is not configured.", 400)
+    return client_id, client_secret
+
+
+async def create_spotify_oauth_url(db: AsyncSession, user_id: UUID) -> str:
+    client_id, _ = await _get_spotify_oauth_config(db)
+    frontend_base_url = await get_public_frontend_base_url(db)
+    redirect_uri = _spotify_oauth_callback_url(frontend_base_url)
+    state = secrets.token_urlsafe(32)
+
+    redis = await get_redis()
+    await redis.setex(
+        _spotify_oauth_state_key(state),
+        SPOTIFY_OAUTH_STATE_TTL_SECONDS,
+        json.dumps({"user_id": str(user_id), "redirect_uri": redirect_uri}),
+    )
+
+    params = {
+        "client_id": client_id,
+        "response_type": "code",
+        "redirect_uri": redirect_uri,
+        "state": state,
+        "scope": SPOTIFY_SCOPES,
+    }
+    return f"{SPOTIFY_ACCOUNTS_BASE}/authorize?{urllib.parse.urlencode(params)}"
+
+
+async def _consume_spotify_oauth_state(state: str) -> Optional[dict[str, str]]:
+    redis = await get_redis()
+    key = _spotify_oauth_state_key(state)
+    raw = await redis.get(key)
+    if not raw:
+        return None
+    await redis.delete(key)
+    if isinstance(raw, bytes):
+        raw = raw.decode("utf-8", errors="replace")
+    try:
+        parsed = json.loads(str(raw))
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+async def fetch_spotify_profile(access_token: str) -> dict[str, Any]:
+    payload = await _fetch_json(
+        _spotify_url("/me"),
+        "Spotify",
+        headers=_spotify_auth_headers(access_token),
+    )
+    images = payload.get("images") if isinstance(payload.get("images"), list) else []
+    followers = (
+        payload.get("followers") if isinstance(payload.get("followers"), dict) else {}
+    )
+    uid = _clean_text(payload.get("id"))
+    return {
+        "available": True,
+        "provider": "spotify",
+        "uid": uid or "",
+        "display_name": _clean_text(payload.get("display_name")) or uid,
+        "profile_url": _spotify_external_url(payload),
+        "avatar_url": _spotify_images_url(images),
+        "followers": followers.get("total"),
+    }
+
+
+async def fetch_spotify_current_playback(access_token: str) -> dict[str, Any]:
+    headers = _spotify_auth_headers(access_token)
+    current_result, playback_result = await asyncio.gather(
+        _fetch_optional_json(
+            _spotify_url(
+                "/me/player/currently-playing",
+                {"additional_types": "track,episode"},
+            ),
+            "Spotify",
+            headers=headers,
+        ),
+        _fetch_optional_json(
+            _spotify_url("/me/player", {"additional_types": "track,episode"}),
+            "Spotify",
+            headers=headers,
+        ),
+        return_exceptions=True,
+    )
+    if isinstance(current_result, ExternalApiError):
+        raise current_result
+    if isinstance(current_result, Exception):
+        raise ExternalApiError("Spotify: playback request failed.") from current_result
+    playback_payload = (
+        None if isinstance(playback_result, Exception) else playback_result
+    )
+    return _summarize_spotify_current_playback(current_result, playback_payload)
+
+
+async def fetch_spotify_recent_tracks(
+    access_token: str, limit: int = 10
+) -> list[dict[str, Any]]:
+    payload = await _fetch_json(
+        _spotify_url("/me/player/recently-played", {"limit": max(1, min(limit, 50))}),
+        "Spotify",
+        headers=_spotify_auth_headers(access_token),
+    )
+    items = payload.get("items") if isinstance(payload.get("items"), list) else []
+    result = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        summary = _summarize_spotify_recent_item(item)
+        if summary:
+            result.append(summary)
+    return result
+
+
+async def fetch_spotify_top_tracks(
+    access_token: str, limit: int = 5, time_range: str = "short_term"
+) -> list[dict[str, Any]]:
+    payload = await _fetch_json(
+        _spotify_url(
+            "/me/top/tracks",
+            {"limit": max(1, min(limit, 50)), "time_range": time_range},
+        ),
+        "Spotify",
+        headers=_spotify_auth_headers(access_token),
+    )
+    items = payload.get("items") if isinstance(payload.get("items"), list) else []
+    return [
+        summary
+        for item in items
+        if isinstance(item, dict)
+        for summary in [_summarize_spotify_item(item)]
+        if summary
+    ]
+
+
+async def fetch_spotify_top_artists(
+    access_token: str, limit: int = 5, time_range: str = "short_term"
+) -> list[dict[str, Any]]:
+    payload = await _fetch_json(
+        _spotify_url(
+            "/me/top/artists",
+            {"limit": max(1, min(limit, 50)), "time_range": time_range},
+        ),
+        "Spotify",
+        headers=_spotify_auth_headers(access_token),
+    )
+    items = payload.get("items") if isinstance(payload.get("items"), list) else []
+    return [_summarize_spotify_artist(item) for item in items if isinstance(item, dict)]
+
+
+async def build_spotify_metadata(access_token: str) -> tuple[dict[str, Any], Optional[str]]:
+    now = datetime.now(timezone.utc).isoformat()
+    metadata: dict[str, Any] = {
+        "available": True,
+        "provider": "spotify",
+        "synced_at": now,
+        "spotify_profile": None,
+        "playback": _empty_spotify_playback(now),
+        "recent_tracks": [],
+        "top_tracks": [],
+        "top_artists": [],
+        "stats": {},
+        "errors": [],
+    }
+    sync_errors: list[str] = []
+
+    try:
+        metadata["spotify_profile"] = await fetch_spotify_profile(access_token)
+    except ExternalApiError as exc:
+        sync_errors.append(str(exc))
+
+    try:
+        metadata["playback"] = await fetch_spotify_current_playback(access_token)
+    except ExternalApiError as exc:
+        sync_errors.append(str(exc))
+
+    try:
+        metadata["recent_tracks"] = await fetch_spotify_recent_tracks(access_token)
+    except ExternalApiError as exc:
+        sync_errors.append(str(exc))
+
+    try:
+        metadata["top_tracks"] = await fetch_spotify_top_tracks(access_token)
+    except ExternalApiError as exc:
+        sync_errors.append(str(exc))
+
+    try:
+        metadata["top_artists"] = await fetch_spotify_top_artists(access_token)
+    except ExternalApiError as exc:
+        sync_errors.append(str(exc))
+
+    metadata["stats"] = _spotify_stats(
+        [
+            track
+            for track in metadata.get("recent_tracks", [])
+            if isinstance(track, dict)
+        ],
+        [
+            track
+            for track in metadata.get("top_tracks", [])
+            if isinstance(track, dict)
+        ],
+        [
+            artist
+            for artist in metadata.get("top_artists", [])
+            if isinstance(artist, dict)
+        ],
+    )
+    metadata["errors"] = sync_errors
+    return metadata, "; ".join(sync_errors) or None
+
+
+def _is_token_fresh(expires_at: Optional[datetime]) -> bool:
+    if not expires_at:
+        return False
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at > datetime.now(timezone.utc) + timedelta(seconds=60)
+
+
+async def ensure_spotify_access_token(
+    db: AsyncSession, account: ConnectedAccount
+) -> str:
+    access_token = _clean_text(account.access_token)
+    if access_token and _is_token_fresh(account.token_expires_at):
+        return access_token
+    refresh_token = _clean_text(account.refresh_token)
+    if not refresh_token:
+        raise ExternalApiError("Spotify refresh token is missing.", 400)
+
+    client_id, client_secret = await _get_spotify_oauth_config(db)
+    token_payload = await _post_json(
+        f"{SPOTIFY_ACCOUNTS_BASE}/api/token",
+        {"grant_type": "refresh_token", "refresh_token": refresh_token},
+        "Spotify OAuth",
+        headers={"Authorization": _spotify_basic_auth_header(client_id, client_secret)},
+    )
+    next_access_token = _clean_text(token_payload.get("access_token"))
+    if not next_access_token:
+        raise ExternalApiError("Spotify OAuth did not return an access token.", 400)
+
+    account.access_token = next_access_token
+    account.refresh_token = _clean_text(token_payload.get("refresh_token")) or refresh_token
+    account.token_expires_at = _token_expires_at(token_payload.get("expires_in"))
+    scopes = [
+        scope
+        for scope in str(token_payload.get("scope") or "").split()
+        if scope.strip()
+    ]
+    if scopes:
+        account.scopes = scopes
+    account.updated_at = datetime.now(timezone.utc)
+    db.add(account)
+    await db.commit()
+    await db.refresh(account)
+    return next_access_token
+
+
+async def sync_spotify_account(db: AsyncSession, user_id: UUID) -> ConnectedAccount:
+    account = await get_connected_account(db, user_id, "spotify")
+    if not account:
+        raise ExternalApiError("Spotify account is not connected.", 404)
+
+    access_token = await ensure_spotify_access_token(db, account)
+    metadata, sync_error = await build_spotify_metadata(access_token)
+    profile = (
+        metadata.get("spotify_profile")
+        if isinstance(metadata.get("spotify_profile"), dict)
+        else {}
+    )
+    provider_uid = _clean_text(profile.get("uid")) or account.provider_uid
+    display_name = _clean_text(profile.get("display_name")) or account.display_name
+
+    account = await upsert_single_provider_account(
+        db,
+        user_id,
+        "spotify",
+        provider_uid,
+        display_name,
+        metadata,
+        sync_error,
+        access_token=account.access_token,
+        refresh_token=account.refresh_token,
+        token_expires_at=account.token_expires_at,
+        scopes=list(account.scopes or []),
+    )
+    await db.commit()
+    await db.refresh(account)
+    return account
+
+
+async def connect_spotify_oauth_response(
+    db: AsyncSession, query: dict[str, str]
+) -> str:
+    frontend_base_url = await get_public_frontend_base_url(db)
+    state = _clean_text(query.get("state"))
+    code = _clean_text(query.get("code"))
+    if not state or not code:
+        return _spotify_result_url(
+            frontend_base_url, False, "Missing Spotify OAuth callback data."
+        )
+
+    state_data = await _consume_spotify_oauth_state(state)
+    if not state_data:
+        return _spotify_result_url(
+            frontend_base_url, False, "Spotify sign-in expired. Try again."
+        )
+
+    user_id_raw = str(state_data.get("user_id") or "")
+    redirect_uri = str(state_data.get("redirect_uri") or "")
+    try:
+        user_id = UUID(user_id_raw)
+    except ValueError:
+        return _spotify_result_url(frontend_base_url, False, "OAuth state is invalid.")
+
+    try:
+        client_id, client_secret = await _get_spotify_oauth_config(db)
+        token_payload = await _post_json(
+            f"{SPOTIFY_ACCOUNTS_BASE}/api/token",
+            {
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect_uri,
+            },
+            "Spotify OAuth",
+            headers={
+                "Authorization": _spotify_basic_auth_header(client_id, client_secret)
+            },
+        )
+        access_token = _clean_text(token_payload.get("access_token"))
+        refresh_token = _clean_text(token_payload.get("refresh_token"))
+        if not access_token or not refresh_token:
+            raise ExternalApiError(
+                "Spotify OAuth did not return access and refresh tokens.", 400
+            )
+        metadata, sync_error = await build_spotify_metadata(access_token)
+        profile = (
+            metadata.get("spotify_profile")
+            if isinstance(metadata.get("spotify_profile"), dict)
+            else {}
+        )
+        provider_uid = _clean_text(profile.get("uid"))
+        if not provider_uid:
+            raise ExternalApiError("Spotify profile did not include a user id.", 400)
+        scopes = [
+            scope
+            for scope in str(token_payload.get("scope") or SPOTIFY_SCOPES).split()
+            if scope.strip()
+        ]
+        account = await upsert_single_provider_account(
+            db,
+            user_id,
+            "spotify",
+            provider_uid,
+            _clean_text(profile.get("display_name")) or provider_uid,
+            metadata,
+            sync_error,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_expires_at=_token_expires_at(token_payload.get("expires_in")),
+            scopes=scopes,
+        )
+        await db.commit()
+        await db.refresh(account)
+    except ExternalApiError as exc:
+        return _spotify_result_url(frontend_base_url, False, str(exc))
+
+    return _spotify_result_url(frontend_base_url, True)
+
+
+async def spotify_realtime_response(
+    db: AsyncSession, account: ConnectedAccount
+) -> dict[str, Any]:
+    metadata = (
+        dict(account.account_metadata)
+        if isinstance(account.account_metadata, dict)
+        else {}
+    )
+    try:
+        access_token = await ensure_spotify_access_token(db, account)
+        playback = await fetch_spotify_current_playback(access_token)
+        sync_error = None
+    except ExternalApiError as exc:
+        playback = metadata.get("playback") or _empty_spotify_playback(
+            datetime.now(timezone.utc).isoformat()
+        )
+        playback["available"] = False
+        playback["message"] = str(exc)
+        sync_error = str(exc)
+
+    return {
+        "available": sync_error is None,
+        "provider": "spotify",
+        "provider_uid": account.provider_uid,
+        "display_name": account.display_name,
+        "playback": playback,
+        "recent_tracks": metadata.get("recent_tracks") or [],
+        "top_tracks": metadata.get("top_tracks") or [],
+        "top_artists": metadata.get("top_artists") or [],
+        "stats": metadata.get("stats") or {},
+        "last_synced_at": (
+            account.last_synced_at.isoformat() if account.last_synced_at else None
+        ),
+        "sync_error": sync_error or account.sync_error,
+    }
+
+
+async def disconnect_spotify_account(db: AsyncSession, user_id: UUID) -> None:
+    result = await db.execute(
+        select(ConnectedAccount).where(
+            ConnectedAccount.user_id == user_id,
+            ConnectedAccount.provider == "spotify",
+        )
+    )
+    for account in result.scalars().all():
+        await db.delete(account)
+    await db.commit()
 
 
 async def create_steam_openid_auth_url(db: AsyncSession, user_id: UUID) -> str:
@@ -1875,6 +2565,10 @@ async def integrations_response(
             gitea_oauth_ready=bool(
                 _clean_text(api_settings.get("gitea_oauth_client_id"))
                 and _clean_text(api_settings.get("gitea_oauth_client_secret"))
+            ),
+            spotify_oauth_ready=bool(
+                _clean_text(api_settings.get("spotify_oauth_client_id"))
+                and _clean_text(api_settings.get("spotify_oauth_client_secret"))
             ),
             code_provider_token_auth_enabled=bool(
                 api_settings.get("code_provider_token_auth_enabled", True)

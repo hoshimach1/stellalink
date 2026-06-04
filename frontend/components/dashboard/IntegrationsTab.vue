@@ -79,6 +79,40 @@
             <span v-else class="service-hint">Найдется после Steam, если ключ FACEIT настроен.</span>
           </div>
 
+          <div v-else-if="service.type === 'widget_spotify'" class="spotify-connect">
+            <div v-if="spotifyAccount" class="spotify-summary">
+              <div>
+                <strong>{{ spotifyDisplayName }}</strong>
+                <span>{{ spotifyPlaybackLabel }}</span>
+              </div>
+              <div class="steam-actions">
+                <button class="service-action primary" type="button" :disabled="spotifyBusy" @click="syncSpotifyConnection">
+                  <span v-if="spotifyBusy" class="integration-spinner" />
+                  <template v-else>
+                    <i aria-hidden="true" class="ri-refresh-line" />
+                    <span>Синхронизировать</span>
+                  </template>
+                </button>
+                <button class="service-action danger" type="button" :disabled="spotifyBusy" @click="disconnectSpotifyConnection">
+                  <i aria-hidden="true" class="ri-link-unlink-m" />
+                  <span>Отключить</span>
+                </button>
+              </div>
+            </div>
+
+            <button
+              v-else
+              class="spotify-login"
+              type="button"
+              :disabled="spotifyOauthBusy || !spotifyOAuthReady"
+              @click="startSpotifyLogin"
+            >
+              <span v-if="spotifyOauthBusy" class="integration-spinner" />
+              <i aria-hidden="true" v-else class="ri-spotify-fill" />
+              <span>{{ spotifyOAuthReady ? 'Войти через Spotify' : 'OAuth не настроен' }}</span>
+            </button>
+          </div>
+
           <div v-else-if="service.provider" class="code-provider-block">
             <div v-if="codeProviderAccount(service.provider)" class="code-provider-summary">
               <div>
@@ -241,7 +275,7 @@ const route = useRoute()
 const { pushToast } = useAppToast()
 
 type CodeProvider = 'github' | 'gitlab' | 'gitea'
-type IntegrationType = 'widget_steam' | 'widget_lastfm' | 'widget_faceit'
+type IntegrationType = 'widget_steam' | 'widget_lastfm' | 'widget_faceit' | 'widget_spotify'
 type NoticeTone = 'success' | 'error'
 type CodeProviderMode = 'token' | 'oauth'
 const TOKEN_NAME = 'Stellalink'
@@ -269,12 +303,13 @@ type IntegrationsResponse = {
     github_oauth_ready: boolean
     gitlab_oauth_ready: boolean
     gitea_oauth_ready: boolean
+    spotify_oauth_ready: boolean
     code_provider_token_auth_enabled: boolean
   }
 }
 
-const integrationTypes = new Set<IntegrationType>(['widget_steam', 'widget_lastfm', 'widget_faceit'])
-const integrationOrder: IntegrationType[] = ['widget_steam', 'widget_faceit', 'widget_lastfm']
+const integrationTypes = new Set<IntegrationType>(['widget_steam', 'widget_faceit', 'widget_spotify', 'widget_lastfm'])
+const integrationOrder: IntegrationType[] = ['widget_steam', 'widget_faceit', 'widget_spotify', 'widget_lastfm']
 const connectableTypes = new Set<IntegrationType>(['widget_lastfm'])
 const codeProviderDefinitions = [
   {
@@ -306,6 +341,8 @@ const integrations = ref<IntegrationsResponse | null>(null)
 const loading = ref(false)
 const steamBusy = ref(false)
 const steamOauthBusy = ref(false)
+const spotifyBusy = ref(false)
+const spotifyOauthBusy = ref(false)
 const connectingType = ref<IntegrationType | null>(null)
 const codeBusy = ref<string | null>(null)
 const codeProviderInputs = reactive<Record<CodeProvider, { mode: CodeProviderMode; base_url: string; token: string }>>({
@@ -321,14 +358,26 @@ const codeProviderModal = reactive<{ provider: CodeProvider | null; step: CodePr
 
 const steamAccount = computed(() => integrations.value?.accounts.find(account => account.provider === 'steam' && account.is_active) ?? null)
 const faceitAccount = computed(() => integrations.value?.accounts.find(account => account.provider === 'faceit' && account.is_active) ?? null)
+const spotifyAccount = computed(() => integrations.value?.accounts.find(account => account.provider === 'spotify' && account.is_active) ?? null)
 const faceitSkillLevel = computed(() => faceitAccount.value?.metadata?.skill_level ?? faceitAccount.value?.metadata?.skill_level_label ?? null)
 const faceitElo = computed(() => faceitAccount.value?.metadata?.faceit_elo ?? null)
+const spotifyOAuthReady = computed(() => Boolean(integrations.value?.capabilities.spotify_oauth_ready))
+const spotifyDisplayName = computed(() => String(spotifyAccount.value?.display_name || spotifyAccount.value?.metadata?.spotify_profile?.display_name || 'Spotify'))
+const spotifyPlaybackLabel = computed(() => {
+  const playback = spotifyAccount.value?.metadata?.playback
+  const track = playback?.track
+  if (!playback) return 'Статистика ещё не синхронизирована'
+  if (!track) return playback.message || 'Сейчас ничего не слушает'
+  const artist = track.artist_names ? ` · ${track.artist_names}` : ''
+  return `${playback.status_label || 'Spotify'}: ${track.name}${artist}`
+})
 const blockConnectedTypes = computed(() => new Set(profile.profile?.blocks.map(block => block.block_type) ?? []))
 const connectedTypes = computed(() => {
   const set = new Set<string>()
   if (blockConnectedTypes.value.has('widget_lastfm')) set.add('widget_lastfm')
   if (steamAccount.value) set.add('widget_steam')
   if (faceitAccount.value) set.add('widget_faceit')
+  if (spotifyAccount.value) set.add('widget_spotify')
   for (const provider of codeProviderDefinitions) {
     if (codeProviderAccount(provider.provider)) set.add(provider.type)
   }
@@ -352,21 +401,27 @@ const serviceCards = computed(() => {
         : apiReady?.faceit_api_key_set
           ? 'После привязки Steam попробуем найти FACEIT-профиль по SteamID64.'
           : 'Для автоподтягивания FACEIT администратору нужен FACEIT Data API key.'
+      const spotifyDescription = spotifyAccount.value
+        ? `${spotifyDisplayName.value}: текущий трек, недавние прослушивания и топы Spotify доступны для блока.`
+        : apiReady?.spotify_oauth_ready
+          ? 'Войдите через Spotify, чтобы показывать текущий трек в реальном времени и музыкальную статистику.'
+          : 'Администратору нужно добавить Spotify Client ID и Client Secret.'
       const descriptions: Partial<Record<IntegrationType, string>> = {
         widget_steam: steamDescription,
         widget_faceit: faceitDescription,
+        widget_spotify: spotifyDescription,
         widget_lastfm: 'Подключите Last.fm, чтобы показывать текущий трек и музыкальную активность.',
       }
       return {
         ...item,
         actionIcon: connected ? 'ri-checkbox-circle-line' : 'ri-plug-line',
         actionLabel: connected ? 'Подключено' : 'Подключиться',
-        canConnect: connectableTypes.has(type) && !connected,
+        canConnect: (type === 'widget_spotify' ? Boolean(apiReady?.spotify_oauth_ready) : connectableTypes.has(type)) && !connected,
         connected,
         description: descriptions[type] ?? item.description,
         statusIcon: connected ? 'ri-checkbox-circle-line' : type === 'widget_faceit' ? 'ri-link-m' : 'ri-add-circle-line',
-        statusLabel: connected ? (type === 'widget_faceit' ? 'Через Steam' : 'Подключён') : type === 'widget_faceit' ? 'Автопоиск' : 'Доступно',
-        statusTone: connected ? (type === 'widget_faceit' ? 'derived' : 'connected') : connectableTypes.has(type) ? 'available' : 'default',
+        statusLabel: connected ? (type === 'widget_faceit' ? 'Через Steam' : 'Подключён') : type === 'widget_faceit' ? 'Автопоиск' : type === 'widget_spotify' ? 'OAuth' : 'Доступно',
+        statusTone: connected ? (type === 'widget_faceit' ? 'derived' : 'connected') : (connectableTypes.has(type) || (type === 'widget_spotify' && apiReady?.spotify_oauth_ready)) ? 'available' : 'default',
       }
     })
   const codeCards = codeProviderDefinitions.map((item) => {
@@ -383,7 +438,7 @@ const serviceCards = computed(() => {
     }
   })
   const byType = new Map([...baseCards, ...codeCards].map(card => [card.type, card]))
-  return ['widget_steam', 'widget_faceit', 'code_github', 'code_gitlab', 'code_gitea', 'widget_lastfm']
+  return ['widget_steam', 'widget_faceit', 'widget_spotify', 'code_github', 'code_gitlab', 'code_gitea', 'widget_lastfm']
     .map(type => byType.get(type))
     .filter(Boolean)
 })
@@ -403,6 +458,7 @@ const codeProviderModalSubtitle = computed(() => {
 
 onMounted(() => {
   readSteamRedirectResult()
+  readSpotifyRedirectResult()
   readIntegrationRedirectResult()
   void loadIntegrations()
 })
@@ -416,6 +472,18 @@ function readSteamRedirectResult() {
     setIntegrationNotice(typeof route.query.steam_error === 'string'
       ? route.query.steam_error
       : 'Не удалось завершить вход через Steam.', 'error')
+  }
+}
+
+function readSpotifyRedirectResult() {
+  if (route.query.spotify === 'connected') {
+    setIntegrationNotice('Spotify подключён через OAuth.', 'success')
+    return
+  }
+  if (route.query.spotify === 'error') {
+    setIntegrationNotice(typeof route.query.spotify_error === 'string'
+      ? route.query.spotify_error
+      : 'Не удалось завершить подключение Spotify.', 'error')
   }
 }
 
@@ -446,6 +514,9 @@ async function loadIntegrations() {
     applyIntegrations(data)
     if (steamAccount.value) {
       await ensureSteamBlock()
+    }
+    if (spotifyAccount.value) {
+      await ensureSpotifyBlock()
     }
     const firstGitProvider = codeProviderDefinitions.find(item => codeProviderAccount(item.provider))?.provider
     if (firstGitProvider) {
@@ -548,6 +619,44 @@ function sanitizedSteamBlockConfig(value: Record<string, unknown>) {
   return clean
 }
 
+async function ensureSpotifyBlock() {
+  if (!profile.profile) return
+  const existing = profile.profile?.blocks.find((block: Block) => block.block_type === 'widget_spotify')
+  const currentConfig = existing ? sanitizedSpotifyBlockConfig(existing.config) : null
+  const nextConfig: Record<string, unknown> = {
+    ...(currentConfig ?? createDefaultBlockConfig('widget_spotify')),
+    use_connected_account: true,
+    show_now_playing: currentConfig?.show_now_playing ?? true,
+    show_recent_tracks: currentConfig?.show_recent_tracks ?? true,
+    show_top_tracks: currentConfig?.show_top_tracks ?? true,
+    show_top_artists: currentConfig?.show_top_artists ?? true,
+    show_stats: currentConfig?.show_stats ?? true,
+  }
+
+  if (existing) {
+    if (JSON.stringify(currentConfig) !== JSON.stringify(nextConfig)) {
+      await profile.updateBlock(existing.id, { config: nextConfig })
+    }
+  } else {
+    await profile.createBlock('widget_spotify', nextConfig)
+  }
+}
+
+function sanitizedSpotifyBlockConfig(value: Record<string, unknown>) {
+  const clean = { ...value }
+  delete clean.spotify_display_name
+  delete clean.spotify_profile
+  delete clean.spotify_playback
+  delete clean.spotify_recent_tracks
+  delete clean.spotify_top_tracks
+  delete clean.spotify_top_artists
+  delete clean.spotify_stats
+  delete clean.spotify_sync_error
+  delete clean.spotify_last_synced_at
+  delete clean.connected_account_id
+  return clean
+}
+
 async function startSteamLogin() {
   steamOauthBusy.value = true
   try {
@@ -589,6 +698,55 @@ async function disconnectSteamConnection() {
     setIntegrationNotice(extractAuthError(error, 'Не удалось отключить Steam.'), 'error')
   } finally {
     steamBusy.value = false
+  }
+}
+
+async function startSpotifyLogin() {
+  if (!spotifyOAuthReady.value) {
+    setIntegrationNotice('Spotify OAuth не настроен в админке.', 'error')
+    return
+  }
+  spotifyOauthBusy.value = true
+  try {
+    const response = await auth.authorizedFetch<{ auth_url: string }>(
+      `${config.public.apiBase}/integrations/spotify/oauth/start`,
+      { method: 'POST' },
+    )
+    window.location.assign(response.auth_url)
+  } catch (error) {
+    setIntegrationNotice(extractAuthError(error, 'Не удалось начать вход через Spotify.'), 'error')
+    spotifyOauthBusy.value = false
+  }
+}
+
+async function syncSpotifyConnection() {
+  spotifyBusy.value = true
+  try {
+    const data = await auth.authorizedFetch<IntegrationsResponse>(`${config.public.apiBase}/integrations/spotify/sync`, {
+      method: 'POST',
+    })
+    applyIntegrations(data)
+    await ensureSpotifyBlock()
+    await profile.fetch()
+    setIntegrationNotice('Spotify синхронизирован.', 'success')
+  } catch (error) {
+    setIntegrationNotice(extractAuthError(error, 'Не удалось синхронизировать Spotify.'), 'error')
+  } finally {
+    spotifyBusy.value = false
+  }
+}
+
+async function disconnectSpotifyConnection() {
+  spotifyBusy.value = true
+  try {
+    await auth.authorizedFetch(`${config.public.apiBase}/integrations/spotify`, { method: 'DELETE' })
+    await loadIntegrations()
+    await profile.fetch()
+    setIntegrationNotice('Spotify отключён от аккаунта.', 'success')
+  } catch (error) {
+    setIntegrationNotice(extractAuthError(error, 'Не удалось отключить Spotify.'), 'error')
+  } finally {
+    spotifyBusy.value = false
   }
 }
 
@@ -998,6 +1156,7 @@ async function connectService(type: IntegrationType) {
 
 .service-controls,
 .steam-connect,
+.spotify-connect,
 .faceit-block,
 .code-provider-block {
   display: grid;
@@ -1014,6 +1173,7 @@ async function connectService(type: IntegrationType) {
 }
 
 .steam-login,
+.spotify-login,
 .service-action {
   min-height: 44px;
   display: inline-flex;
@@ -1037,6 +1197,13 @@ async function connectService(type: IntegrationType) {
   border-color: transparent;
   background: #171a21;
   color: #fff;
+  cursor: pointer;
+}
+
+.spotify-login {
+  border-color: transparent;
+  background: #1db954;
+  color: #06140b;
   cursor: pointer;
 }
 
@@ -1067,6 +1234,7 @@ async function connectService(type: IntegrationType) {
 }
 
 .steam-login:disabled,
+.spotify-login:disabled,
 .service-action:disabled:not(.complete) {
   cursor: wait;
   opacity: 0.72;
@@ -1079,6 +1247,7 @@ async function connectService(type: IntegrationType) {
   gap: 8px;
 }
 
+.spotify-summary,
 .code-provider-summary {
   display: grid;
   gap: 10px;
@@ -1086,6 +1255,7 @@ async function connectService(type: IntegrationType) {
   min-width: 280px;
 }
 
+.spotify-summary > div:first-child,
 .code-provider-summary > div:first-child {
   display: grid;
   justify-items: end;
@@ -1096,6 +1266,7 @@ async function connectService(type: IntegrationType) {
   background: var(--surface-low, #F2F4F8);
 }
 
+.spotify-summary strong,
 .code-provider-summary strong {
   color: var(--text-1, #10182b);
   font-size: 13px;
@@ -1103,6 +1274,7 @@ async function connectService(type: IntegrationType) {
   overflow-wrap: anywhere;
 }
 
+.spotify-summary span,
 .code-provider-summary span {
   color: var(--text-2, #475778);
   font-size: 12px;
@@ -1363,6 +1535,7 @@ async function connectService(type: IntegrationType) {
 }
 
 .steam-login:focus-visible,
+.spotify-login:focus-visible,
 .service-action:focus-visible,
 .integration-modal-close:focus-visible,
 .modal-auth-button:focus-visible,
@@ -1379,6 +1552,7 @@ async function connectService(type: IntegrationType) {
   }
 
   .service-action.primary:hover:not(:disabled),
+  .spotify-login:hover:not(:disabled),
   .steam-login:hover:not(:disabled),
   .modal-auth-button:hover:not(:disabled) {
     transform: translateY(-1px);
@@ -1410,8 +1584,10 @@ async function connectService(type: IntegrationType) {
 
   .service-controls,
   .steam-connect,
+  .spotify-connect,
   .faceit-block,
   .code-provider-block,
+  .spotify-summary,
   .code-provider-summary {
     justify-items: stretch;
     min-width: 0;
@@ -1423,10 +1599,12 @@ async function connectService(type: IntegrationType) {
   }
 
   .service-action,
+  .spotify-login,
   .steam-login {
     width: 100%;
   }
 
+  .spotify-summary > div:first-child,
   .code-provider-summary > div:first-child {
     justify-items: start;
   }

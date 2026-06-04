@@ -168,6 +168,75 @@
               </template>
             </template>
 
+            <template v-else-if="block.block_type === 'widget_spotify'">
+              <div class="pub-wh pub-m3-widget-head">
+                <div class="pub-wh-left">
+                  <div class="pub-w-ico-bg pub-m3-service-icon pub-spotify-icon">
+                    <i aria-hidden="true" class="ri-spotify-fill" />
+                  </div>
+                  <div>
+                    <div class="pub-w-name">Spotify</div>
+                    <div class="pub-w-id">{{ spotifyDisplayName(block) }}</div>
+                  </div>
+                </div>
+                <span class="pub-m3-status-pill" :class="spotifyStatusClass(block)">
+                  <span class="pub-m3-status-dot" aria-hidden="true" />
+                  {{ spotifyStatusLabel(block) }}
+                </span>
+              </div>
+              <template v-if="block.config.show_now_playing">
+                <div class="pub-divider" />
+                <div class="pub-spotify-now" :class="{ idle: !spotifyCurrentTrack(block) }">
+                  <img v-if="spotifyCurrentImage(block)" :src="spotifyCurrentImage(block)" alt="" class="pub-spotify-cover">
+                  <div v-else class="pub-spotify-cover pub-spotify-cover-empty"><i aria-hidden="true" class="ri-music-2-fill" /></div>
+                  <div class="pub-spotify-copy">
+                    <div class="pub-np-label">{{ spotifyNowLabel(block) }}</div>
+                    <a v-if="spotifyCurrentUrl(block)" :href="spotifyCurrentUrl(block)" target="_blank" rel="noopener" class="pub-np-track pub-spotify-link">{{ spotifyCurrentTitle(block) }}</a>
+                    <div v-else class="pub-np-track">{{ spotifyCurrentTitle(block) }}</div>
+                    <div class="pub-np-artist">{{ spotifyCurrentSubtitle(block) }}</div>
+                  </div>
+                </div>
+                <div v-if="spotifyProgress(block) > 0" class="pub-spotify-progress" aria-hidden="true">
+                  <span :style="{ width: `${spotifyProgress(block)}%` }" />
+                </div>
+              </template>
+              <template v-if="block.config.show_stats && spotifyStatsList(block).length">
+                <div class="pub-divider" />
+                <div class="pub-faceit-stats">
+                  <div v-for="s in spotifyStatsList(block)" :key="s.label" class="pub-faceit-stat pub-m3-stat">
+                    <div class="pub-fstat-v">{{ s.value }}</div>
+                    <div class="pub-fstat-l">{{ s.label }}</div>
+                  </div>
+                </div>
+              </template>
+              <template v-if="block.config.show_recent_tracks && spotifyRecentTracks(block).length">
+                <div class="pub-sub-label pub-m3-pin-label">Недавно слушал</div>
+                <div v-for="track in spotifyRecentTracks(block)" :key="`${track.id || track.name}-${track.played_at || ''}`" class="pub-spotify-row">
+                  <span>
+                    {{ track.name }}
+                    <small>{{ spotifyTrackSubtitle(track) }}</small>
+                  </span>
+                  <span>{{ formatLastPlayed(track.played_at) }}</span>
+                </div>
+              </template>
+              <template v-if="block.config.show_top_tracks && spotifyTopTracks(block).length">
+                <div class="pub-sub-label pub-m3-pin-label">Топ треков</div>
+                <div v-for="track in spotifyTopTracks(block)" :key="`top-${track.id || track.name}`" class="pub-spotify-row">
+                  <span>
+                    {{ track.name }}
+                    <small>{{ spotifyTrackSubtitle(track) }}</small>
+                  </span>
+                </div>
+              </template>
+              <template v-if="block.config.show_top_artists && spotifyTopArtists(block).length">
+                <div class="pub-sub-label pub-m3-pin-label">Топ артистов</div>
+                <div v-for="artist in spotifyTopArtists(block)" :key="`artist-${artist.id || artist.name}`" class="pub-spotify-row">
+                  <span>{{ artist.name }}</span>
+                  <span>{{ spotifyArtistGenres(artist) }}</span>
+                </div>
+              </template>
+            </template>
+
             <template v-else-if="block.block_type === 'widget_github'">
               <div class="pub-wh pub-m3-widget-head">
                 <div class="pub-wh-left">
@@ -413,6 +482,73 @@
                       <div class="pub-np-track">{{ mock.lastfmTrack(block.config.username as string).track }}</div>
                       <div class="pub-np-artist">{{ mock.lastfmTrack(block.config.username as string).artist }}</div>
                     </div>
+                  </div>
+                </template>
+              </template>
+
+              <!-- Spotify -->
+              <template v-else-if="block.block_type === 'widget_spotify'">
+                <div class="pub-wh">
+                  <div class="pub-wh-left">
+                    <div class="pub-w-ico-bg pub-spotify-icon"><i aria-hidden="true" class="ri-spotify-fill" /></div>
+                    <div>
+                      <div class="pub-w-name">Spotify</div>
+                      <div class="pub-w-id">{{ spotifyDisplayName(block) }}</div>
+                    </div>
+                  </div>
+                  <span class="pub-badge-green" :class="spotifyStatusClass(block)">
+                    {{ spotifyStatusLabel(block) }}
+                  </span>
+                </div>
+                <template v-if="block.config.show_now_playing">
+                  <div class="pub-divider" />
+                  <div class="pub-spotify-now" :class="{ idle: !spotifyCurrentTrack(block) }">
+                    <img v-if="spotifyCurrentImage(block)" :src="spotifyCurrentImage(block)" alt="" class="pub-spotify-cover">
+                    <div v-else class="pub-spotify-cover pub-spotify-cover-empty"><i aria-hidden="true" class="ri-music-2-fill" /></div>
+                    <div class="pub-spotify-copy">
+                      <div class="pub-np-label">{{ spotifyNowLabel(block) }}</div>
+                      <a v-if="spotifyCurrentUrl(block)" :href="spotifyCurrentUrl(block)" target="_blank" rel="noopener" class="pub-np-track pub-spotify-link">{{ spotifyCurrentTitle(block) }}</a>
+                      <div v-else class="pub-np-track">{{ spotifyCurrentTitle(block) }}</div>
+                      <div class="pub-np-artist">{{ spotifyCurrentSubtitle(block) }}</div>
+                    </div>
+                  </div>
+                  <div v-if="spotifyProgress(block) > 0" class="pub-spotify-progress" aria-hidden="true">
+                    <span :style="{ width: `${spotifyProgress(block)}%` }" />
+                  </div>
+                </template>
+                <template v-if="block.config.show_stats && spotifyStatsList(block).length">
+                  <div class="pub-divider" />
+                  <div class="pub-faceit-stats">
+                    <div v-for="s in spotifyStatsList(block)" :key="s.label" class="pub-faceit-stat">
+                      <div class="pub-fstat-v">{{ s.value }}</div>
+                      <div class="pub-fstat-l">{{ s.label }}</div>
+                    </div>
+                  </div>
+                </template>
+                <template v-if="block.config.show_recent_tracks && spotifyRecentTracks(block).length">
+                  <div class="pub-sub-label">Недавно слушал</div>
+                  <div v-for="track in spotifyRecentTracks(block)" :key="`${track.id || track.name}-${track.played_at || ''}`" class="pub-spotify-row">
+                    <span>
+                      {{ track.name }}
+                      <small>{{ spotifyTrackSubtitle(track) }}</small>
+                    </span>
+                    <span>{{ formatLastPlayed(track.played_at) }}</span>
+                  </div>
+                </template>
+                <template v-if="block.config.show_top_tracks && spotifyTopTracks(block).length">
+                  <div class="pub-sub-label">Топ треков</div>
+                  <div v-for="track in spotifyTopTracks(block)" :key="`top-${track.id || track.name}`" class="pub-spotify-row">
+                    <span>
+                      {{ track.name }}
+                      <small>{{ spotifyTrackSubtitle(track) }}</small>
+                    </span>
+                  </div>
+                </template>
+                <template v-if="block.config.show_top_artists && spotifyTopArtists(block).length">
+                  <div class="pub-sub-label">Топ артистов</div>
+                  <div v-for="artist in spotifyTopArtists(block)" :key="`artist-${artist.id || artist.name}`" class="pub-spotify-row">
+                    <span>{{ artist.name }}</span>
+                    <span>{{ spotifyArtistGenres(artist) }}</span>
                   </div>
                 </template>
               </template>
@@ -665,6 +801,76 @@
                 </template>
               </div>
 
+              <!-- Spotify -->
+              <div v-else-if="block.block_type === 'widget_spotify'" class="pub-block-inner">
+                <div class="pub-wh">
+                  <div class="pub-wh-left">
+                    <div class="pub-w-ico-bg pub-spotify-icon"><i aria-hidden="true" class="ri-spotify-fill" /></div>
+                    <div>
+                      <div class="pub-w-name">Spotify</div>
+                      <div class="pub-w-id">{{ spotifyDisplayName(block) }}</div>
+                    </div>
+                  </div>
+                  <fluent-badge
+                    :appearance="spotifyIsPlaying(block) ? 'accent' : 'neutral'"
+                    class="pub-fluent-badge-online"
+                  >
+                    {{ spotifyStatusLabel(block) }}
+                  </fluent-badge>
+                </div>
+                <template v-if="block.config.show_now_playing">
+                  <div class="pub-divider" />
+                  <div class="pub-spotify-now" :class="{ idle: !spotifyCurrentTrack(block) }">
+                    <img v-if="spotifyCurrentImage(block)" :src="spotifyCurrentImage(block)" alt="" class="pub-spotify-cover">
+                    <div v-else class="pub-spotify-cover pub-spotify-cover-empty"><i aria-hidden="true" class="ri-music-2-fill" /></div>
+                    <div class="pub-spotify-copy">
+                      <div class="pub-np-label">{{ spotifyNowLabel(block) }}</div>
+                      <a v-if="spotifyCurrentUrl(block)" :href="spotifyCurrentUrl(block)" target="_blank" rel="noopener" class="pub-np-track pub-spotify-link">{{ spotifyCurrentTitle(block) }}</a>
+                      <div v-else class="pub-np-track">{{ spotifyCurrentTitle(block) }}</div>
+                      <div class="pub-np-artist">{{ spotifyCurrentSubtitle(block) }}</div>
+                    </div>
+                  </div>
+                  <div v-if="spotifyProgress(block) > 0" class="pub-spotify-progress" aria-hidden="true">
+                    <span :style="{ width: `${spotifyProgress(block)}%` }" />
+                  </div>
+                </template>
+                <template v-if="block.config.show_stats && spotifyStatsList(block).length">
+                  <div class="pub-divider" />
+                  <div class="pub-faceit-stats">
+                    <div v-for="s in spotifyStatsList(block)" :key="s.label" class="pub-faceit-stat">
+                      <div class="pub-fstat-v">{{ s.value }}</div>
+                      <div class="pub-fstat-l">{{ s.label }}</div>
+                    </div>
+                  </div>
+                </template>
+                <template v-if="block.config.show_recent_tracks && spotifyRecentTracks(block).length">
+                  <div class="pub-sub-label" style="margin-top:12px">Недавно слушал</div>
+                  <div v-for="track in spotifyRecentTracks(block)" :key="`${track.id || track.name}-${track.played_at || ''}`" class="pub-spotify-row">
+                    <span>
+                      {{ track.name }}
+                      <small>{{ spotifyTrackSubtitle(track) }}</small>
+                    </span>
+                    <span>{{ formatLastPlayed(track.played_at) }}</span>
+                  </div>
+                </template>
+                <template v-if="block.config.show_top_tracks && spotifyTopTracks(block).length">
+                  <div class="pub-sub-label" style="margin-top:12px">Топ треков</div>
+                  <div v-for="track in spotifyTopTracks(block)" :key="`top-${track.id || track.name}`" class="pub-spotify-row">
+                    <span>
+                      {{ track.name }}
+                      <small>{{ spotifyTrackSubtitle(track) }}</small>
+                    </span>
+                  </div>
+                </template>
+                <template v-if="block.config.show_top_artists && spotifyTopArtists(block).length">
+                  <div class="pub-sub-label" style="margin-top:12px">Топ артистов</div>
+                  <div v-for="artist in spotifyTopArtists(block)" :key="`artist-${artist.id || artist.name}`" class="pub-spotify-row">
+                    <span>{{ artist.name }}</span>
+                    <span>{{ spotifyArtistGenres(artist) }}</span>
+                  </div>
+                </template>
+              </div>
+
               <!-- GitHub -->
               <div v-else-if="block.block_type === 'widget_github'" class="pub-block-inner">
                 <div class="pub-wh">
@@ -816,6 +1022,42 @@ interface GitContributionDay {
   empty?: boolean
 }
 
+interface SpotifyArtist {
+  id?: string | null
+  name: string
+  url?: string | null
+  image_url?: string | null
+  genres?: string[]
+}
+
+interface SpotifyTrack {
+  id?: string | null
+  type?: string
+  name: string
+  artists?: SpotifyArtist[]
+  artist_names?: string
+  album_name?: string | null
+  image_url?: string | null
+  url?: string | null
+  duration_ms?: number
+  progress_ms?: number
+  progress_percent?: number
+  played_at?: string | null
+}
+
+interface SpotifyPlayback {
+  available?: boolean
+  is_active?: boolean
+  is_playing?: boolean
+  status?: string
+  status_label?: string
+  message?: string
+  track?: SpotifyTrack | null
+  progress_ms?: number
+  progress_percent?: number
+  checked_at?: string
+}
+
 type ThemeColorMode = 'light' | 'dark'
 type Material3Layout = 'compact' | 'wide'
 
@@ -884,6 +1126,12 @@ if (!props.profileOverride) {
 }
 
 const profile = computed(() => props.profileOverride ?? fetchedProfile.value)
+const hasPublicSpotifyBlock = computed(() =>
+  !props.embedded
+  && Boolean(profile.value?.blocks.some(block => block.is_visible && block.block_type === 'widget_spotify')),
+)
+
+let spotifyPollTimer: ReturnType<typeof setInterval> | null = null
 
 const avatarSrc = computed(() =>
   props.avatarSrcOverride ?? (profile.value?.avatar_url
@@ -941,6 +1189,7 @@ function editorBlockLabel(block: Block): string {
     text: 'Текст',
     widget_steam: 'Steam',
     widget_lastfm: 'Last.fm',
+    widget_spotify: 'Spotify',
     widget_faceit: 'FACEIT',
     pc_config: 'PC Config',
   }
@@ -1048,18 +1297,74 @@ function scheduleLiquidGlass() {
   }, 180)
 }
 
+function applySpotifyRealtime(payload: Record<string, any>) {
+  const target = fetchedProfile.value
+  if (!target) return
+  fetchedProfile.value = {
+    ...target,
+    blocks: target.blocks.map((block) => {
+      if (block.block_type !== 'widget_spotify') return block
+      return {
+        ...block,
+        config: {
+          ...block.config,
+          spotify_playback: payload.playback,
+          spotify_recent_tracks: payload.recent_tracks ?? block.config.spotify_recent_tracks ?? [],
+          spotify_top_tracks: payload.top_tracks ?? block.config.spotify_top_tracks ?? [],
+          spotify_top_artists: payload.top_artists ?? block.config.spotify_top_artists ?? [],
+          spotify_stats: payload.stats ?? block.config.spotify_stats ?? {},
+          spotify_sync_error: payload.sync_error ?? null,
+          spotify_last_synced_at: payload.last_synced_at ?? block.config.spotify_last_synced_at ?? null,
+        },
+      }
+    }),
+  }
+}
+
+async function refreshSpotifyRealtime() {
+  if (!hasPublicSpotifyBlock.value || !slug.value) return
+  try {
+    const payload = await $fetch<Record<string, any>>(
+      `${config.public.apiBase}/integrations/spotify/public/${encodeURIComponent(slug.value)}/playback`,
+    )
+    applySpotifyRealtime(payload)
+  } catch {
+    // Public profiles should keep rendering the last synced Spotify snapshot.
+  }
+}
+
+function startSpotifyPolling() {
+  if (typeof window === 'undefined' || !hasPublicSpotifyBlock.value || spotifyPollTimer) return
+  void refreshSpotifyRealtime()
+  spotifyPollTimer = window.setInterval(() => {
+    void refreshSpotifyRealtime()
+  }, 30000)
+}
+
+function stopSpotifyPolling() {
+  if (typeof window === 'undefined' || !spotifyPollTimer) return
+  window.clearInterval(spotifyPollTimer)
+  spotifyPollTimer = null
+}
+
 onMounted(() => {
   nextTick(() => setTimeout(applyLiquidGlass, 200))
   window.addEventListener('resize', scheduleLiquidGlass, { passive: true })
+  startSpotifyPolling()
 })
 
 onBeforeUnmount(() => {
   if (typeof window === 'undefined') return
   window.removeEventListener('resize', scheduleLiquidGlass)
   if (glassResizeTimeout) window.clearTimeout(glassResizeTimeout)
+  stopSpotifyPolling()
 })
 
 watch(theme, () => { glassApplied = false; nextTick(() => setTimeout(applyLiquidGlass, 200)) })
+watch(hasPublicSpotifyBlock, (enabled) => {
+  if (enabled) startSpotifyPolling()
+  else stopSpotifyPolling()
+})
 
 function normalizeUrl(url: string | undefined): string {
   if (!url) return '#'
@@ -1162,6 +1467,111 @@ function inventoryStatus(block: Block) {
     title: String(item.title || 'Инвентарь'),
     reason: String(item.reason || 'Источник цен не настроен.'),
   }
+}
+
+function spotifyProfile(block: Block): Record<string, unknown> | null {
+  const profile = block.config.spotify_profile
+  return profile && typeof profile === 'object' ? profile as Record<string, unknown> : null
+}
+
+function spotifyPlayback(block: Block): SpotifyPlayback | null {
+  const playback = block.config.spotify_playback
+  return playback && typeof playback === 'object' ? playback as SpotifyPlayback : null
+}
+
+function spotifyDisplayName(block: Block): string {
+  const profile = spotifyProfile(block)
+  return String(block.config.spotify_display_name || profile?.display_name || 'Spotify не подключён')
+}
+
+function spotifyCurrentTrack(block: Block): SpotifyTrack | null {
+  return spotifyPlayback(block)?.track ?? null
+}
+
+function spotifyIsPlaying(block: Block): boolean {
+  return Boolean(spotifyPlayback(block)?.is_playing)
+}
+
+function spotifyStatusLabel(block: Block): string {
+  const playback = spotifyPlayback(block)
+  if (!playback) return 'Не синхронизировано'
+  return String(playback.status_label || playback.message || 'Ничего не слушает')
+}
+
+function spotifyStatusClass(block: Block): Record<string, boolean> {
+  const playback = spotifyPlayback(block)
+  return {
+    online: Boolean(playback?.is_playing),
+    offline: !playback?.track,
+    away: Boolean(playback?.track && !playback?.is_playing),
+  }
+}
+
+function spotifyNowLabel(block: Block): string {
+  const playback = spotifyPlayback(block)
+  if (!playback) return 'Spotify'
+  return String(playback.message || playback.status_label || 'Spotify')
+}
+
+function spotifyCurrentTitle(block: Block): string {
+  const track = spotifyCurrentTrack(block)
+  return track?.name || spotifyPlayback(block)?.message || 'Сейчас ничего не слушает'
+}
+
+function spotifyCurrentSubtitle(block: Block): string {
+  const track = spotifyCurrentTrack(block)
+  if (!track) {
+    const recent = spotifyRecentTracks(block)[0]
+    return recent ? `Последний трек: ${recent.name}` : 'Последние прослушивания появятся после синхронизации'
+  }
+  return track.artist_names || track.album_name || 'Spotify'
+}
+
+function spotifyCurrentImage(block: Block): string {
+  return String(spotifyCurrentTrack(block)?.image_url || '')
+}
+
+function spotifyCurrentUrl(block: Block): string {
+  return String(spotifyCurrentTrack(block)?.url || '')
+}
+
+function spotifyProgress(block: Block): number {
+  const value = Number(spotifyPlayback(block)?.progress_percent || 0)
+  return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0
+}
+
+function spotifyRecentTracks(block: Block): SpotifyTrack[] {
+  const tracks = block.config.spotify_recent_tracks
+  return Array.isArray(tracks) ? tracks as SpotifyTrack[] : []
+}
+
+function spotifyTopTracks(block: Block): SpotifyTrack[] {
+  const tracks = block.config.spotify_top_tracks
+  return Array.isArray(tracks) ? tracks as SpotifyTrack[] : []
+}
+
+function spotifyTopArtists(block: Block): SpotifyArtist[] {
+  const artists = block.config.spotify_top_artists
+  return Array.isArray(artists) ? artists as SpotifyArtist[] : []
+}
+
+function spotifyTrackSubtitle(track: SpotifyTrack): string {
+  return [track.artist_names, track.album_name].filter(Boolean).join(' · ') || 'Spotify'
+}
+
+function spotifyArtistGenres(artist: SpotifyArtist): string {
+  return Array.isArray(artist.genres) && artist.genres.length ? artist.genres.slice(0, 2).join(', ') : 'Artist'
+}
+
+function spotifyStatsList(block: Block) {
+  const stats = block.config.spotify_stats as Record<string, any> | undefined
+  if (!stats) return []
+  return [
+    { value: stats.recent_tracks_count, label: 'Recent' },
+    { value: stats.unique_recent_artists, label: 'Artists' },
+    { value: stats.top_tracks_count, label: 'Top tracks' },
+    { value: stats.top_artists_count, label: 'Top artists' },
+  ].filter(item => item.value !== undefined && item.value !== null && item.value !== '')
 }
 
 function gitProviderLabel(block: Block): string {
@@ -2459,6 +2869,84 @@ function faceitStatsList(block: Block) {
 .pub-np-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0; color: #e5343a; margin-bottom: 2px; }
 .pub-np-track { font-size: 14px; font-weight: 700; line-height: 1.2; }
 .pub-np-artist { font-size: 12px; color: var(--t-muted); margin-top: 2px; }
+
+/* ── Spotify ───────────────────────────────────────────────────────────────── */
+.pub-spotify-icon {
+  background: rgba(29,185,84,0.15);
+  color: #1db954;
+}
+.pub-spotify-now {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.pub-spotify-now.idle {
+  opacity: 0.82;
+}
+.pub-spotify-cover {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: rgba(29,185,84,0.12);
+  border: 1px solid rgba(29,185,84,0.2);
+}
+.pub-spotify-cover-empty {
+  display: grid;
+  place-items: center;
+  color: #1db954;
+  font-size: 20px;
+}
+.pub-spotify-copy {
+  min-width: 0;
+}
+.pub-spotify-link {
+  display: inline-block;
+  color: inherit;
+  text-decoration: none;
+}
+.pub-spotify-link:hover {
+  color: #1db954;
+}
+.pub-spotify-progress {
+  height: 5px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--t-surface);
+}
+.pub-spotify-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #1db954;
+}
+.pub-spotify-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--t-border);
+  color: var(--t-text);
+  font-size: 13px;
+}
+.pub-spotify-row:last-child {
+  border-bottom: none;
+}
+.pub-spotify-row > span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  overflow-wrap: anywhere;
+}
+.pub-spotify-row small,
+.pub-spotify-row > span:last-child {
+  color: var(--t-dim);
+  font-size: 11px;
+  line-height: 1.35;
+}
 
 /* ── Git repositories ───────────────────────────────────────────────────────── */
 .pub-gh-repos-badge {

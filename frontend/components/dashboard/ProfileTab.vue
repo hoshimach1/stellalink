@@ -495,13 +495,19 @@ const GIT_PROVIDER_CHOICES: Array<{
     description: 'Репозитории и активность Gitea.',
   },
 ]
-const DUPLICATE_WARN_BLOCK_TYPES = new Set(['widget_steam', 'widget_faceit', 'widget_lastfm', 'widget_github'])
+const DUPLICATE_WARN_BLOCK_TYPES = new Set(['widget_steam', 'widget_faceit', 'widget_spotify', 'widget_lastfm', 'widget_github'])
 const LIVE_PREVIEW_CONFIG_KEYS = [
   'steam_profile',
   'steam_recent_games',
   'steam_profile_stats',
   'steam_inventory_highlight',
   'faceit_profile',
+  'spotify_profile',
+  'spotify_playback',
+  'spotify_recent_tracks',
+  'spotify_top_tracks',
+  'spotify_top_artists',
+  'spotify_stats',
   'git_profile',
   'git_repository_stats',
   'git_pinned_repositories',

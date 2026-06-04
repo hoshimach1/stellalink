@@ -122,6 +122,37 @@
       </label>
     </template>
 
+    <template v-else-if="type === 'widget_spotify'">
+      <div class="bf-readonly">
+        <span>Аккаунт Spotify</span>
+        <strong>{{ spotifyDisplayName() }}</strong>
+        <small>{{ spotifySubLabel() }}</small>
+      </div>
+      <label class="bf-check">
+        <input v-model="config.show_now_playing" type="checkbox">
+        <span>Показывать текущий трек в реальном времени</span>
+      </label>
+      <label class="bf-check">
+        <input v-model="config.show_recent_tracks" type="checkbox">
+        <span>Показывать последние прослушивания</span>
+      </label>
+      <label class="bf-check">
+        <input v-model="config.show_top_tracks" type="checkbox">
+        <span>Показывать топ треков</span>
+      </label>
+      <label class="bf-check">
+        <input v-model="config.show_top_artists" type="checkbox">
+        <span>Показывать топ артистов</span>
+      </label>
+      <label class="bf-check">
+        <input v-model="config.show_stats" type="checkbox">
+        <span>Показывать краткую статистику</span>
+      </label>
+      <div class="bf-note">
+        Если сейчас ничего не играет, блок покажет честный idle-статус и последние прослушанные треки вместо фейкового “now playing”.
+      </div>
+    </template>
+
     <template v-else-if="type === 'widget_github'">
       <div class="bf-readonly">
         <span>Git-профиль</span>
@@ -344,6 +375,21 @@ function faceitSubLabel(): string {
   const elo = profile?.faceit_elo ? `${profile.faceit_elo} ELO` : ''
   const level = profile?.skill_level ? `уровень ${profile.skill_level}` : ''
   return [level, elo].filter(Boolean).join(' · ') || 'FACEIT подтягивается автоматически через Steam'
+}
+
+function spotifyDisplayName(): string {
+  const profile = config.spotify_profile as Record<string, unknown> | undefined
+  return String(config.spotify_display_name || profile?.display_name || 'Spotify не подключён')
+}
+
+function spotifySubLabel(): string {
+  const playback = config.spotify_playback as Record<string, any> | undefined
+  const track = playback?.track
+  if (track?.name) {
+    const artist = track.artist_names ? ` · ${track.artist_names}` : ''
+    return `${playback?.status_label || 'Spotify'}: ${track.name}${artist}`
+  }
+  return playback?.message || 'Подключите Spotify в разделе интеграций'
 }
 
 function gitProvider(): string {

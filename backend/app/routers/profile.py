@@ -48,6 +48,10 @@ def _display_name_from_metadata(account, metadata: dict, provider: str) -> str |
             return steam_profile.get("personaname")
     if provider == "faceit":
         return metadata.get("nickname") or metadata.get("game_player_name")
+    if provider == "spotify":
+        spotify_profile = metadata.get("spotify_profile")
+        if isinstance(spotify_profile, dict):
+            return metadata.get("display_name") or spotify_profile.get("display_name")
     if provider in {"github", "gitlab", "gitea"}:
         return metadata.get("display_name") or metadata.get("username")
     return None
@@ -162,6 +166,18 @@ def _sanitize_block_config(block_type: str, config: dict | None) -> dict:
             "github_sync_error",
             "github_last_synced_at",
         ),
+        "widget_spotify": (
+            "spotify_display_name",
+            "spotify_profile",
+            "spotify_playback",
+            "spotify_recent_tracks",
+            "spotify_top_tracks",
+            "spotify_top_artists",
+            "spotify_stats",
+            "spotify_sync_error",
+            "spotify_last_synced_at",
+            "connected_account_id",
+        ),
     }
     for key in synced_keys.get(block_type, ()):
         clean.pop(key, None)
@@ -176,8 +192,10 @@ def _enriched_block_config(profile, block) -> dict:
         provider: _account_by_provider(profile, provider)
         for provider in ("github", "gitlab", "gitea")
     }
+    spotify_account = _account_by_provider(profile, "spotify")
     steam_metadata = _account_metadata(steam_account)
     faceit_metadata = _account_metadata(faceit_account)
+    spotify_metadata = _account_metadata(spotify_account)
 
     if block.block_type == "widget_steam":
         if steam_account:
@@ -323,6 +341,42 @@ def _enriched_block_config(profile, block) -> dict:
                 "github_profile",
                 "github_sync_error",
                 "github_last_synced_at",
+            ):
+                config.pop(key, None)
+
+    if block.block_type == "widget_spotify":
+        if spotify_account:
+            display_name = _display_name_from_metadata(
+                spotify_account, spotify_metadata, "spotify"
+            )
+            config["spotify_display_name"] = display_name
+            config["connected_account_id"] = str(spotify_account.id)
+            config["spotify_profile"] = spotify_metadata.get("spotify_profile")
+            config["spotify_playback"] = spotify_metadata.get("playback")
+            config["spotify_recent_tracks"] = (
+                spotify_metadata.get("recent_tracks") or []
+            )
+            config["spotify_top_tracks"] = spotify_metadata.get("top_tracks") or []
+            config["spotify_top_artists"] = spotify_metadata.get("top_artists") or []
+            config["spotify_stats"] = spotify_metadata.get("stats") or {}
+            config["spotify_sync_error"] = spotify_account.sync_error
+            config["spotify_last_synced_at"] = (
+                spotify_account.last_synced_at.isoformat()
+                if spotify_account.last_synced_at
+                else None
+            )
+        else:
+            for key in (
+                "spotify_display_name",
+                "spotify_profile",
+                "spotify_playback",
+                "spotify_recent_tracks",
+                "spotify_top_tracks",
+                "spotify_top_artists",
+                "spotify_stats",
+                "spotify_sync_error",
+                "spotify_last_synced_at",
+                "connected_account_id",
             ):
                 config.pop(key, None)
 
