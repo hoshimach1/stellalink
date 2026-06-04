@@ -64,6 +64,22 @@
         </button>
       </div>
 
+      <div v-if="blocks.length" class="block-rail" aria-label="Быстрый выбор блоков">
+        <button
+          v-for="block in draggableBlocks"
+          :key="`rail-${block.id}`"
+          class="block-rail-item"
+          :class="{ active: editingBlockId === block.id, hidden: !block.is_visible }"
+          type="button"
+          :title="displayBlockLabel(block)"
+          :aria-label="`Открыть блок ${displayBlockLabel(block)}`"
+          @click="openBlockEditor(block)"
+        >
+          <FaceitLogo v-if="block.block_type === 'widget_faceit'" class="faceit-logo" />
+          <i v-else aria-hidden="true" :class="displayBlockIcon(block)" />
+        </button>
+      </div>
+
       <div class="inspector-body">
         <Transition name="inspector-pane" mode="out-in">
           <section v-if="panel === 'profile' && !editingBlockId" key="profile" class="inspector-section">
@@ -191,10 +207,11 @@
           </section>
 
           <section v-else-if="panel === 'blocks' && !editingBlockId" key="blocks" class="inspector-section">
-            <div class="section-head compact">
+            <div class="section-head compact block-manager-head">
               <span class="section-icon"><i aria-hidden="true" class="ri-stack-line" /></span>
               <div>
                 <h3>Блоки</h3>
+                <p>{{ visibleBlocksCount }} из {{ blocks.length }} видны</p>
               </div>
             </div>
 
@@ -237,12 +254,17 @@
                       <FaceitLogo v-if="block.block_type === 'widget_faceit'" class="faceit-logo" />
                       <i aria-hidden="true" v-else :class="displayBlockIcon(block)" />
                     </span>
-                    <span class="mini-label">{{ displayBlockLabel(block) }}</span>
+                    <span class="mini-copy">
+                      <span class="mini-label">{{ displayBlockLabel(block) }}</span>
+                      <span class="mini-meta" :class="{ hidden: !block.is_visible }">
+                        {{ block.is_visible ? 'Виден' : 'Скрыт' }}
+                      </span>
+                    </span>
                     <span class="mini-actions">
-                      <button class="tiny-action" :class="{ active: block.is_visible }" type="button" :title="visibilityToggleLabel(block)" :aria-label="visibilityToggleLabel(block)" :aria-pressed="block.is_visible" @click.stop="toggleVisible(block)">
+                      <button class="tiny-action" :class="{ active: block.is_visible }" type="button" :title="visibilityToggleLabel(block)" :aria-label="visibilityToggleLabel(block)" :aria-pressed="block.is_visible" :disabled="visibilitySavingBlockId === block.id" @click.stop="toggleVisible(block)">
                         <i aria-hidden="true" :class="block.is_visible ? 'ri-eye-line' : 'ri-eye-off-line'" />
                       </button>
-                      <button class="tiny-action danger" type="button" :aria-label="deleteBlockLabel(block)" title="Удалить" @click.stop="deleteBlock(block.id)">
+                      <button class="tiny-action danger" type="button" :aria-label="deleteBlockLabel(block)" title="Удалить" :disabled="deletingBlockId === block.id" @click.stop="deleteBlock(block.id)">
                         <i aria-hidden="true" class="ri-delete-bin-line" />
                       </button>
                     </span>
@@ -271,18 +293,57 @@
           </section>
 
           <section v-else-if="activeBlock" :key="`edit-${activeBlock.id}`" class="inspector-section">
-            <div class="section-head">
-              <button class="back-btn" type="button" title="Назад" @click="closeBlockEditor">
-                <i aria-hidden="true" class="ri-arrow-left-line" />
-              </button>
-              <span class="section-icon">
-                <FaceitLogo v-if="activeBlock.block_type === 'widget_faceit'" class="faceit-logo" />
-                <i aria-hidden="true" v-else :class="displayBlockIcon(activeBlock)" />
-              </span>
-              <div>
-                <h3>{{ displayBlockLabel(activeBlock) }}</h3>
-                <p>{{ displayBlockDescription(activeBlock) }}</p>
+            <div class="selected-block-head">
+              <div class="section-head">
+                <button class="back-btn" type="button" title="Назад" @click="closeBlockEditor">
+                  <i aria-hidden="true" class="ri-arrow-left-line" />
+                </button>
+                <span class="section-icon">
+                  <FaceitLogo v-if="activeBlock.block_type === 'widget_faceit'" class="faceit-logo" />
+                  <i aria-hidden="true" v-else :class="displayBlockIcon(activeBlock)" />
+                </span>
+                <div>
+                  <h3>{{ displayBlockLabel(activeBlock) }}</h3>
+                  <p>{{ displayBlockDescription(activeBlock) }}</p>
+                </div>
               </div>
+              <span class="block-status-pill" :class="{ hidden: !activeBlock.is_visible }">
+                <i aria-hidden="true" :class="activeBlock.is_visible ? 'ri-eye-line' : 'ri-eye-off-line'" />
+                {{ activeBlock.is_visible ? 'Виден' : 'Скрыт' }}
+              </span>
+            </div>
+
+            <div class="selected-block-actions">
+              <button
+                class="block-action-card"
+                type="button"
+                :aria-pressed="activeBlock.is_visible"
+                :disabled="visibilitySavingBlockId === activeBlock.id || blockSaving"
+                @click="toggleVisible(activeBlock)"
+              >
+                <span class="block-action-icon">
+                  <i aria-hidden="true" :class="activeBlock.is_visible ? 'ri-eye-off-line' : 'ri-eye-line'" />
+                </span>
+                <span>
+                  <strong>{{ activeBlock.is_visible ? 'Скрыть блок' : 'Показать блок' }}</strong>
+                  <small>{{ activeBlock.is_visible ? 'Убрать из публичного профиля' : 'Вернуть в публичный профиль' }}</small>
+                </span>
+              </button>
+
+              <button
+                class="block-action-card danger"
+                type="button"
+                :disabled="deletingBlockId === activeBlock.id || blockSaving"
+                @click="deleteActiveBlock"
+              >
+                <span class="block-action-icon">
+                  <i aria-hidden="true" class="ri-delete-bin-line" />
+                </span>
+                <span>
+                  <strong>Удалить блок</strong>
+                  <small>Удаление после подтверждения</small>
+                </span>
+              </button>
             </div>
 
             <DashboardBlockForm :type="activeBlock.block_type" :config="blockDraft" />
@@ -463,6 +524,8 @@ const avatarDisplaySrc = computed(() =>
 
 const headerSaving = ref(false)
 const blockSaving = ref(false)
+const visibilitySavingBlockId = ref<string | null>(null)
+const deletingBlockId = ref<string | null>(null)
 const editName = ref('')
 const editSlug = ref('')
 const editBio = ref('')
@@ -782,28 +845,48 @@ async function createGitBlock(provider: GitProvider) {
 }
 
 async function deleteBlock(id: string) {
+  const target = blocks.value.find(block => block.id === id)
   const confirmed = await requestConfirm({
     title: 'Удалить блок?',
-    message: 'Блок пропадет из редактора и публичного профиля. Это действие нельзя отменить.',
+    message: target
+      ? `Блок "${displayBlockLabel(target)}" пропадет из редактора и публичного профиля. Это действие нельзя отменить.`
+      : 'Блок пропадет из редактора и публичного профиля. Это действие нельзя отменить.',
     confirmText: 'Удалить',
     icon: 'ri-delete-bin-line',
     tone: 'danger',
   })
   if (!confirmed) return
+  const wasEditing = editingBlockId.value === id
+  deletingBlockId.value = id
   try {
-    if (editingBlockId.value === id) editingBlockId.value = null
     await profile.deleteBlock(id)
+    if (wasEditing) {
+      editingBlockId.value = null
+      clearObject(blockDraft)
+    }
     setNotice('Блок удален.', 'info')
   } catch (error) {
     setNotice(extractAuthError(error, 'Не удалось удалить блок.'), 'error')
+  } finally {
+    if (deletingBlockId.value === id) deletingBlockId.value = null
   }
 }
 
+async function deleteActiveBlock() {
+  if (!activeBlock.value) return
+  await deleteBlock(activeBlock.value.id)
+}
+
 async function toggleVisible(block: Block) {
+  const nextVisible = !block.is_visible
+  visibilitySavingBlockId.value = block.id
   try {
-    await profile.updateBlock(block.id, { is_visible: !block.is_visible })
+    await profile.updateBlock(block.id, { is_visible: nextVisible })
+    setNotice(nextVisible ? 'Блок показан.' : 'Блок скрыт.', 'success')
   } catch (error) {
     setNotice(extractAuthError(error, 'Не удалось изменить видимость.'), 'error')
+  } finally {
+    if (visibilitySavingBlockId.value === block.id) visibilitySavingBlockId.value = null
   }
 }
 
@@ -2004,6 +2087,23 @@ async function onAvatarCropSave(blob: Blob) {
   white-space: nowrap;
 }
 
+.mini-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mini-meta {
+  color: var(--primary, #345EA8);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.mini-meta.hidden {
+  color: var(--text-3, #66789c);
+}
+
 .mini-actions {
   display: inline-flex;
   gap: 5px;
@@ -2836,6 +2936,69 @@ async function onAvatarCropSave(blob: Blob) {
   box-shadow: 0 8px 20px color-mix(in srgb, var(--text-1, #10182b) 8%, transparent);
 }
 
+.block-rail {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 7px;
+  margin: 10px 10px 0;
+  padding: 7px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border: 1px solid color-mix(in srgb, var(--outline, rgba(82, 103, 138, 0.18)) 72%, transparent);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface, #fff) 82%, transparent);
+  scrollbar-width: thin;
+}
+
+.block-rail-item {
+  position: relative;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 15px;
+  color: var(--text-2, #475778);
+  font-size: 18px;
+  transition:
+    transform 240ms var(--m3-spring),
+    border-color 180ms var(--m3-ease),
+    background 180ms var(--m3-ease),
+    box-shadow 180ms var(--m3-ease),
+    opacity 180ms var(--m3-ease);
+}
+
+.block-rail-item::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 7px;
+  height: 7px;
+  border: 2px solid var(--surface, #fff);
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+.block-rail-item.hidden {
+  opacity: 0.56;
+}
+
+.block-rail-item.hidden::after {
+  background: #94a3b8;
+}
+
+.block-rail-item.active {
+  border-color: color-mix(in srgb, var(--primary, #345EA8) 58%, var(--outline, #d4dbe8));
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary, #345EA8) 13%, transparent);
+}
+
+.block-rail-item:hover {
+  transform: translateY(-1px);
+}
+
 .inspector-section {
   gap: 14px;
   padding: 14px;
@@ -2856,6 +3019,119 @@ async function onAvatarCropSave(blob: Blob) {
 
 .section-head.compact {
   align-items: center;
+}
+
+.block-manager-head {
+  justify-content: space-between;
+}
+
+.block-manager-head p {
+  margin-top: 3px;
+  color: var(--text-2, #475778);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.selected-block-head {
+  display: grid;
+  gap: 10px;
+}
+
+.block-status-pill {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--primary, #345EA8) 26%, var(--outline, #d4dbe8));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary-container, rgba(52,94,168,0.12)) 78%, transparent);
+  color: var(--on-primary-container, #163E86);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.block-status-pill.hidden {
+  border-color: var(--outline, rgba(82, 103, 138, 0.18));
+  background: color-mix(in srgb, var(--surface-low, #F2F4F8) 78%, transparent);
+  color: var(--text-3, #66789c);
+}
+
+.selected-block-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.block-action-card {
+  min-height: 94px;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--outline, rgba(82, 103, 138, 0.18)) 82%, transparent);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface, #fff) 88%, transparent);
+  color: var(--text-1, #10182b);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 240ms var(--m3-spring),
+    border-color 180ms var(--m3-ease),
+    background 180ms var(--m3-ease),
+    box-shadow 180ms var(--m3-ease),
+    opacity 180ms var(--m3-ease);
+}
+
+.block-action-card:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--primary, #345EA8) 36%, var(--outline, #d4dbe8));
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--text-1, #10182b) 8%, transparent);
+}
+
+.block-action-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.block-action-card.danger {
+  border-color: color-mix(in srgb, #ef4444 26%, var(--outline, #d4dbe8));
+}
+
+.block-action-card.danger .block-action-icon {
+  background: color-mix(in srgb, #ef4444 14%, var(--surface-low, #F2F4F8));
+  color: #b91c1c;
+}
+
+.block-action-icon {
+  width: 38px;
+  height: 38px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--primary-container, rgba(52,94,168,0.12));
+  color: var(--on-primary-container, #163E86);
+  font-size: 18px;
+}
+
+.block-action-card strong,
+.block-action-card small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.block-action-card strong {
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.block-action-card small {
+  margin-top: 3px;
+  color: var(--text-2, #475778);
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 .studio-field input,
@@ -2979,6 +3255,14 @@ async function onAvatarCropSave(blob: Blob) {
 
   .inspector-section {
     padding-inline: 14px;
+  }
+
+  .selected-block-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .block-rail {
+    margin-inline: 8px;
   }
 }
 </style>
