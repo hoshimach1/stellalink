@@ -10,7 +10,16 @@
 
   <div v-if="profile.profile" class="studio-shell">
     <section class="studio-preview-pane" aria-label="Живое превью профиля">
-      <article class="public-card" :class="previewCardClasses" :data-color-mode="currentColorMode" :style="profileAccentStyle">
+      <div v-if="profile.isPublished" class="exact-preview-shell">
+        <iframe
+          :key="publicPreviewKey"
+          class="exact-preview-frame"
+          :src="publicPath"
+          title="Точный публичный вид профиля"
+        />
+      </div>
+
+      <article v-else class="public-card" :class="previewCardClasses" :data-color-mode="currentColorMode" :style="profileAccentStyle">
         <header class="public-header">
           <div class="avatar-wrap">
             <div class="public-avatar">
@@ -770,6 +779,22 @@ const faceitAccentColor = computed(() => currentTheme.value === 'material3' ? cu
 const publicPath = computed(() => profile.profile ? `/${profile.profile.slug}` : '/')
 const publicUrl = computed(() => new URL(publicPath.value, requestOrigin).toString())
 const publicUrlLabel = computed(() => profile.profile ? `${requestHost}/${profile.profile.slug}` : requestHost)
+const publicPreviewKey = computed(() => {
+  if (!profile.profile) return 'empty'
+  return JSON.stringify({
+    slug: profile.profile.slug,
+    status: profile.profile.status,
+    displayName: profile.profile.display_name,
+    bio: profile.profile.bio,
+    tags: profile.profile.tags,
+    avatarUrl: profile.profile.avatar_url,
+    themePreset: profile.profile.theme_preset,
+    themeTokens: profile.profile.theme_tokens,
+    accentColor: profile.profile.accent_color,
+    blocks: profile.profile.blocks,
+    avatarTimestamp: avatarTimestamp.value,
+  })
+})
 const profileInitial = computed(() =>
   profile.profile?.display_name?.trim().charAt(0).toUpperCase()
     || auth.user?.email?.trim().charAt(0).toUpperCase()
@@ -1365,6 +1390,28 @@ async function onAvatarCropSave(blob: Blob) {
   border-radius: 8px;
   background: color-mix(in srgb, var(--surface, #fff) 88%, transparent);
   box-shadow: var(--shadow-soft, 0 16px 42px rgba(48, 63, 92, 0.11));
+}
+
+.exact-preview-shell {
+  width: min(100%, 520px);
+  height: min(860px, calc(100dvh - 170px));
+  min-height: 560px;
+  justify-self: center;
+  overflow: hidden;
+  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
+  border-radius: 34px;
+  background: #0f1117;
+  box-shadow:
+    0 18px 46px color-mix(in srgb, var(--text-1, #10182b) 14%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+.exact-preview-frame {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 0;
+  background: #0f1117;
 }
 
 .studio-preview-bar {
@@ -3374,6 +3421,13 @@ async function onAvatarCropSave(blob: Blob) {
   .public-card {
     border-radius: 22px;
     padding: 14px;
+  }
+
+  .exact-preview-shell {
+    width: 100%;
+    height: min(820px, calc(100dvh - 132px));
+    min-height: 520px;
+    border-radius: 28px;
   }
 
   .public-card.theme-material3.layout-wide {
