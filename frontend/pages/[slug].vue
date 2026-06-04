@@ -13,6 +13,7 @@
     class="pub-page"
     :data-theme="theme"
     :data-mode="themeMode"
+    :data-editor-mode="props.editable ? 'true' : undefined"
     :style="accentVars"
   >
     <!-- Background effects -->
@@ -58,7 +59,13 @@
 
       <div class="pub-blocks">
         <template v-for="block in visibleBlocks" :key="block.id">
-          <div v-if="block.block_type === 'links'" class="pub-block-links">
+          <div
+            v-if="block.block_type === 'links'"
+            class="pub-block-links"
+            v-bind="editorBlockAttrs(block)"
+            @click="requestBlockEdit(block, $event)"
+            @keydown="onEditorBlockKeydown($event, block)"
+          >
             <div v-for="group in (block.config.groups as Group[])" :key="group.title" class="pub-links-group">
               <div v-if="group.title" class="pub-group-title">{{ group.title }}</div>
               <a
@@ -84,6 +91,9 @@
           <article
             v-else
             class="pub-block pub-block-m3"
+            v-bind="editorBlockAttrs(block)"
+            @click="requestBlockEdit(block, $event)"
+            @keydown="onEditorBlockKeydown($event, block)"
           >
             <div v-if="block.block_type === 'text'" class="pub-text pub-text-m3">
               {{ (block.config.content as string) }}
@@ -297,7 +307,13 @@
         <div class="pub-blocks">
           <template v-for="block in visibleBlocks" :key="block.id">
             <!-- Links — each link is a glass pane -->
-            <div v-if="block.block_type === 'links'" class="pub-block-links">
+            <div
+              v-if="block.block_type === 'links'"
+              class="pub-block-links"
+              v-bind="editorBlockAttrs(block)"
+              @click="requestBlockEdit(block, $event)"
+              @keydown="onEditorBlockKeydown($event, block)"
+            >
               <div v-for="group in (block.config.groups as Group[])" :key="group.title" class="pub-links-group">
                 <div v-if="group.title" class="pub-group-title">{{ group.title }}</div>
                 <div
@@ -326,6 +342,9 @@
             <div
               v-else
               class="pub-glass-block"
+              v-bind="editorBlockAttrs(block)"
+              @click="requestBlockEdit(block, $event)"
+              @keydown="onEditorBlockKeydown($event, block)"
             >
               <!-- Text -->
               <div v-if="block.block_type === 'text'" class="pub-text">
@@ -532,7 +551,13 @@
         <div class="pub-blocks">
           <template v-for="block in visibleBlocks" :key="block.id">
             <!-- Links -->
-            <div v-if="block.block_type === 'links'" class="pub-block-links">
+            <div
+              v-if="block.block_type === 'links'"
+              class="pub-block-links"
+              v-bind="editorBlockAttrs(block)"
+              @click="requestBlockEdit(block, $event)"
+              @keydown="onEditorBlockKeydown($event, block)"
+            >
               <div v-for="group in (block.config.groups as Group[])" :key="group.title" class="pub-links-group">
                 <div v-if="group.title" class="pub-group-title">{{ group.title }}</div>
                 <fluent-card
@@ -558,7 +583,13 @@
             </div>
 
             <!-- Other blocks in fluent-card -->
-            <fluent-card v-else class="pub-fluent-block">
+            <fluent-card
+              v-else
+              class="pub-fluent-block"
+              v-bind="editorBlockAttrs(block)"
+              @click="requestBlockEdit(block, $event)"
+              @keydown="onEditorBlockKeydown($event, block)"
+            >
               <!-- Text -->
               <div v-if="block.block_type === 'text'" class="pub-block-inner pub-text">
                 {{ (block.config.content as string) }}
@@ -811,12 +842,20 @@ interface PublicProfileData {
 const props = withDefaults(defineProps<{
   profileOverride?: PublicProfileData | null
   avatarSrcOverride?: string | null
+  activeBlockId?: string | null
   embedded?: boolean
+  editable?: boolean
 }>(), {
   profileOverride: null,
   avatarSrcOverride: null,
+  activeBlockId: null,
   embedded: false,
+  editable: false,
 })
+
+const emit = defineEmits<{
+  editBlock: [block: Block]
+}>()
 
 definePageMeta({ layout: 'landing' })
 
@@ -894,6 +933,43 @@ const isMaterial3Wide = computed(() =>
 const material3AccentColor = computed(() => theme.value === 'material3' ? (profile.value?.accent_color || '#6750a4') : null)
 const initial = computed(() => profile.value?.display_name?.[0]?.toUpperCase() ?? '?')
 const visibleBlocks = computed(() => profile.value?.blocks.filter(b => b.is_visible) ?? [])
+
+function editorBlockLabel(block: Block): string {
+  if (block.block_type === 'widget_github') return gitProviderLabel(block)
+  const labels: Record<string, string> = {
+    links: 'Ссылки',
+    text: 'Текст',
+    widget_steam: 'Steam',
+    widget_lastfm: 'Last.fm',
+    widget_faceit: 'FACEIT',
+    pc_config: 'PC Config',
+  }
+  return labels[block.block_type] ?? 'Блок'
+}
+
+function editorBlockAttrs(block: Block): Record<string, string | number | undefined> {
+  if (!props.editable) return {}
+  return {
+    role: 'button',
+    tabindex: 0,
+    title: `Редактировать блок: ${editorBlockLabel(block)}`,
+    'aria-label': `Редактировать блок: ${editorBlockLabel(block)}`,
+    'data-editor-block': 'true',
+    'data-editor-active': props.activeBlockId === block.id ? 'true' : undefined,
+  }
+}
+
+function requestBlockEdit(block: Block, event?: Event) {
+  if (!props.editable) return
+  event?.preventDefault()
+  event?.stopPropagation()
+  emit('editBlock', block)
+}
+
+function onEditorBlockKeydown(event: KeyboardEvent, block: Block) {
+  if (!props.editable || !['Enter', ' ', 'Spacebar'].includes(event.key)) return
+  requestBlockEdit(block, event)
+}
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const normalized = hex.trim().replace('#', '')
@@ -1300,6 +1376,37 @@ function faceitStatsList(block: Block) {
   --m3-outline: rgba(73,69,79,0.22);
   --m3-focus: color-mix(in srgb, var(--t-accent) 60%, #ffffff);
   --m3-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pub-page[data-editor-mode="true"] [data-editor-block="true"] {
+  position: relative;
+  cursor: pointer;
+  outline: 0 solid transparent;
+  outline-offset: 3px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    outline-color 180ms cubic-bezier(0.2, 0, 0, 1),
+    outline-width 180ms cubic-bezier(0.2, 0, 0, 1),
+    transform 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.pub-page[data-editor-mode="true"] [data-editor-block="true"] * {
+  pointer-events: none;
+}
+
+.pub-page[data-editor-mode="true"] .pub-block-links[data-editor-block="true"] {
+  border-radius: var(--t-radius-sm);
+}
+
+.pub-page[data-editor-mode="true"] [data-editor-block="true"]:focus-visible,
+.pub-page[data-editor-mode="true"] [data-editor-block="true"][data-editor-active="true"] {
+  outline-color: var(--t-accent30);
+  outline-width: 3px;
+}
+
+.pub-page[data-editor-mode="true"] [data-editor-block="true"][data-editor-active="true"] {
+  transform: translateY(-1px);
 }
 
 /* Glass tokens */

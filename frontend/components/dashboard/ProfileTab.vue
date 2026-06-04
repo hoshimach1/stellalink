@@ -14,13 +14,16 @@
         <PublicProfilePage
           :profile-override="editorPreviewProfile"
           :avatar-src-override="avatarDisplaySrc"
+          :active-block-id="editingBlockId"
           embedded
+          editable
+          @edit-block="openBlockEditor"
         />
       </Suspense>
 
     </section>
 
-    <aside class="studio-inspector" aria-label="Инспектор профиля">
+    <aside ref="inspectorEl" class="studio-inspector" aria-label="Инспектор профиля">
       <div class="studio-preview-bar">
         <div class="studio-status" aria-label="Сводка профиля">
           <span class="status-pill" :class="{ published: profile.isPublished }">
@@ -356,7 +359,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRequestURL } from '#app'
 import { VueDraggable } from 'vue-draggable-plus'
 import { resolveAvatarUrl } from '~/composables/useAvatarUrl'
@@ -445,6 +448,7 @@ const LIVE_PREVIEW_CONFIG_KEYS = [
 ]
 
 const panel = ref<Panel>('profile')
+const inspectorEl = ref<HTMLElement | null>(null)
 const editingBlockId = ref<string | null>(null)
 const gitProviderModalOpen = ref(false)
 const gitBlockAdding = ref(false)
@@ -613,6 +617,8 @@ async function openBlockEditor(block: Block) {
   Object.assign(blockDraft, cloneConfig(block.config))
   editingBlockId.value = block.id
   panel.value = 'blocks'
+  await nextTick()
+  inspectorEl.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 async function closeBlockEditor() {
