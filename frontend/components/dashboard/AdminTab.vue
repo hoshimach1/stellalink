@@ -1,176 +1,214 @@
 <template>
   <div class="admin-shell">
-    <section class="admin-hero">
+    <header class="admin-page-head">
       <div class="admin-title">
         <p class="admin-kicker">Админка</p>
-        <h2>Система и интеграции</h2>
-        <span>Критичные параметры вынесены в отдельные редакторы, а главный экран показывает текущее состояние.</span>
+        <h2>Системные настройки</h2>
+        <span>Редактирование разнесено по смысловым модулям, чтобы состояние и действие читались с первого взгляда.</span>
       </div>
 
-      <div class="admin-hero-actions">
-        <span class="admin-state-pill" :class="{ active: form.enabled }">
-          <i :class="form.enabled ? 'ri-mail-check-line' : 'ri-mail-close-line'" />
-          <span>{{ form.enabled ? 'Почта включена' : 'Почта выключена' }}</span>
-        </span>
-        <button class="outline-btn refresh-btn" type="button" :disabled="loading || apiLoading" @click="loadAllSettings">
-          <span v-if="loading || apiLoading" class="admin-spinner dark" />
-          <template v-else>
-            <i class="ri-refresh-line" />
-            <span>Обновить</span>
-          </template>
-        </button>
+      <button class="admin-refresh-button" type="button" :disabled="loading || apiLoading" @click="loadAllSettings">
+        <span v-if="loading || apiLoading" class="admin-spinner" />
+        <template v-else>
+          <i class="ri-refresh-line" />
+          <span>Обновить</span>
+        </template>
+      </button>
+    </header>
+
+    <section class="admin-section" aria-labelledby="admin-communication-title">
+      <header class="admin-section-head">
+        <div>
+          <h3 id="admin-communication-title">Коммуникации</h3>
+          <p>Письма, публичная база ссылок и проверка доставки.</p>
+        </div>
+      </header>
+
+      <div class="admin-card-grid">
+        <article class="admin-panel-card">
+          <div class="admin-card-top">
+            <span class="admin-card-icon"><i class="ri-mail-settings-line" /></span>
+            <div>
+              <span class="admin-card-overline">SMTP</span>
+              <h4>Почта</h4>
+              <p>{{ smtpStatus }}</p>
+            </div>
+          </div>
+
+          <dl class="admin-facts">
+            <div>
+              <dt>Host</dt>
+              <dd>{{ form.host || 'не задан' }}</dd>
+            </div>
+            <div>
+              <dt>Порт</dt>
+              <dd>{{ form.port }}</dd>
+            </div>
+            <div>
+              <dt>TLS</dt>
+              <dd>{{ encryptionMode.toUpperCase() }}</dd>
+            </div>
+          </dl>
+
+          <button class="admin-card-action" type="button" @click="openDialog('smtp')">
+            <i class="ri-edit-line" />
+            <span>Редактировать</span>
+          </button>
+        </article>
+
+        <article class="admin-panel-card">
+          <div class="admin-card-top">
+            <span class="admin-card-icon"><i class="ri-links-line" /></span>
+            <div>
+              <span class="admin-card-overline">Auth links</span>
+              <h4>Ссылки и TTL</h4>
+              <p>{{ form.frontend_base_url || 'Frontend URL не задан' }}</p>
+            </div>
+          </div>
+
+          <dl class="admin-facts">
+            <div>
+              <dt>Email</dt>
+              <dd>{{ formatDuration(form.email_verification_ttl_seconds) }}</dd>
+            </div>
+            <div>
+              <dt>Reset</dt>
+              <dd>{{ formatDuration(form.password_reset_ttl_seconds) }}</dd>
+            </div>
+            <div>
+              <dt>Base URL</dt>
+              <dd>{{ form.frontend_base_url ? 'задан' : 'не задан' }}</dd>
+            </div>
+          </dl>
+
+          <button class="admin-card-action" type="button" @click="openDialog('links')">
+            <i class="ri-time-line" />
+            <span>Настроить</span>
+          </button>
+        </article>
+
+        <article class="admin-panel-card">
+          <div class="admin-card-top">
+            <span class="admin-card-icon"><i class="ri-send-plane-line" /></span>
+            <div>
+              <span class="admin-card-overline">Delivery</span>
+              <h4>Тест письма</h4>
+              <p>Проверка текущей SMTP-конфигурации.</p>
+            </div>
+          </div>
+
+          <dl class="admin-facts">
+            <div>
+              <dt>Получатель</dt>
+              <dd>{{ testEmail || auth.user?.email || 'не выбран' }}</dd>
+            </div>
+            <div>
+              <dt>Статус</dt>
+              <dd>{{ form.enabled ? 'готово' : 'выключено' }}</dd>
+            </div>
+          </dl>
+
+          <button class="admin-card-action" type="button" @click="openDialog('test')">
+            <i class="ri-mail-send-line" />
+            <span>Отправить тест</span>
+          </button>
+        </article>
       </div>
     </section>
 
-    <section class="admin-health" aria-label="Статус системы">
-      <article class="health-card" :class="smtpHealthTone">
-        <span class="health-icon"><i class="ri-mail-check-line" /></span>
+    <section class="admin-section" aria-labelledby="admin-integrations-title">
+      <header class="admin-section-head">
         <div>
-          <strong>{{ smtpHealthLabel }}</strong>
-          <span>{{ smtpStatus }}</span>
+          <h3 id="admin-integrations-title">Интеграции</h3>
+          <p>Ключи внешних сервисов разделены по доменам, чтобы не смешивать игровые данные, музыку и Git OAuth.</p>
         </div>
-      </article>
+      </header>
 
-      <article class="health-card" :class="apiHealthTone">
-        <span class="health-icon"><i class="ri-gamepad-line" /></span>
-        <div>
-          <strong>{{ apiHealthLabel }}</strong>
-          <span>{{ apiStatus }}</span>
-        </div>
-      </article>
-
-      <article class="health-card">
-        <span class="health-icon"><i class="ri-timer-flash-line" /></span>
-        <div>
-          <strong>{{ ttlSummary }}</strong>
-          <span>{{ form.frontend_base_url || 'Frontend URL не задан' }}</span>
-        </div>
-      </article>
-    </section>
-
-    <section class="admin-actions" aria-label="Редакторы настроек">
-      <article class="admin-card feature-card">
-        <div class="card-head">
-          <div>
-            <span class="card-overline">SMTP</span>
-            <h3>Почта</h3>
-            <p>{{ smtpStatus }}</p>
+      <div class="admin-card-grid">
+        <article class="admin-panel-card">
+          <div class="admin-card-top">
+            <span class="admin-card-icon"><i class="ri-gamepad-line" /></span>
+            <div>
+              <span class="admin-card-overline">Games</span>
+              <h4>Steam и FACEIT</h4>
+              <p>{{ apiStatus }}</p>
+            </div>
           </div>
-          <span class="card-icon"><i class="ri-mail-settings-line" /></span>
-        </div>
 
-        <dl class="admin-facts">
-          <div>
-            <dt>Host</dt>
-            <dd>{{ form.host || 'не задан' }}</dd>
+          <dl class="admin-facts">
+            <div>
+              <dt>Steam</dt>
+              <dd>{{ steamKeySet ? 'ключ сохранен' : 'без ключа' }}</dd>
+            </div>
+            <div>
+              <dt>FACEIT</dt>
+              <dd>{{ faceitKeySet ? 'ключ сохранен' : 'без ключа' }}</dd>
+            </div>
+            <div>
+              <dt>Inventory</dt>
+              <dd>{{ apiForm.steam_inventory_app_id }} / {{ apiForm.steam_inventory_context_id }}</dd>
+            </div>
+          </dl>
+
+          <button class="admin-card-action" type="button" @click="openDialog('games')">
+            <i class="ri-key-2-line" />
+            <span>Настроить</span>
+          </button>
+        </article>
+
+        <article class="admin-panel-card">
+          <div class="admin-card-top">
+            <span class="admin-card-icon"><i class="ri-spotify-fill" /></span>
+            <div>
+              <span class="admin-card-overline">Music</span>
+              <h4>Spotify</h4>
+              <p>OAuth и сервисный токен для музыкальных блоков.</p>
+            </div>
           </div>
-          <div>
-            <dt>Порт</dt>
-            <dd>{{ form.port }}</dd>
+
+          <dl class="admin-facts">
+            <div>
+              <dt>Client ID</dt>
+              <dd>{{ oauthForm.spotifyClientId ? 'задан' : 'не задан' }}</dd>
+            </div>
+            <div>
+              <dt>Secret</dt>
+              <dd>{{ oauthSecretState.spotifySet ? 'сохранен' : 'не задан' }}</dd>
+            </div>
+            <div>
+              <dt>Token</dt>
+              <dd>{{ oauthSecretState.spotifyTokenSet ? 'сохранен' : 'не задан' }}</dd>
+            </div>
+          </dl>
+
+          <button class="admin-card-action" type="button" @click="openDialog('spotify')">
+            <i class="ri-music-2-line" />
+            <span>Настроить</span>
+          </button>
+        </article>
+
+        <article class="admin-panel-card">
+          <div class="admin-card-top">
+            <span class="admin-card-icon"><i class="ri-git-branch-line" /></span>
+            <div>
+              <span class="admin-card-overline">Code OAuth</span>
+              <h4>Git providers</h4>
+              <p>GitHub, GitLab и Gitea для публичных и self-hosted инстансов.</p>
+            </div>
           </div>
-          <div>
-            <dt>TLS</dt>
-            <dd>{{ encryptionMode.toUpperCase() }}</dd>
+
+          <div class="provider-strip" aria-label="Статус OAuth провайдеров">
+            <span :class="{ ready: oauthSecretState.githubSet }"><i class="ri-github-fill" /> GitHub</span>
+            <span :class="{ ready: oauthSecretState.gitlabSet }"><i class="ri-gitlab-fill" /> GitLab</span>
+            <span :class="{ ready: oauthSecretState.giteaSet }"><GiteaLogo class="provider-strip-logo" /> Gitea</span>
           </div>
-        </dl>
 
-        <button class="filled-btn card-action" type="button" @click="openDialog('smtp')">
-          <i class="ri-edit-line" />
-          <span>Редактировать почту</span>
-        </button>
-      </article>
-
-      <article class="admin-card">
-        <div class="card-head">
-          <div>
-            <span class="card-overline">Auth links</span>
-            <h3>Ссылки и TTL</h3>
-            <p>{{ form.frontend_base_url || 'Frontend URL не задан' }}</p>
-          </div>
-          <span class="card-icon tertiary"><i class="ri-links-line" /></span>
-        </div>
-
-        <dl class="admin-facts compact">
-          <div>
-            <dt>Email</dt>
-            <dd>{{ formatDuration(form.email_verification_ttl_seconds) }}</dd>
-          </div>
-          <div>
-            <dt>Reset</dt>
-            <dd>{{ formatDuration(form.password_reset_ttl_seconds) }}</dd>
-          </div>
-        </dl>
-
-        <button class="outline-btn card-action" type="button" @click="openDialog('links')">
-          <i class="ri-time-line" />
-          <span>Настроить ссылки</span>
-        </button>
-      </article>
-
-      <article class="admin-card">
-        <div class="card-head">
-          <div>
-            <span class="card-overline">Games</span>
-            <h3>Игровые API</h3>
-            <p>{{ apiStatus }}</p>
-          </div>
-          <span class="card-icon secondary"><i class="ri-key-2-line" /></span>
-        </div>
-
-        <dl class="admin-facts compact">
-          <div>
-            <dt>Steam</dt>
-            <dd>{{ steamKeySet ? 'ключ сохранен' : 'без ключа' }}</dd>
-          </div>
-          <div>
-            <dt>FACEIT</dt>
-            <dd>{{ faceitKeySet ? 'ключ сохранен' : 'без ключа' }}</dd>
-          </div>
-        </dl>
-
-        <button class="outline-btn card-action" type="button" @click="openDialog('api')">
-          <i class="ri-gamepad-line" />
-          <span>Настроить API</span>
-        </button>
-      </article>
-
-      <article class="admin-card feature-card">
-        <div class="card-head">
-          <div>
-            <span class="card-overline">OAuth</span>
-            <h3>Git provider auth</h3>
-            <p>GitHub, GitLab и Gitea для публичных и self-hosted инстансов.</p>
-          </div>
-          <span class="card-icon"><i class="ri-git-branch-line" /></span>
-        </div>
-
-        <div class="provider-strip" aria-label="Статус OAuth провайдеров">
-          <span :class="{ ready: oauthSecretState.githubSet }"><i class="ri-github-fill" /> GitHub</span>
-          <span :class="{ ready: oauthSecretState.gitlabSet }"><i class="ri-gitlab-fill" /> GitLab</span>
-          <span :class="{ ready: oauthSecretState.giteaSet }"><GiteaLogo class="provider-strip-logo" /> Gitea</span>
-        </div>
-
-        <button class="filled-btn card-action" type="button" @click="openDialog('oauth')">
-          <i class="ri-lock-password-line" />
-          <span>Редактировать OAuth</span>
-        </button>
-      </article>
-
-      <article class="admin-card test-card">
-        <div class="card-head">
-          <div>
-            <span class="card-overline">Delivery</span>
-            <h3>Тест письма</h3>
-            <p>Отправка проверочного письма на выбранный адрес.</p>
-          </div>
-          <span class="card-icon tertiary"><i class="ri-send-plane-line" /></span>
-        </div>
-
-        <button class="outline-btn card-action" type="button" @click="openDialog('test')">
-          <i class="ri-mail-send-line" />
-          <span>Открыть тест</span>
-        </button>
-      </article>
+          <button class="admin-card-action" type="button" @click="openDialog('oauth')">
+            <i class="ri-lock-password-line" />
+            <span>Редактировать</span>
+          </button>
+        </article>
+      </div>
     </section>
 
     <Transition name="admin-dialog">
@@ -301,12 +339,12 @@
             </form>
           </template>
 
-          <template v-else-if="activeDialog === 'api'">
+          <template v-else-if="activeDialog === 'games'">
             <header class="admin-dialog-head">
-              <span class="admin-dialog-icon secondary"><i class="ri-key-2-line" /></span>
+              <span class="admin-dialog-icon"><i class="ri-gamepad-line" /></span>
               <div>
                 <p class="admin-kicker">Games</p>
-                <h3 id="api-dialog-title">Игровые API</h3>
+                <h3 id="games-dialog-title">Steam и FACEIT</h3>
                 <span>{{ apiStatus }}</span>
               </div>
             </header>
@@ -322,6 +360,45 @@
                 <input v-model="apiFaceitKey" type="password" autocomplete="new-password" :placeholder="faceitKeyPlaceholder">
               </label>
 
+              <div class="admin-row">
+                <label class="admin-field small">
+                  <span>Inventory AppID</span>
+                  <input v-model.number="apiForm.steam_inventory_app_id" type="number" min="1">
+                </label>
+
+                <label class="admin-field small">
+                  <span>Context ID</span>
+                  <input v-model="apiForm.steam_inventory_context_id" type="text" placeholder="2">
+                </label>
+              </div>
+
+              <div class="admin-note muted">
+                Steam не отдаёт цены предметов через обычный Web API. Для честного “самого дорогого предмета” нужен отдельный источник цен или publisher key с Economy permissions.
+              </div>
+
+              <div v-if="apiNotice" class="admin-note" :class="apiNoticeTone">{{ apiNotice }}</div>
+
+              <div class="admin-form-actions">
+                <button class="text-btn" type="button" @click="closeDialog">Закрыть</button>
+                <button class="filled-btn" type="submit" :disabled="apiSaving">
+                  <span v-if="apiSaving" class="admin-spinner" />
+                  <span v-else>Сохранить ключи</span>
+                </button>
+              </div>
+            </form>
+          </template>
+
+          <template v-else-if="activeDialog === 'spotify'">
+            <header class="admin-dialog-head">
+              <span class="admin-dialog-icon"><i class="ri-spotify-fill" /></span>
+              <div>
+                <p class="admin-kicker">Music</p>
+                <h3 id="spotify-dialog-title">Spotify</h3>
+                <span>OAuth, API endpoints и сервисный access token.</span>
+              </div>
+            </header>
+
+            <form class="admin-form" @submit.prevent="saveApiSettings">
               <div class="admin-note muted">
                 Spotify callback URL: <strong>{{ spotifyCallbackUrl }}</strong>
               </div>
@@ -357,29 +434,13 @@
                 Now playing uses each user's Spotify OAuth token. The admin token is stored as a service secret and does not replace user consent.
               </div>
 
-              <div class="admin-row">
-                <label class="admin-field small">
-                  <span>Inventory AppID</span>
-                  <input v-model.number="apiForm.steam_inventory_app_id" type="number" min="1">
-                </label>
-
-                <label class="admin-field small">
-                  <span>Context ID</span>
-                  <input v-model="apiForm.steam_inventory_context_id" type="text" placeholder="2">
-                </label>
-              </div>
-
-              <div class="admin-note muted">
-                Steam не отдаёт цены предметов через обычный Web API. Для честного “самого дорогого предмета” нужен отдельный источник цен или publisher key с Economy permissions.
-              </div>
-
               <div v-if="apiNotice" class="admin-note" :class="apiNoticeTone">{{ apiNotice }}</div>
 
               <div class="admin-form-actions">
                 <button class="text-btn" type="button" @click="closeDialog">Закрыть</button>
                 <button class="filled-btn" type="submit" :disabled="apiSaving">
                   <span v-if="apiSaving" class="admin-spinner" />
-                  <span v-else>Сохранить ключи</span>
+                  <span v-else>Сохранить Spotify</span>
                 </button>
               </div>
             </form>
@@ -526,7 +587,7 @@ interface ApiSettings {
   steam_inventory_price_source: string
 }
 
-type AdminDialog = 'smtp' | 'links' | 'api' | 'oauth' | 'test'
+type AdminDialog = 'smtp' | 'links' | 'games' | 'spotify' | 'oauth' | 'test'
 
 const auth = useAuthStore()
 const config = useRuntimeConfig()
@@ -661,27 +722,6 @@ const apiStatus = computed(() => {
   if (steamKeySet.value) return 'Steam подключен. Добавьте FACEIT key для автоподтягивания ELO и уровня.'
   return 'Добавьте Steam key, чтобы валидировать Steam ID и получать профильные данные.'
 })
-const smtpHealthTone = computed(() => {
-  if (!form.enabled) return 'muted'
-  return form.host ? 'ok' : 'warn'
-})
-const smtpHealthLabel = computed(() => {
-  if (!form.enabled) return 'Почта выключена'
-  return form.host ? 'Почта готова' : 'Нужен SMTP host'
-})
-const apiHealthTone = computed(() => {
-  if (steamKeySet.value && faceitKeySet.value) return 'ok'
-  if (steamKeySet.value || faceitKeySet.value) return 'warn'
-  return 'muted'
-})
-const apiHealthLabel = computed(() => {
-  if (steamKeySet.value && faceitKeySet.value) return 'API готовы'
-  if (steamKeySet.value || faceitKeySet.value) return 'API частично'
-  return 'API не настроены'
-})
-const ttlSummary = computed(() =>
-  `Email ${formatDuration(form.email_verification_ttl_seconds)} · Reset ${formatDuration(form.password_reset_ttl_seconds)}`,
-)
 onMounted(() => {
   void loadAllSettings()
 })
@@ -697,7 +737,7 @@ function formatDuration(seconds: number) {
 function openDialog(dialog: AdminDialog) {
   activeDialog.value = dialog
   if (dialog === 'smtp' || dialog === 'links') saveNotice.value = ''
-  if (dialog === 'api' || dialog === 'oauth') apiNotice.value = ''
+  if (dialog === 'games' || dialog === 'spotify' || dialog === 'oauth') apiNotice.value = ''
   if (dialog === 'test') testNotice.value = ''
 }
 
@@ -897,57 +937,10 @@ async function sendTestEmail() {
 
 <style scoped>
 .admin-shell {
-  display: grid;
   width: min(1120px, 100%);
-  gap: 16px;
+  display: grid;
+  gap: var(--md-sys-space-6);
   margin: 0 auto;
-  --md-sys-color-primary: var(--primary);
-  --md-sys-color-on-primary: var(--on-primary);
-  --md-sys-color-primary-container: var(--primary-container);
-  --md-sys-color-on-primary-container: var(--on-primary-container);
-  --md-sys-color-secondary: var(--secondary);
-  --md-sys-color-on-secondary: var(--on-secondary);
-  --md-sys-color-secondary-container: var(--secondary-container);
-  --md-sys-color-on-secondary-container: var(--on-secondary-container);
-  --md-sys-color-tertiary: var(--tertiary);
-  --md-sys-color-on-tertiary: var(--on-tertiary);
-  --md-sys-color-tertiary-container: var(--tertiary-container);
-  --md-sys-color-on-tertiary-container: var(--on-tertiary-container);
-  --md-sys-color-error: var(--error);
-  --md-sys-color-error-container: var(--error-container);
-  --md-sys-color-on-error-container: var(--on-error-container);
-  --md-sys-color-surface: var(--surface);
-  --md-sys-color-surface-container-lowest: var(--surface-container-lowest);
-  --md-sys-color-surface-container-low: var(--surface-container-low);
-  --md-sys-color-surface-container: var(--surface-container);
-  --md-sys-color-surface-container-high: var(--surface-container-high);
-  --md-sys-color-surface-container-highest: var(--surface-container-highest);
-  --md-sys-color-on-surface: var(--text-1);
-  --md-sys-color-on-surface-variant: var(--on-surface-variant);
-  --md-sys-color-outline: var(--outline);
-  --md-sys-color-outline-variant: var(--outline-variant);
-  --md-sys-color-inverse-surface: var(--inverse-surface);
-  --md-sys-color-success: var(--success);
-  --md-sys-color-success-container: var(--success-container);
-  --md-sys-color-warning: var(--warning);
-  --md-sys-color-warning-container: var(--warning-container);
-  --md-sys-shape-corner-small: 8px;
-  --md-sys-shape-corner-medium: 12px;
-  --md-sys-shape-corner-large: 16px;
-  --md-sys-shape-corner-large-increased: 20px;
-  --md-sys-shape-corner-extra-large: 28px;
-  --md-sys-shape-corner-extra-large-increased: 32px;
-  --md-sys-shape-corner-full: 9999px;
-  --md-sys-typescale-label-medium-size: 12px;
-  --md-sys-typescale-label-medium-line-height: 16px;
-  --md-sys-typescale-body-medium-size: 14px;
-  --md-sys-typescale-body-medium-line-height: 20px;
-  --md-sys-typescale-title-medium-size: 18px;
-  --md-sys-typescale-title-medium-line-height: 24px;
-  --md-sys-typescale-title-large-size: 24px;
-  --md-sys-typescale-title-large-line-height: 30px;
-  --admin-motion-standard: var(--ease-standard);
-  --admin-motion-expressive: var(--ease-spring);
 }
 
 .admin-shell,
@@ -955,126 +948,139 @@ async function sendTestEmail() {
   box-sizing: border-box;
 }
 
-.admin-hero,
-.health-card,
-.admin-card {
+.admin-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--md-sys-space-4);
   border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 88%, transparent);
   border-radius: var(--md-sys-shape-corner-extra-large);
-  background: var(--md-sys-color-surface-container);
-  color: var(--md-sys-color-on-surface);
-  box-shadow: none;
-}
-
-.admin-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 16px;
-  padding: 20px;
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--md-sys-color-primary-container) 48%, transparent),
-      color-mix(in srgb, var(--md-sys-color-tertiary-container) 38%, transparent)
-    ),
-    var(--md-sys-color-surface-container-high);
+  background: var(--md-sys-color-surface-container-high);
+  padding: var(--md-sys-space-6);
 }
 
 .admin-title,
-.card-head > div,
-.health-card > div,
-.admin-dialog-head > div {
+.admin-section-head > div,
+.admin-card-top > div,
+.admin-dialog-head > div,
+.oauth-provider-head > div {
   min-width: 0;
 }
 
 .admin-kicker,
 .admin-title h2,
 .admin-title span,
-.card-overline,
-.card-head h3,
-.card-head p,
-.health-card strong,
-.health-card span,
+.admin-section-head h3,
+.admin-section-head p,
+.admin-card-overline,
+.admin-card-top h4,
+.admin-card-top p,
 .admin-dialog-head h3,
 .admin-dialog-head span {
   margin: 0;
 }
 
 .admin-kicker,
-.card-overline {
+.admin-card-overline {
   color: var(--md-sys-color-primary);
-  font-size: var(--md-sys-typescale-label-medium-size);
-  line-height: var(--md-sys-typescale-label-medium-line-height);
-  font-weight: 900;
+  font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-label-medium-size) / var(--md-sys-typescale-label-medium-line-height) var(--md-sys-typescale-label-medium-font);
   letter-spacing: 0;
 }
 
-.admin-title h2,
-.admin-dialog-head h3 {
+.admin-title h2 {
+  margin-top: 2px;
   color: var(--md-sys-color-on-surface);
-  font-size: var(--md-sys-typescale-title-large-size);
-  line-height: var(--md-sys-typescale-title-large-line-height);
-  font-weight: 900;
+  font: var(--md-sys-typescale-headline-small-weight) var(--md-sys-typescale-headline-small-size) / var(--md-sys-typescale-headline-small-line-height) var(--md-sys-typescale-headline-small-font);
 }
 
 .admin-title span,
-.card-head p,
-.health-card span,
+.admin-section-head p,
+.admin-card-top p,
 .admin-dialog-head span {
   color: var(--md-sys-color-on-surface-variant);
-  font-size: var(--md-sys-typescale-body-medium-size);
-  line-height: var(--md-sys-typescale-body-medium-line-height);
+  font: var(--md-sys-typescale-body-medium-weight) var(--md-sys-typescale-body-medium-size) / var(--md-sys-typescale-body-medium-line-height) var(--md-sys-typescale-body-medium-font);
 }
 
 .admin-title span {
   display: block;
+  max-width: 760px;
   margin-top: 4px;
 }
 
-.admin-hero-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 0;
-}
-
-.admin-state-pill {
-  min-height: 40px;
+.admin-refresh-button,
+.admin-card-action,
+.filled-btn,
+.text-btn {
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: var(--md-sys-space-2);
+  border: 1px solid transparent;
   border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface-variant);
-  padding: 0 14px;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  font-weight: 800;
-  white-space: nowrap;
+  padding: 0 var(--md-sys-space-4);
+  font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-body-medium-size) / var(--md-sys-typescale-body-medium-line-height) var(--md-sys-typescale-body-medium-font);
+  cursor: pointer;
+  transition:
+    transform 220ms var(--md-sys-motion-expressive),
+    background 200ms var(--md-sys-motion-standard),
+    border-color 200ms var(--md-sys-motion-standard),
+    color 200ms var(--md-sys-motion-standard);
 }
 
-.admin-state-pill.active {
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
+.admin-refresh-button {
+  flex: 0 0 auto;
+  border-color: var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-primary);
 }
 
-.admin-health {
+.admin-section {
+  display: grid;
+  gap: var(--md-sys-space-3);
+}
+
+.admin-section-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--md-sys-space-4);
+  padding: 0 var(--md-sys-space-1);
+}
+
+.admin-section-head h3 {
+  color: var(--md-sys-color-on-surface);
+  font: var(--md-sys-typescale-title-medium-weight) var(--md-sys-typescale-title-medium-size) / var(--md-sys-typescale-title-medium-line-height) var(--md-sys-typescale-title-medium-font);
+}
+
+.admin-card-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--md-sys-space-4);
+  width: 100%;
 }
 
-.health-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+.admin-panel-card {
   min-width: 0;
-  padding: 16px;
+  min-height: 252px;
+  display: grid;
+  align-content: start;
+  gap: var(--md-sys-space-4);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 88%, transparent);
+  border-radius: var(--md-sys-shape-corner-extra-large);
   background: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+  padding: var(--md-sys-space-5);
 }
 
-.health-icon,
-.card-icon,
+.admin-card-top {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--md-sys-space-3);
+}
+
+.admin-card-icon,
 .admin-dialog-icon,
 .oauth-provider-icon {
   display: inline-grid;
@@ -1084,162 +1090,69 @@ async function sendTestEmail() {
   color: var(--md-sys-color-on-primary-container);
 }
 
-.health-icon {
-  width: 40px;
-  height: 40px;
+.admin-card-icon {
+  width: 48px;
+  height: 48px;
   border-radius: var(--md-sys-shape-corner-large);
-  font-size: 20px;
+  font-size: 21px;
 }
 
-.health-card strong {
-  display: block;
+.admin-card-top h4,
+.admin-dialog-head h3 {
   color: var(--md-sys-color-on-surface);
-  font-size: var(--md-sys-typescale-body-medium-size);
-  line-height: var(--md-sys-typescale-body-medium-line-height);
-  font-weight: 900;
+  font: var(--md-sys-typescale-title-medium-weight) var(--md-sys-typescale-title-medium-size) / var(--md-sys-typescale-title-medium-line-height) var(--md-sys-typescale-title-medium-font);
 }
 
-.health-card span {
+.admin-card-top p {
   display: -webkit-box;
-  margin-top: 2px;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.health-card.ok .health-icon {
-  background: var(--md-sys-color-success-container);
-  color: var(--md-sys-color-success);
-}
-
-.health-card.warn .health-icon {
-  background: var(--md-sys-color-warning-container);
-  color: var(--md-sys-color-warning);
-}
-
-.health-card.muted .health-icon {
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface-variant);
-}
-
-.admin-actions {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.admin-card {
-  grid-column: span 2;
-  display: grid;
-  align-content: start;
-  gap: 16px;
-  min-width: 0;
-  min-height: 236px;
-  padding: 18px;
-  background: var(--md-sys-color-surface-container-low);
-}
-
-.admin-card.feature-card {
-  grid-column: span 3;
-  background: var(--md-sys-color-surface-container-high);
-}
-
-.admin-card.test-card {
-  min-height: 176px;
-}
-
-.card-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.card-head h3 {
-  color: var(--md-sys-color-on-surface);
-  font-size: var(--md-sys-typescale-title-medium-size);
-  line-height: var(--md-sys-typescale-title-medium-line-height);
-  font-weight: 900;
-}
-
-.card-head p {
-  display: -webkit-box;
-  margin-top: 4px;
+  margin-top: 3px;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
 
-.card-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--md-sys-shape-corner-large-increased);
-  font-size: 22px;
-}
-
-.card-icon.secondary,
-.admin-dialog-icon.secondary {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-}
-
-.card-icon.tertiary,
-.admin-dialog-icon.tertiary {
-  background: var(--md-sys-color-tertiary-container);
-  color: var(--md-sys-color-on-tertiary-container);
-}
-
 .admin-facts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--md-sys-space-2);
   margin: 0;
-}
-
-.admin-facts.compact {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .admin-facts div {
   min-width: 0;
-  border-radius: var(--md-sys-shape-corner-large);
-  background: var(--md-sys-color-surface-container-highest);
-  padding: 12px;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-surface-container-high);
+  padding: var(--md-sys-space-3);
 }
 
 .admin-facts dt {
   color: var(--md-sys-color-on-surface-variant);
-  font-size: var(--md-sys-typescale-label-medium-size);
-  line-height: var(--md-sys-typescale-label-medium-line-height);
-  font-weight: 800;
+  font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-label-medium-size) / var(--md-sys-typescale-label-medium-line-height) var(--md-sys-typescale-label-medium-font);
 }
 
 .admin-facts dd {
   margin: 2px 0 0;
   overflow-wrap: anywhere;
   color: var(--md-sys-color-on-surface);
-  font-size: var(--md-sys-typescale-body-medium-size);
-  line-height: var(--md-sys-typescale-body-medium-line-height);
-  font-weight: 900;
+  font: 850 var(--md-sys-typescale-body-medium-size) / var(--md-sys-typescale-body-medium-line-height) var(--md-sys-typescale-body-medium-font);
 }
 
 .provider-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--md-sys-space-2);
 }
 
 .provider-strip span {
   min-height: 36px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--md-sys-space-2);
   border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-surface-container-highest);
+  background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface-variant);
-  padding: 0 12px;
-  font-size: var(--md-sys-typescale-label-medium-size);
-  font-weight: 900;
+  padding: 0 var(--md-sys-space-3);
+  font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-label-medium-size) / var(--md-sys-typescale-label-medium-line-height) var(--md-sys-typescale-label-medium-font);
 }
 
 .provider-strip span.ready {
@@ -1252,32 +1165,12 @@ async function sendTestEmail() {
   height: 18px;
 }
 
-.outline-btn,
-.filled-btn,
-.text-btn {
-  min-height: 48px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border-radius: var(--md-sys-shape-corner-full);
-  padding: 0 18px;
-  font: inherit;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  font-weight: 900;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition:
-    transform 220ms var(--admin-motion-expressive),
-    background 200ms var(--admin-motion-standard),
-    border-color 200ms var(--admin-motion-standard),
-    color 200ms var(--admin-motion-standard);
-}
-
-.outline-btn {
-  border-color: var(--md-sys-color-outline);
-  background: var(--md-sys-color-surface-container-lowest);
-  color: var(--md-sys-color-primary);
+.admin-card-action {
+  align-self: end;
+  justify-self: start;
+  margin-top: auto;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .filled-btn {
@@ -1290,17 +1183,8 @@ async function sendTestEmail() {
   color: var(--md-sys-color-primary);
 }
 
-.card-action {
-  align-self: end;
-  justify-self: start;
-  margin-top: auto;
-}
-
-.refresh-btn {
-  white-space: nowrap;
-}
-
-.outline-btn:disabled,
+.admin-refresh-button:disabled,
+.admin-card-action:disabled,
 .filled-btn:disabled,
 .text-btn:disabled {
   cursor: not-allowed;
@@ -1314,8 +1198,8 @@ async function sendTestEmail() {
   z-index: 80;
   display: grid;
   place-items: center;
-  padding: 24px;
-  background: color-mix(in srgb, var(--md-sys-color-inverse-surface) 40%, transparent);
+  padding: var(--md-sys-space-6);
+  background: color-mix(in srgb, var(--md-sys-color-inverse-surface) 42%, transparent);
   backdrop-filter: blur(10px);
 }
 
@@ -1324,20 +1208,20 @@ async function sendTestEmail() {
   width: min(720px, 100%);
   max-height: min(760px, calc(100vh - 48px));
   display: grid;
-  gap: 20px;
+  gap: var(--md-sys-space-5);
   overflow: auto;
-  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 82%, transparent);
   border-radius: var(--md-sys-shape-corner-extra-large-increased);
   background: var(--md-sys-color-surface-container-highest);
   color: var(--md-sys-color-on-surface);
-  padding: 24px;
+  padding: var(--md-sys-space-6);
   box-shadow: var(--shadow-mid);
 }
 
 .admin-dialog-close {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: var(--md-sys-space-4);
+  right: var(--md-sys-space-4);
   width: 40px;
   height: 40px;
   display: inline-grid;
@@ -1352,26 +1236,26 @@ async function sendTestEmail() {
 .admin-dialog-head {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: var(--md-sys-space-3);
   padding-right: 44px;
 }
 
 .admin-dialog-icon {
   width: 52px;
   height: 52px;
-  border-radius: var(--md-sys-shape-corner-large-increased);
+  border-radius: var(--md-sys-shape-corner-large);
   font-size: 24px;
 }
 
 .admin-form {
   display: grid;
-  gap: 14px;
+  gap: var(--md-sys-space-3);
 }
 
 .admin-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(150px, 0.46fr);
-  gap: 12px;
+  gap: var(--md-sys-space-3);
 }
 
 .admin-field {
@@ -1386,9 +1270,7 @@ async function sendTestEmail() {
 
 .admin-field > span {
   color: var(--md-sys-color-on-surface-variant);
-  font-size: var(--md-sys-typescale-label-medium-size);
-  line-height: var(--md-sys-typescale-label-medium-line-height);
-  font-weight: 900;
+  font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-label-medium-size) / var(--md-sys-typescale-label-medium-line-height) var(--md-sys-typescale-label-medium-font);
 }
 
 .admin-field input,
@@ -1401,11 +1283,11 @@ async function sendTestEmail() {
   color: var(--md-sys-color-on-surface);
   font: inherit;
   outline: none;
-  padding: 0 14px;
+  padding: 0 var(--md-sys-space-3);
   transition:
-    border-color 200ms var(--admin-motion-standard),
-    box-shadow 200ms var(--admin-motion-standard),
-    background 200ms var(--admin-motion-standard);
+    border-color 200ms var(--md-sys-motion-standard),
+    box-shadow 200ms var(--md-sys-motion-standard),
+    background 200ms var(--md-sys-motion-standard);
 }
 
 .admin-field input:focus,
@@ -1419,12 +1301,12 @@ async function sendTestEmail() {
   min-height: 64px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--md-sys-space-3);
   border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 88%, transparent);
   border-radius: var(--md-sys-shape-corner-large);
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
-  padding: 12px;
+  padding: var(--md-sys-space-3);
   cursor: pointer;
 }
 
@@ -1443,30 +1325,27 @@ async function sendTestEmail() {
 
 .admin-switch strong {
   color: var(--md-sys-color-on-surface);
-  font-size: var(--md-sys-typescale-body-medium-size);
-  line-height: var(--md-sys-typescale-body-medium-line-height);
-  font-weight: 900;
+  font: 850 var(--md-sys-typescale-body-medium-size) / var(--md-sys-typescale-body-medium-line-height) var(--md-sys-typescale-body-medium-font);
 }
 
 .admin-switch small {
   color: var(--md-sys-color-on-surface-variant);
-  font-size: var(--md-sys-typescale-label-medium-size);
-  line-height: var(--md-sys-typescale-label-medium-line-height);
+  font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-label-medium-size) / var(--md-sys-typescale-label-medium-line-height) var(--md-sys-typescale-label-medium-font);
 }
 
 .oauth-provider {
   display: grid;
-  gap: 12px;
+  gap: var(--md-sys-space-3);
   border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 88%, transparent);
   border-radius: var(--md-sys-shape-corner-large);
   background: var(--md-sys-color-surface-container-high);
-  padding: 14px;
+  padding: var(--md-sys-space-3);
 }
 
 .oauth-provider-head {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--md-sys-space-3);
   min-width: 0;
 }
 
@@ -1490,33 +1369,25 @@ async function sendTestEmail() {
 
 .oauth-provider-head strong {
   color: var(--md-sys-color-on-surface);
-  font-size: var(--md-sys-typescale-body-medium-size);
-  line-height: var(--md-sys-typescale-body-medium-line-height);
-  font-weight: 900;
+  font: 850 var(--md-sys-typescale-body-medium-size) / var(--md-sys-typescale-body-medium-line-height) var(--md-sys-typescale-body-medium-font);
 }
 
 .oauth-provider-head span {
   color: var(--md-sys-color-on-surface-variant);
-  font-size: var(--md-sys-typescale-label-medium-size);
-  line-height: var(--md-sys-typescale-label-medium-line-height);
+  font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-label-medium-size) / var(--md-sys-typescale-label-medium-line-height) var(--md-sys-typescale-label-medium-font);
 }
 
 .admin-note {
   border-radius: var(--md-sys-shape-corner-medium);
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface-variant);
-  padding: 12px 14px;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  line-height: var(--md-sys-typescale-body-medium-line-height);
+  padding: var(--md-sys-space-3) var(--md-sys-space-4);
+  font: var(--md-sys-typescale-body-medium-weight) var(--md-sys-typescale-body-medium-size) / var(--md-sys-typescale-body-medium-line-height) var(--md-sys-typescale-body-medium-font);
 }
 
 .admin-note strong {
   color: var(--md-sys-color-on-surface);
   overflow-wrap: anywhere;
-}
-
-.admin-note.muted {
-  color: var(--md-sys-color-on-surface-variant);
 }
 
 .admin-note.success {
@@ -1532,8 +1403,8 @@ async function sendTestEmail() {
 .admin-form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding-top: 4px;
+  gap: var(--md-sys-space-2);
+  padding-top: var(--md-sys-space-1);
 }
 
 .admin-spinner {
@@ -1546,11 +1417,8 @@ async function sendTestEmail() {
   animation: admin-spin 0.78s linear infinite;
 }
 
-.admin-spinner.dark {
-  color: var(--md-sys-color-primary);
-}
-
-.outline-btn:focus-visible,
+.admin-refresh-button:focus-visible,
+.admin-card-action:focus-visible,
 .filled-btn:focus-visible,
 .text-btn:focus-visible,
 .admin-dialog-close:focus-visible,
@@ -1562,7 +1430,8 @@ async function sendTestEmail() {
 }
 
 @media (hover: hover) {
-  .outline-btn:hover:not(:disabled),
+  .admin-refresh-button:hover:not(:disabled),
+  .admin-card-action:hover:not(:disabled),
   .filled-btn:hover:not(:disabled),
   .text-btn:hover:not(:disabled),
   .admin-dialog-close:hover {
@@ -1572,14 +1441,14 @@ async function sendTestEmail() {
 
 .admin-dialog-enter-active,
 .admin-dialog-leave-active {
-  transition: opacity 220ms var(--admin-motion-standard);
+  transition: opacity 220ms var(--md-sys-motion-standard);
 }
 
 .admin-dialog-enter-active .admin-dialog,
 .admin-dialog-leave-active .admin-dialog {
   transition:
-    opacity 240ms var(--admin-motion-standard),
-    transform 300ms var(--admin-motion-expressive);
+    opacity 240ms var(--md-sys-motion-standard),
+    transform 300ms var(--md-sys-motion-expressive);
 }
 
 .admin-dialog-enter-from,
@@ -1602,57 +1471,36 @@ async function sendTestEmail() {
     max-width: 760px;
   }
 
-  .admin-health {
+  .admin-card-grid {
     grid-template-columns: 1fr;
   }
 
-  .admin-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .admin-card,
-  .admin-card.feature-card {
-    grid-column: span 1;
+  .admin-panel-card {
+    min-height: 0;
   }
 }
 
 @media (max-width: 680px) {
   .admin-shell {
-    gap: 12px;
+    gap: var(--md-sys-space-4);
   }
 
-  .admin-hero {
-    grid-template-columns: 1fr;
-    padding: 16px;
+  .admin-page-head {
+    flex-direction: column;
+    padding: var(--md-sys-space-4);
     border-radius: var(--md-sys-shape-corner-large-increased);
   }
 
-  .admin-hero-actions {
-    justify-content: stretch;
-    flex-wrap: wrap;
-  }
-
-  .admin-state-pill,
-  .refresh-btn,
-  .card-action,
-  .admin-form-actions .outline-btn,
+  .admin-refresh-button,
+  .admin-card-action,
   .admin-form-actions .filled-btn,
   .admin-form-actions .text-btn {
     width: 100%;
   }
 
-  .admin-actions,
-  .admin-row,
   .admin-facts,
-  .admin-facts.compact {
+  .admin-row {
     grid-template-columns: 1fr;
-  }
-
-  .admin-card {
-    grid-column: span 1;
-    min-height: 0;
-    border-radius: var(--md-sys-shape-corner-large-increased);
-    padding: 16px;
   }
 
   .admin-field.small {
@@ -1661,14 +1509,14 @@ async function sendTestEmail() {
 
   .admin-dialog-overlay {
     align-items: end;
-    padding: 8px;
+    padding: var(--md-sys-space-2);
   }
 
   .admin-dialog {
     width: 100%;
     max-height: min(92vh, 840px);
     border-radius: var(--md-sys-shape-corner-extra-large) var(--md-sys-shape-corner-extra-large) var(--md-sys-shape-corner-large) var(--md-sys-shape-corner-large);
-    padding: 20px 16px 16px;
+    padding: var(--md-sys-space-5) var(--md-sys-space-4) var(--md-sys-space-4);
   }
 
   .admin-dialog-head {
@@ -1688,462 +1536,4 @@ async function sendTestEmail() {
     transition-duration: 1ms !important;
   }
 }
-
-/* Legacy pre-modal admin layout disabled after the M3 Expressive redesign.
-.admin-shell {
-  display: grid;
-  width: min(1060px, 100%);
-  gap: 12px;
-  margin: 0 auto;
-}
-
-.admin-shell,
-.admin-shell * {
-  box-sizing: border-box;
-}
-
-.admin-toolbar,
-.health-card,
-.admin-card {
-  border: 1px solid color-mix(in srgb, var(--outline, #d4dbe8) 86%, transparent);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--surface, #fff) 94%, transparent);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--text-1, #10182b) 7%, transparent);
-}
-
-.admin-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px 16px;
-}
-
-.admin-title,
-.card-head > div,
-.health-card > div {
-  min-width: 0;
-}
-
-.admin-title h2,
-.admin-title span,
-.card-head h3,
-.card-head p,
-.health-card strong,
-.health-card span {
-  margin: 0;
-}
-
-.admin-title h2 {
-  color: var(--text-1, #10182b);
-  font-size: 22px;
-  line-height: 1.12;
-}
-
-.admin-title span,
-.card-head p,
-.health-card span {
-  color: var(--text-2, #475778);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.admin-title span {
-  display: block;
-  margin-top: 4px;
-}
-
-.admin-health {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.health-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  min-width: 0;
-  padding: 13px;
-}
-
-.health-icon {
-  width: 36px;
-  height: 36px;
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border-radius: 14px;
-  background: var(--primary-container, rgba(52,94,168,0.12));
-  color: var(--on-primary-container, #163E86);
-  font-size: 18px;
-}
-
-.health-card strong {
-  display: block;
-  color: var(--text-1, #10182b);
-  font-size: 14px;
-  line-height: 1.25;
-  font-weight: 900;
-}
-
-.health-card span {
-  display: -webkit-box;
-  margin-top: 3px;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.health-card.ok .health-icon {
-  background: var(--success-container, #E1F6EA);
-  color: var(--success, #188A55);
-}
-
-.health-card.warn .health-icon {
-  background: var(--warning-container, #FFF0CF);
-  color: var(--warning, #9B6200);
-}
-
-.health-card.muted .health-icon {
-  background: var(--surface-low, #F2F4F8);
-  color: var(--text-3, #66789c);
-}
-
-.admin-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.28fr) minmax(300px, 0.86fr);
-  gap: 12px;
-}
-
-.admin-card {
-  display: grid;
-  align-content: start;
-  gap: 14px;
-  min-width: 0;
-  padding: 16px;
-}
-
-.admin-card-wide {
-  grid-row: span 2;
-}
-
-.card-head {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.card-icon {
-  width: 38px;
-  height: 38px;
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border-radius: 14px;
-  background: var(--primary-container, rgba(52,94,168,0.12));
-  color: var(--on-primary-container, #163E86);
-  font-size: 19px;
-}
-
-.card-head h3 {
-  color: var(--text-1, #10182b);
-  font-size: 17px;
-  line-height: 1.2;
-}
-
-.admin-form {
-  display: grid;
-  gap: 12px;
-}
-
-.oauth-provider {
-  display: grid;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--outline, #d4dbe8) 84%, transparent);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--surface-low, #F2F4F8) 72%, transparent);
-}
-
-.oauth-provider-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.oauth-provider-icon {
-  width: 36px;
-  height: 36px;
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border-radius: 14px;
-  background: var(--primary-container, rgba(52,94,168,0.12));
-  color: var(--on-primary-container, #163E86);
-  font-size: 18px;
-}
-
-.gitea-logo {
-  width: 22px;
-  height: 22px;
-  display: block;
-}
-
-.oauth-provider-head strong,
-.oauth-provider-head span {
-  display: block;
-}
-
-.oauth-provider-head strong {
-  color: var(--text-1, #10182b);
-  font-size: 14px;
-  line-height: 1.25;
-}
-
-.oauth-provider-head span {
-  margin-top: 2px;
-  color: var(--text-2, #475778);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.admin-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.45fr);
-  gap: 12px;
-}
-
-.admin-field {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-
-.admin-field.small {
-  min-width: 130px;
-}
-
-.admin-field > span {
-  color: var(--text-2, #475778);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.admin-field input,
-.admin-field select {
-  width: 100%;
-  min-height: 44px;
-  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--surface, #fff) 96%, transparent);
-  color: var(--text-1, #10182b);
-  font: inherit;
-  outline: none;
-  padding: 0 12px;
-  transition:
-    border-color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    box-shadow 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    background 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
-}
-
-.admin-field input:focus,
-.admin-field select:focus {
-  border-color: var(--primary, #345EA8);
-  background: var(--surface, #fff);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary, #345EA8) 15%, transparent);
-}
-
-.admin-switch {
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 11px;
-  border: 1px solid color-mix(in srgb, var(--outline, #d4dbe8) 82%, transparent);
-  border-radius: 16px;
-  background: var(--surface-low, #F2F4F8);
-  color: var(--text-1, #10182b);
-  cursor: pointer;
-}
-
-.admin-switch input {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 auto;
-  accent-color: var(--primary, #345EA8);
-}
-
-.admin-switch span {
-  display: grid;
-  gap: 1px;
-}
-
-.admin-switch strong {
-  font-size: 13px;
-  line-height: 1.25;
-}
-
-.admin-switch small {
-  color: var(--text-2, #475778);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.outline-btn,
-.filled-btn {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
-  border-radius: 999px;
-  padding: 0 16px;
-  font: inherit;
-  font-weight: 900;
-  cursor: pointer;
-  transition:
-    transform 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    background 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    border-color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
-}
-
-.outline-btn {
-  background: var(--surface, #fff);
-  color: var(--text-1, #10182b);
-}
-
-.filled-btn {
-  background: var(--primary, #345EA8);
-  color: #fff;
-  border-color: transparent;
-}
-
-.outline-btn:disabled,
-.filled-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.58;
-}
-
-.admin-note {
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: var(--surface-low, #F2F4F8);
-  color: var(--text-2, #475778);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.admin-note strong {
-  color: var(--text-1, #10182b);
-  overflow-wrap: anywhere;
-}
-
-.admin-note.muted {
-  color: var(--text-3, #66789c);
-}
-
-.admin-note.success {
-  background: var(--success-container, #E1F6EA);
-  color: var(--success, #188A55);
-}
-
-.admin-note.error {
-  background: var(--error-container, #FFE5E7);
-  color: var(--error, #B3323A);
-}
-
-.admin-spinner {
-  width: 18px;
-  height: 18px;
-  display: inline-block;
-  border: 2px solid rgba(255,255,255,0.38);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: admin-spin 0.78s linear infinite;
-}
-
-.admin-spinner.dark {
-  border-color: color-mix(in srgb, var(--primary, #345EA8) 26%, transparent);
-  border-top-color: var(--primary, #345EA8);
-}
-
-.outline-btn:focus-visible,
-.filled-btn:focus-visible,
-.admin-switch:focus-within,
-.admin-field input:focus-visible,
-.admin-field select:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--primary, #345EA8) 32%, transparent);
-  outline-offset: 2px;
-}
-
-@media (hover: hover) {
-  .outline-btn:hover:not(:disabled),
-  .filled-btn:hover:not(:disabled) {
-    transform: translateY(-1px);
-  }
-}
-
-@keyframes admin-spin {
-  to { transform: rotate(360deg); }
-}
-
-@media (max-width: 980px) {
-  .admin-shell {
-    max-width: 760px;
-  }
-
-  .admin-health,
-  .admin-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-card-wide {
-    grid-row: auto;
-  }
-}
-
-@media (max-width: 680px) {
-  .admin-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .admin-title h2 {
-    font-size: 20px;
-  }
-
-  .admin-row {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-field.small {
-    min-width: 0;
-  }
-
-  .outline-btn,
-  .filled-btn {
-    width: 100%;
-  }
-
-  .admin-toolbar,
-  .health-card,
-  .admin-card {
-    border-radius: 16px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .admin-shell *,
-  .admin-shell *::before,
-  .admin-shell *::after {
-    animation-duration: 1ms !important;
-    transition-duration: 1ms !important;
-  }
-}
-*/
 </style>

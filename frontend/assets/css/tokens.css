@@ -129,6 +129,96 @@
   --shadow-mid: 0 26px 64px color-mix(in srgb, var(--text-1) 15%, transparent);
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --md-sys-color-primary: var(--primary);
+  --md-sys-color-on-primary: var(--on-primary);
+  --md-sys-color-primary-container: var(--primary-container);
+  --md-sys-color-on-primary-container: var(--on-primary-container);
+  --md-sys-color-secondary: var(--secondary);
+  --md-sys-color-on-secondary: var(--on-secondary);
+  --md-sys-color-secondary-container: var(--secondary-container);
+  --md-sys-color-on-secondary-container: var(--on-secondary-container);
+  --md-sys-color-tertiary: var(--tertiary);
+  --md-sys-color-on-tertiary: var(--on-tertiary);
+  --md-sys-color-tertiary-container: var(--tertiary-container);
+  --md-sys-color-on-tertiary-container: var(--on-tertiary-container);
+  --md-sys-color-error: var(--error);
+  --md-sys-color-on-error: var(--on-error);
+  --md-sys-color-error-container: var(--error-container);
+  --md-sys-color-on-error-container: var(--on-error-container);
+  --md-sys-color-surface: var(--surface);
+  --md-sys-color-on-surface: var(--text-1);
+  --md-sys-color-on-surface-variant: var(--on-surface-variant);
+  --md-sys-color-surface-container-lowest: var(--surface-container-lowest);
+  --md-sys-color-surface-container-low: var(--surface-container-low);
+  --md-sys-color-surface-container: var(--surface-container);
+  --md-sys-color-surface-container-high: var(--surface-container-high);
+  --md-sys-color-surface-container-highest: var(--surface-container-highest);
+  --md-sys-color-surface-variant: var(--surface-variant);
+  --md-sys-color-outline: var(--outline);
+  --md-sys-color-outline-variant: var(--outline-variant);
+  --md-sys-color-inverse-surface: var(--inverse-surface);
+  --md-sys-color-inverse-on-surface: var(--inverse-on-surface);
+  --md-sys-color-inverse-primary: var(--inverse-primary);
+  --md-sys-color-success: var(--success);
+  --md-sys-color-success-container: var(--success-container);
+  --md-sys-color-warning: var(--warning);
+  --md-sys-color-warning-container: var(--warning-container);
+
+  --md-sys-shape-corner-none: 0;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-large-increased: 20px;
+  --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-extra-large-increased: 32px;
+  --md-sys-shape-corner-extra-extra-large: 48px;
+  --md-sys-shape-corner-full: 9999px;
+
+  --md-sys-space-1: 4px;
+  --md-sys-space-2: 8px;
+  --md-sys-space-3: 12px;
+  --md-sys-space-4: 16px;
+  --md-sys-space-5: 20px;
+  --md-sys-space-6: 24px;
+  --md-sys-space-8: 32px;
+  --md-sys-space-10: 40px;
+
+  --md-sys-typescale-label-small-font: var(--font-brand);
+  --md-sys-typescale-label-small-size: 11px;
+  --md-sys-typescale-label-small-line-height: 16px;
+  --md-sys-typescale-label-small-weight: 700;
+  --md-sys-typescale-label-medium-font: var(--font-brand);
+  --md-sys-typescale-label-medium-size: 12px;
+  --md-sys-typescale-label-medium-line-height: 16px;
+  --md-sys-typescale-label-medium-weight: 800;
+  --md-sys-typescale-body-medium-font: var(--font-brand);
+  --md-sys-typescale-body-medium-size: 14px;
+  --md-sys-typescale-body-medium-line-height: 20px;
+  --md-sys-typescale-body-medium-weight: 500;
+  --md-sys-typescale-body-large-font: var(--font-brand);
+  --md-sys-typescale-body-large-size: 16px;
+  --md-sys-typescale-body-large-line-height: 24px;
+  --md-sys-typescale-body-large-weight: 500;
+  --md-sys-typescale-title-medium-font: var(--font-brand);
+  --md-sys-typescale-title-medium-size: 18px;
+  --md-sys-typescale-title-medium-line-height: 24px;
+  --md-sys-typescale-title-medium-weight: 800;
+  --md-sys-typescale-title-large-font: var(--font-brand);
+  --md-sys-typescale-title-large-size: 24px;
+  --md-sys-typescale-title-large-line-height: 30px;
+  --md-sys-typescale-title-large-weight: 850;
+  --md-sys-typescale-headline-small-font: var(--font-brand);
+  --md-sys-typescale-headline-small-size: 28px;
+  --md-sys-typescale-headline-small-line-height: 34px;
+  --md-sys-typescale-headline-small-weight: 850;
+
+  --md-sys-motion-standard: var(--ease-standard);
+  --md-sys-motion-expressive: var(--ease-spring);
+  --md-sys-motion-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-sys-motion-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
 }
 
 @media (prefers-color-scheme: dark) {
