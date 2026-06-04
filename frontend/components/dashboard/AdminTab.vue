@@ -189,6 +189,27 @@
             <input v-model="oauthSecrets.spotify" type="password" autocomplete="new-password" :placeholder="spotifySecretPlaceholder">
           </label>
 
+          <label class="admin-field">
+            <span>Spotify API access token</span>
+            <input v-model="apiSpotifyToken" type="password" autocomplete="new-password" :placeholder="spotifyTokenPlaceholder">
+          </label>
+
+          <div class="admin-row">
+            <label class="admin-field">
+              <span>Spotify Web API URL</span>
+              <input v-model="apiForm.spotify_api_base_url" type="url" autocomplete="off" placeholder="https://api.spotify.com/v1">
+            </label>
+
+            <label class="admin-field">
+              <span>Spotify Accounts URL</span>
+              <input v-model="apiForm.spotify_accounts_base_url" type="url" autocomplete="off" placeholder="https://accounts.spotify.com">
+            </label>
+          </div>
+
+          <div class="admin-note muted">
+            Now playing uses each user's Spotify OAuth token. The admin token is stored as a service secret and does not replace user consent.
+          </div>
+
           <div class="admin-row">
             <label class="admin-field small">
               <span>Inventory AppID</span>
@@ -342,6 +363,10 @@ interface ApiSettings {
   spotify_oauth_client_id: string | null
   spotify_oauth_client_secret_set: boolean
   spotify_oauth_client_secret_hint: string | null
+  spotify_access_token_set: boolean
+  spotify_access_token_hint: string | null
+  spotify_api_base_url: string
+  spotify_accounts_base_url: string
   code_provider_token_auth_enabled: boolean
   steam_inventory_app_id: number
   steam_inventory_context_id: string
@@ -364,6 +389,7 @@ const faceitKeyHint = ref('(****)')
 const smtpPassword = ref('')
 const apiSteamKey = ref('')
 const apiFaceitKey = ref('')
+const apiSpotifyToken = ref('')
 const oauthSecrets = reactive({
   github: '',
   gitlab: '',
@@ -397,6 +423,8 @@ const apiForm = reactive({
   steam_inventory_app_id: 730,
   steam_inventory_context_id: '2',
   code_provider_token_auth_enabled: true,
+  spotify_api_base_url: 'https://api.spotify.com/v1',
+  spotify_accounts_base_url: 'https://accounts.spotify.com',
 })
 
 const oauthForm = reactive({
@@ -415,6 +443,8 @@ const oauthSecretState = reactive({
   giteaHint: '(****)',
   spotifySet: false,
   spotifyHint: '(****)',
+  spotifyTokenSet: false,
+  spotifyTokenHint: '(****)',
 })
 
 const encryptionMode = computed({
@@ -434,6 +464,7 @@ const steamKeyPlaceholder = computed(() => steamKeySet.value ? `Сохранен
 const faceitKeyPlaceholder = computed(() => faceitKeySet.value ? `Сохранен ${faceitKeyHint.value}` : 'Введите ключ FACEIT')
 const oauthCallbackUrl = computed(() => `${form.frontend_base_url.replace(/\/$/, '')}/api/integrations/code/oauth/callback`)
 const spotifyCallbackUrl = computed(() => `${form.frontend_base_url.replace(/\/$/, '')}/api/integrations/spotify/oauth/callback`)
+const spotifyTokenPlaceholder = computed(() => oauthSecretState.spotifyTokenSet ? `Saved ${oauthSecretState.spotifyTokenHint}` : 'Spotify access token')
 const spotifySecretPlaceholder = computed(() => oauthSecretState.spotifySet ? `Сохранен ${oauthSecretState.spotifyHint}` : 'Spotify client secret')
 const oauthProviders = computed(() => [
   {
@@ -530,12 +561,15 @@ function applyApiSettings(data: ApiSettings) {
   apiForm.steam_inventory_app_id = data.steam_inventory_app_id
   apiForm.steam_inventory_context_id = data.steam_inventory_context_id
   apiForm.code_provider_token_auth_enabled = data.code_provider_token_auth_enabled
+  apiForm.spotify_api_base_url = data.spotify_api_base_url || 'https://api.spotify.com/v1'
+  apiForm.spotify_accounts_base_url = data.spotify_accounts_base_url || 'https://accounts.spotify.com'
   oauthForm.githubClientId = data.github_oauth_client_id ?? ''
   oauthForm.gitlabClientId = data.gitlab_oauth_client_id ?? ''
   oauthForm.giteaClientId = data.gitea_oauth_client_id ?? ''
   oauthForm.spotifyClientId = data.spotify_oauth_client_id ?? ''
   apiSteamKey.value = ''
   apiFaceitKey.value = ''
+  apiSpotifyToken.value = ''
   oauthSecrets.github = ''
   oauthSecrets.gitlab = ''
   oauthSecrets.gitea = ''
@@ -550,6 +584,8 @@ function applyApiSettings(data: ApiSettings) {
   oauthSecretState.giteaHint = data.gitea_oauth_client_secret_hint ?? '(****)'
   oauthSecretState.spotifySet = data.spotify_oauth_client_secret_set
   oauthSecretState.spotifyHint = data.spotify_oauth_client_secret_hint ?? '(****)'
+  oauthSecretState.spotifyTokenSet = data.spotify_access_token_set
+  oauthSecretState.spotifyTokenHint = data.spotify_access_token_hint ?? '(****)'
 }
 
 async function loadAllSettings() {
@@ -592,6 +628,8 @@ async function saveApiSettings() {
       steam_inventory_app_id: apiForm.steam_inventory_app_id,
       steam_inventory_context_id: apiForm.steam_inventory_context_id.trim() || '2',
       code_provider_token_auth_enabled: apiForm.code_provider_token_auth_enabled,
+      spotify_api_base_url: apiForm.spotify_api_base_url.trim() || 'https://api.spotify.com/v1',
+      spotify_accounts_base_url: apiForm.spotify_accounts_base_url.trim() || 'https://accounts.spotify.com',
     }
     if (apiSteamKey.value.trim()) {
       body.steam_api_key = apiSteamKey.value.trim()
@@ -622,6 +660,9 @@ async function saveApiSettings() {
     }
     if (oauthSecrets.spotify.trim()) {
       body.spotify_oauth_client_secret = oauthSecrets.spotify.trim()
+    }
+    if (apiSpotifyToken.value.trim()) {
+      body.spotify_access_token = apiSpotifyToken.value.trim()
     }
 
     const data = await auth.authorizedFetch<ApiSettings>(`${config.public.apiBase}/admin/api-settings`, {

@@ -1014,9 +1014,25 @@ def _spotify_result_url(
     return f"{frontend_base_url}/dashboard?{urllib.parse.urlencode(query)}"
 
 
-def _spotify_url(path: str, params: Optional[dict[str, Any]] = None) -> str:
+def _spotify_base_url(value: Any, fallback: str) -> str:
+    return (_clean_text(value) or fallback).rstrip("/")
+
+
+async def _get_spotify_urls(db: AsyncSession) -> tuple[str, str]:
+    api_settings = await get_api_settings_data(db)
+    return (
+        _spotify_base_url(api_settings.get("spotify_api_base_url"), SPOTIFY_API_BASE),
+        _spotify_base_url(
+            api_settings.get("spotify_accounts_base_url"), SPOTIFY_ACCOUNTS_BASE
+        ),
+    )
+
+
+def _spotify_url(
+    api_base_url: str, path: str, params: Optional[dict[str, Any]] = None
+) -> str:
     query = urllib.parse.urlencode(params or {})
-    return f"{SPOTIFY_API_BASE}{path}{f'?{query}' if query else ''}"
+    return f"{api_base_url.rstrip('/')}{path}{f'?{query}' if query else ''}"
 
 
 def _spotify_basic_auth_header(client_id: str, client_secret: str) -> str:
@@ -1217,17 +1233,24 @@ def _spotify_stats(
     }
 
 
-async def _get_spotify_oauth_config(db: AsyncSession) -> tuple[str, str]:
+async def _get_spotify_oauth_config(db: AsyncSession) -> tuple[str, str, str, str]:
     api_settings = await get_api_settings_data(db)
     client_id = _clean_text(api_settings.get("spotify_oauth_client_id"))
     client_secret = _clean_text(api_settings.get("spotify_oauth_client_secret"))
     if not client_id or not client_secret:
         raise ExternalApiError("Spotify OAuth app is not configured.", 400)
-    return client_id, client_secret
+    return (
+        client_id,
+        client_secret,
+        _spotify_base_url(api_settings.get("spotify_api_base_url"), SPOTIFY_API_BASE),
+        _spotify_base_url(
+            api_settings.get("spotify_accounts_base_url"), SPOTIFY_ACCOUNTS_BASE
+        ),
+    )
 
 
 async def create_spotify_oauth_url(db: AsyncSession, user_id: UUID) -> str:
-    client_id, _ = await _get_spotify_oauth_config(db)
+    client_id, _, _, accounts_base_url = await _get_spotify_oauth_config(db)
     frontend_base_url = await get_public_frontend_base_url(db)
     redirect_uri = _spotify_oauth_callback_url(frontend_base_url)
     state = secrets.token_urlsafe(32)
@@ -1246,7 +1269,7 @@ async def create_spotify_oauth_url(db: AsyncSession, user_id: UUID) -> str:
         "state": state,
         "scope": SPOTIFY_SCOPES,
     }
-    return f"{SPOTIFY_ACCOUNTS_BASE}/authorize?{urllib.parse.urlencode(params)}"
+    return f"{accounts_base_url}/authorize?{urllib.parse.urlencode(params)}"
 
 
 async def _consume_spotify_oauth_state(state: str) -> Optional[dict[str, str]]:
@@ -1265,9 +1288,11 @@ async def _consume_spotify_oauth_state(state: str) -> Optional[dict[str, str]]:
     return parsed if isinstance(parsed, dict) else None
 
 
-async def fetch_spotify_profile(access_token: str) -> dict[str, Any]:
+async def fetch_spotify_profile(
+    access_token: str, api_base_url: str = SPOTIFY_API_BASE
+) -> dict[str, Any]:
     payload = await _fetch_json(
-        _spotify_url("/me"),
+        _spotify_url(api_base_url, "/me"),
         "Spotify",
         headers=_spotify_auth_headers(access_token),
     )
@@ -1287,11 +1312,14 @@ async def fetch_spotify_profile(access_token: str) -> dict[str, Any]:
     }
 
 
-async def fetch_spotify_current_playback(access_token: str) -> dict[str, Any]:
+async def fetch_spotify_current_playback(
+    access_token: str, api_base_url: str = SPOTIFY_API_BASE
+) -> dict[str, Any]:
     headers = _spotify_auth_headers(access_token)
     current_result, playback_result = await asyncio.gather(
         _fetch_optional_json(
             _spotify_url(
+                api_base_url,
                 "/me/player/currently-playing",
                 {"additional_types": "track,episode"},
             ),
@@ -1299,7 +1327,9 @@ async def fetch_spotify_current_playback(access_token: str) -> dict[str, Any]:
             headers=headers,
         ),
         _fetch_optional_json(
-            _spotify_url("/me/player", {"additional_types": "track,episode"}),
+            _spotify_url(
+                api_base_url, "/me/player", {"additional_types": "track,episode"}
+            ),
             "Spotify",
             headers=headers,
         ),
@@ -1316,10 +1346,14 @@ async def fetch_spotify_current_playback(access_token: str) -> dict[str, Any]:
 
 
 async def fetch_spotify_recent_tracks(
-    access_token: str, limit: int = 10
+    access_token: str, limit: int = 10, api_base_url: str = SPOTIFY_API_BASE
 ) -> list[dict[str, Any]]:
     payload = await _fetch_json(
-        _spotify_url("/me/player/recently-played", {"limit": max(1, min(limit, 50))}),
+        _spotify_url(
+            api_base_url,
+            "/me/player/recently-played",
+            {"limit": max(1, min(limit, 50))},
+        ),
         "Spotify",
         headers=_spotify_auth_headers(access_token),
     )
@@ -1335,10 +1369,14 @@ async def fetch_spotify_recent_tracks(
 
 
 async def fetch_spotify_top_tracks(
-    access_token: str, limit: int = 5, time_range: str = "short_term"
+    access_token: str,
+    limit: int = 5,
+    time_range: str = "short_term",
+    api_base_url: str = SPOTIFY_API_BASE,
 ) -> list[dict[str, Any]]:
     payload = await _fetch_json(
         _spotify_url(
+            api_base_url,
             "/me/top/tracks",
             {"limit": max(1, min(limit, 50)), "time_range": time_range},
         ),
@@ -1356,10 +1394,14 @@ async def fetch_spotify_top_tracks(
 
 
 async def fetch_spotify_top_artists(
-    access_token: str, limit: int = 5, time_range: str = "short_term"
+    access_token: str,
+    limit: int = 5,
+    time_range: str = "short_term",
+    api_base_url: str = SPOTIFY_API_BASE,
 ) -> list[dict[str, Any]]:
     payload = await _fetch_json(
         _spotify_url(
+            api_base_url,
             "/me/top/artists",
             {"limit": max(1, min(limit, 50)), "time_range": time_range},
         ),
@@ -1372,6 +1414,7 @@ async def fetch_spotify_top_artists(
 
 async def build_spotify_metadata(
     access_token: str,
+    api_base_url: str = SPOTIFY_API_BASE,
 ) -> tuple[dict[str, Any], Optional[str]]:
     now = datetime.now(timezone.utc).isoformat()
     metadata: dict[str, Any] = {
@@ -1389,27 +1432,37 @@ async def build_spotify_metadata(
     sync_errors: list[str] = []
 
     try:
-        metadata["spotify_profile"] = await fetch_spotify_profile(access_token)
+        metadata["spotify_profile"] = await fetch_spotify_profile(
+            access_token, api_base_url
+        )
     except ExternalApiError as exc:
         sync_errors.append(str(exc))
 
     try:
-        metadata["playback"] = await fetch_spotify_current_playback(access_token)
+        metadata["playback"] = await fetch_spotify_current_playback(
+            access_token, api_base_url
+        )
     except ExternalApiError as exc:
         sync_errors.append(str(exc))
 
     try:
-        metadata["recent_tracks"] = await fetch_spotify_recent_tracks(access_token)
+        metadata["recent_tracks"] = await fetch_spotify_recent_tracks(
+            access_token, api_base_url=api_base_url
+        )
     except ExternalApiError as exc:
         sync_errors.append(str(exc))
 
     try:
-        metadata["top_tracks"] = await fetch_spotify_top_tracks(access_token)
+        metadata["top_tracks"] = await fetch_spotify_top_tracks(
+            access_token, api_base_url=api_base_url
+        )
     except ExternalApiError as exc:
         sync_errors.append(str(exc))
 
     try:
-        metadata["top_artists"] = await fetch_spotify_top_artists(access_token)
+        metadata["top_artists"] = await fetch_spotify_top_artists(
+            access_token, api_base_url=api_base_url
+        )
     except ExternalApiError as exc:
         sync_errors.append(str(exc))
 
@@ -1448,9 +1501,9 @@ async def ensure_spotify_access_token(
     if not refresh_token:
         raise ExternalApiError("Spotify refresh token is missing.", 400)
 
-    client_id, client_secret = await _get_spotify_oauth_config(db)
+    client_id, client_secret, _, accounts_base_url = await _get_spotify_oauth_config(db)
     token_payload = await _post_json(
-        f"{SPOTIFY_ACCOUNTS_BASE}/api/token",
+        f"{accounts_base_url}/api/token",
         {"grant_type": "refresh_token", "refresh_token": refresh_token},
         "Spotify OAuth",
         headers={"Authorization": _spotify_basic_auth_header(client_id, client_secret)},
@@ -1484,7 +1537,8 @@ async def sync_spotify_account(db: AsyncSession, user_id: UUID) -> ConnectedAcco
         raise ExternalApiError("Spotify account is not connected.", 404)
 
     access_token = await ensure_spotify_access_token(db, account)
-    metadata, sync_error = await build_spotify_metadata(access_token)
+    api_base_url, _ = await _get_spotify_urls(db)
+    metadata, sync_error = await build_spotify_metadata(access_token, api_base_url)
     profile = (
         metadata.get("spotify_profile")
         if isinstance(metadata.get("spotify_profile"), dict)
@@ -1536,9 +1590,14 @@ async def connect_spotify_oauth_response(
         return _spotify_result_url(frontend_base_url, False, "OAuth state is invalid.")
 
     try:
-        client_id, client_secret = await _get_spotify_oauth_config(db)
+        (
+            client_id,
+            client_secret,
+            api_base_url,
+            accounts_base_url,
+        ) = await _get_spotify_oauth_config(db)
         token_payload = await _post_json(
-            f"{SPOTIFY_ACCOUNTS_BASE}/api/token",
+            f"{accounts_base_url}/api/token",
             {
                 "grant_type": "authorization_code",
                 "code": code,
@@ -1555,7 +1614,9 @@ async def connect_spotify_oauth_response(
             raise ExternalApiError(
                 "Spotify OAuth did not return access and refresh tokens.", 400
             )
-        metadata, sync_error = await build_spotify_metadata(access_token)
+        metadata, sync_error = await build_spotify_metadata(
+            access_token, api_base_url
+        )
         profile = (
             metadata.get("spotify_profile")
             if isinstance(metadata.get("spotify_profile"), dict)
@@ -1600,7 +1661,8 @@ async def spotify_realtime_response(
     )
     try:
         access_token = await ensure_spotify_access_token(db, account)
-        playback = await fetch_spotify_current_playback(access_token)
+        api_base_url, _ = await _get_spotify_urls(db)
+        playback = await fetch_spotify_current_playback(access_token, api_base_url)
         sync_error = None
     except ExternalApiError as exc:
         playback = metadata.get("playback") or _empty_spotify_playback(

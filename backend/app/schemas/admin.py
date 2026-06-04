@@ -70,6 +70,10 @@ class ApiSettingsResponse(BaseModel):
     spotify_oauth_client_id: Optional[str] = None
     spotify_oauth_client_secret_set: bool = False
     spotify_oauth_client_secret_hint: Optional[str] = None
+    spotify_access_token_set: bool = False
+    spotify_access_token_hint: Optional[str] = None
+    spotify_api_base_url: str
+    spotify_accounts_base_url: str
     code_provider_token_auth_enabled: bool = True
     steam_inventory_app_id: int
     steam_inventory_context_id: str
@@ -87,6 +91,9 @@ class ApiSettingsUpdate(BaseModel):
     gitea_oauth_client_secret: Optional[str] = None
     spotify_oauth_client_id: Optional[str] = None
     spotify_oauth_client_secret: Optional[str] = None
+    spotify_access_token: Optional[str] = None
+    spotify_api_base_url: Optional[str] = None
+    spotify_accounts_base_url: Optional[str] = None
     code_provider_token_auth_enabled: Optional[bool] = None
     steam_inventory_app_id: int = Field(default=730, ge=1)
     steam_inventory_context_id: str = Field(default="2", min_length=1, max_length=32)
@@ -102,6 +109,9 @@ class ApiSettingsUpdate(BaseModel):
         "gitea_oauth_client_secret",
         "spotify_oauth_client_id",
         "spotify_oauth_client_secret",
+        "spotify_access_token",
+        "spotify_api_base_url",
+        "spotify_accounts_base_url",
         "steam_inventory_context_id",
         mode="before",
     )

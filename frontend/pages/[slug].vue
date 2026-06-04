@@ -2872,7 +2872,7 @@ function faceitStatsList(block: Block) {
 
 /* ── Spotify ───────────────────────────────────────────────────────────────── */
 .pub-spotify-icon {
-  background: rgba(29,185,84,0.15);
+  background: #191414;
   color: #1db954;
 }
 .pub-spotify-now {
@@ -2887,10 +2887,10 @@ function faceitStatsList(block: Block) {
 .pub-spotify-cover {
   width: 46px;
   height: 46px;
-  border-radius: 12px;
+  border-radius: 8px;
   object-fit: cover;
-  background: rgba(29,185,84,0.12);
-  border: 1px solid rgba(29,185,84,0.2);
+  background: #191414;
+  border: 1px solid rgba(25,20,20,0.18);
 }
 .pub-spotify-cover-empty {
   display: grid;

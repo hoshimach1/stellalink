@@ -24,6 +24,10 @@ def _clean_text(value: Optional[str]) -> Optional[str]:
     return value or None
 
 
+def _clean_url(value: Optional[str], fallback: str) -> str:
+    return (_clean_text(value) or fallback).rstrip("/")
+
+
 def _base_smtp_data() -> dict[str, Any]:
     return {
         "enabled": settings.SMTP_ENABLED,
@@ -55,6 +59,9 @@ def _base_api_data() -> dict[str, Any]:
         "gitea_oauth_client_secret": settings.GITEA_OAUTH_CLIENT_SECRET,
         "spotify_oauth_client_id": settings.SPOTIFY_OAUTH_CLIENT_ID,
         "spotify_oauth_client_secret": settings.SPOTIFY_OAUTH_CLIENT_SECRET,
+        "spotify_access_token": settings.SPOTIFY_ACCESS_TOKEN,
+        "spotify_api_base_url": settings.SPOTIFY_API_BASE_URL,
+        "spotify_accounts_base_url": settings.SPOTIFY_ACCOUNTS_BASE_URL,
         "code_provider_token_auth_enabled": settings.CODE_PROVIDER_TOKEN_AUTH_ENABLED,
         "steam_inventory_app_id": settings.STEAM_INVENTORY_APP_ID,
         "steam_inventory_context_id": settings.STEAM_INVENTORY_CONTEXT_ID,
@@ -127,6 +134,7 @@ async def get_api_settings_response(db: AsyncSession) -> ApiSettingsResponse:
     gitlab_secret = _clean_text(data.get("gitlab_oauth_client_secret"))
     gitea_secret = _clean_text(data.get("gitea_oauth_client_secret"))
     spotify_secret = _clean_text(data.get("spotify_oauth_client_secret"))
+    spotify_access_token = _clean_text(data.get("spotify_access_token"))
     return ApiSettingsResponse(
         steam_api_key_set=bool(steam_api_key),
         steam_api_key_hint=_secret_hint(steam_api_key),
@@ -144,6 +152,14 @@ async def get_api_settings_response(db: AsyncSession) -> ApiSettingsResponse:
         spotify_oauth_client_id=_clean_text(data.get("spotify_oauth_client_id")),
         spotify_oauth_client_secret_set=bool(spotify_secret),
         spotify_oauth_client_secret_hint=_secret_hint(spotify_secret),
+        spotify_access_token_set=bool(spotify_access_token),
+        spotify_access_token_hint=_secret_hint(spotify_access_token),
+        spotify_api_base_url=_clean_url(
+            data.get("spotify_api_base_url"), settings.SPOTIFY_API_BASE_URL
+        ),
+        spotify_accounts_base_url=_clean_url(
+            data.get("spotify_accounts_base_url"), settings.SPOTIFY_ACCOUNTS_BASE_URL
+        ),
         code_provider_token_auth_enabled=bool(
             data.get("code_provider_token_auth_enabled", True)
         ),
@@ -179,6 +195,7 @@ async def save_api_settings(
         "gitea_oauth_client_secret",
         "spotify_oauth_client_id",
         "spotify_oauth_client_secret",
+        "spotify_access_token",
     ):
         if payload.get(key) is None:
             payload[key] = current.get(key)
@@ -197,8 +214,18 @@ async def save_api_settings(
         "gitea_oauth_client_secret",
         "spotify_oauth_client_id",
         "spotify_oauth_client_secret",
+        "spotify_access_token",
     ):
         payload[key] = _clean_text(payload.get(key))
+    payload["spotify_api_base_url"] = _clean_url(
+        payload.get("spotify_api_base_url") or current.get("spotify_api_base_url"),
+        settings.SPOTIFY_API_BASE_URL,
+    )
+    payload["spotify_accounts_base_url"] = _clean_url(
+        payload.get("spotify_accounts_base_url")
+        or current.get("spotify_accounts_base_url"),
+        settings.SPOTIFY_ACCOUNTS_BASE_URL,
+    )
     payload["steam_inventory_context_id"] = str(
         payload.get("steam_inventory_context_id") or "2"
     ).strip()

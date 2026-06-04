@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     GITEA_OAUTH_CLIENT_SECRET: str | None = None
     SPOTIFY_OAUTH_CLIENT_ID: str | None = None
     SPOTIFY_OAUTH_CLIENT_SECRET: str | None = None
+    SPOTIFY_ACCESS_TOKEN: str | None = None
+    SPOTIFY_API_BASE_URL: str = "https://api.spotify.com/v1"
+    SPOTIFY_ACCOUNTS_BASE_URL: str = "https://accounts.spotify.com"
     CODE_PROVIDER_TOKEN_AUTH_ENABLED: bool = True
     STEAM_INVENTORY_APP_ID: int = 730
     STEAM_INVENTORY_CONTEXT_ID: str = "2"
