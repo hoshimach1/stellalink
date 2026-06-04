@@ -1145,7 +1145,9 @@ def _summarize_spotify_current_playback(
     )
     is_playing = bool(source.get("is_playing"))
     state = playback_payload if isinstance(playback_payload, dict) else {}
-    device_payload = state.get("device") if isinstance(state.get("device"), dict) else {}
+    device_payload = (
+        state.get("device") if isinstance(state.get("device"), dict) else {}
+    )
     device = None
     if device_payload:
         device = {
@@ -1368,7 +1370,9 @@ async def fetch_spotify_top_artists(
     return [_summarize_spotify_artist(item) for item in items if isinstance(item, dict)]
 
 
-async def build_spotify_metadata(access_token: str) -> tuple[dict[str, Any], Optional[str]]:
+async def build_spotify_metadata(
+    access_token: str,
+) -> tuple[dict[str, Any], Optional[str]]:
     now = datetime.now(timezone.utc).isoformat()
     metadata: dict[str, Any] = {
         "available": True,
@@ -1415,11 +1419,7 @@ async def build_spotify_metadata(access_token: str) -> tuple[dict[str, Any], Opt
             for track in metadata.get("recent_tracks", [])
             if isinstance(track, dict)
         ],
-        [
-            track
-            for track in metadata.get("top_tracks", [])
-            if isinstance(track, dict)
-        ],
+        [track for track in metadata.get("top_tracks", []) if isinstance(track, dict)],
         [
             artist
             for artist in metadata.get("top_artists", [])
@@ -1460,7 +1460,9 @@ async def ensure_spotify_access_token(
         raise ExternalApiError("Spotify OAuth did not return an access token.", 400)
 
     account.access_token = next_access_token
-    account.refresh_token = _clean_text(token_payload.get("refresh_token")) or refresh_token
+    account.refresh_token = (
+        _clean_text(token_payload.get("refresh_token")) or refresh_token
+    )
     account.token_expires_at = _token_expires_at(token_payload.get("expires_in"))
     scopes = [
         scope
