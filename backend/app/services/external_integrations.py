@@ -1614,9 +1614,7 @@ async def connect_spotify_oauth_response(
             raise ExternalApiError(
                 "Spotify OAuth did not return access and refresh tokens.", 400
             )
-        metadata, sync_error = await build_spotify_metadata(
-            access_token, api_base_url
-        )
+        metadata, sync_error = await build_spotify_metadata(access_token, api_base_url)
         profile = (
             metadata.get("spotify_profile")
             if isinstance(metadata.get("spotify_profile"), dict)
