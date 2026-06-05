@@ -3,8 +3,8 @@
     <header class="admin-page-head">
       <div class="admin-title">
         <p class="admin-kicker">Админка</p>
-        <h2>Системный центр</h2>
-        <span>Критичные настройки сгруппированы по задачам: доставка писем, ссылки авторизации и внешние интеграции.</span>
+        <h2>Настройки системы</h2>
+        <span>SMTP, ссылки авторизации и внешние интеграции.</span>
       </div>
 
       <div class="admin-hero-actions">
@@ -21,35 +21,6 @@
         </button>
       </div>
     </header>
-
-    <section class="admin-status-console" aria-label="Состояние системных настроек">
-      <article class="admin-status-card" :class="smtpHealth.tone">
-        <span class="admin-status-icon"><i class="ri-mail-check-line" /></span>
-        <div>
-          <span class="admin-status-label">SMTP</span>
-          <strong>{{ smtpHealth.label }}</strong>
-          <p>{{ smtpHealth.detail }}</p>
-        </div>
-      </article>
-
-      <article class="admin-status-card" :class="authLinksHealth.tone">
-        <span class="admin-status-icon"><i class="ri-links-line" /></span>
-        <div>
-          <span class="admin-status-label">Auth links</span>
-          <strong>{{ authLinksHealth.label }}</strong>
-          <p>{{ authLinksHealth.detail }}</p>
-        </div>
-      </article>
-
-      <article class="admin-status-card" :class="integrationHealth.tone">
-        <span class="admin-status-icon"><i class="ri-plug-2-line" /></span>
-        <div>
-          <span class="admin-status-label">Интеграции</span>
-          <strong>{{ integrationHealth.label }}</strong>
-          <p>{{ integrationHealth.detail }}</p>
-        </div>
-      </article>
-    </section>
 
     <section class="admin-section" aria-labelledby="admin-communication-title">
       <header class="admin-section-head">
@@ -130,7 +101,7 @@
             <div>
               <span class="admin-card-overline">Delivery</span>
               <h4>Тест письма</h4>
-              <p>Быстрая отправка без перехода в отдельную форму.</p>
+              <p>Проверка доставки на любой адрес.</p>
             </div>
           </div>
 
@@ -172,7 +143,7 @@
         </div>
       </header>
 
-      <div class="admin-card-grid">
+      <div class="admin-card-grid admin-card-grid-integrations">
         <article class="admin-panel-card">
           <div class="admin-card-top">
             <span class="admin-card-icon"><i class="ri-gamepad-line" /></span>
@@ -263,7 +234,7 @@
     </section>
 
     <Transition name="admin-dialog">
-      <div v-if="activeDialog" class="admin-dialog-overlay" @click.self="closeDialog" @keyup.esc="closeDialog">
+      <div v-if="activeDialog" class="admin-dialog-overlay" tabindex="-1" @click.self="closeDialog" @keyup.esc="closeDialog">
         <section class="admin-dialog" role="dialog" aria-modal="true" :aria-labelledby="`${activeDialog}-dialog-title`">
           <button class="admin-dialog-close" type="button" aria-label="Закрыть" @click="closeDialog">
             <i class="ri-close-line" />
@@ -563,7 +534,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import { extractAuthError } from '~/utils/auth-feedback'
 
@@ -651,6 +622,7 @@ const saveNoticeTone = ref<'success' | 'error'>('success')
 const testNoticeTone = ref<'success' | 'error'>('success')
 const apiNoticeTone = ref<'success' | 'error'>('success')
 const activeDialog = ref<AdminDialog | null>(null)
+let previousBodyOverflow = ''
 
 const form = reactive({
   enabled: true,
@@ -865,30 +837,12 @@ const gitHealth = computed<AdminHealth>(() => {
     tone: 'neutral',
   }
 })
-const integrationHealth = computed<AdminHealth>(() => {
-  const readyCount = [gameHealth.value, spotifyHealth.value, gitHealth.value].filter((item) => item.tone === 'ready').length
-  if (readyCount === 3) {
-    return {
-      label: 'Все готовы',
-      detail: 'Игры, музыка и Git-интеграции закрыты.',
-      tone: 'ready',
-    }
-  }
-  if (readyCount > 0) {
-    return {
-      label: `${readyCount}/3 готово`,
-      detail: 'Остальные домены можно дозаполнить в карточках ниже.',
-      tone: 'warn',
-    }
-  }
-  return {
-    label: 'Нужна настройка',
-    detail: 'Ключи и OAuth еще не закрывают публичные блоки профиля.',
-    tone: 'neutral',
-  }
-})
 onMounted(() => {
   void loadAllSettings()
+})
+
+onBeforeUnmount(() => {
+  unlockDialogScroll()
 })
 
 function formatDuration(seconds: number) {
@@ -900,6 +854,7 @@ function formatDuration(seconds: number) {
 }
 
 function openDialog(dialog: AdminDialog) {
+  lockDialogScroll()
   activeDialog.value = dialog
   if (dialog === 'smtp' || dialog === 'links') saveNotice.value = ''
   if (dialog === 'games' || dialog === 'spotify' || dialog === 'oauth') apiNotice.value = ''
@@ -907,6 +862,18 @@ function openDialog(dialog: AdminDialog) {
 
 function closeDialog() {
   activeDialog.value = null
+  unlockDialogScroll()
+}
+
+function lockDialogScroll() {
+  if (typeof document === 'undefined' || activeDialog.value) return
+  previousBodyOverflow = document.body.style.overflow
+  document.body.style.overflow = 'hidden'
+}
+
+function unlockDialogScroll() {
+  if (typeof document === 'undefined') return
+  document.body.style.overflow = previousBodyOverflow
 }
 
 function applySettings(data: SmtpSettings) {
@@ -1101,9 +1068,9 @@ async function sendTestEmail() {
 
 <style scoped>
 .admin-shell {
-  width: min(1160px, 100%);
+  width: min(1120px, 100%);
   display: grid;
-  gap: var(--md-sys-space-5);
+  gap: var(--md-sys-space-3);
   margin: 0 auto;
 }
 
@@ -1116,21 +1083,18 @@ async function sendTestEmail() {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: var(--md-sys-space-4);
+  align-items: center;
+  gap: var(--md-sys-space-3);
   border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 88%, transparent);
-  border-radius: var(--md-sys-shape-corner-extra-extra-large);
-  background:
-    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--md-sys-color-primary-container) 64%, transparent) 0 32%, transparent 54%),
-    linear-gradient(135deg, var(--md-sys-color-surface-container-high) 0%, var(--md-sys-color-surface-container-low) 100%);
-  padding: var(--md-sys-space-8);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-surface-container-low);
+  padding: var(--md-sys-space-4) var(--md-sys-space-5);
   overflow: hidden;
 }
 
 .admin-title,
 .admin-section-head > div,
 .admin-card-top > div,
-.admin-status-card > div,
 .admin-dialog-head > div,
 .oauth-provider-head > div {
   min-width: 0;
@@ -1142,11 +1106,8 @@ async function sendTestEmail() {
 .admin-section-head h3,
 .admin-section-head p,
 .admin-card-overline,
-.admin-status-label,
 .admin-card-top h4,
 .admin-card-top p,
-.admin-status-card strong,
-.admin-status-card p,
 .admin-dialog-head h3,
 .admin-dialog-head span {
   margin: 0;
@@ -1162,7 +1123,7 @@ async function sendTestEmail() {
 .admin-title h2 {
   margin-top: 2px;
   color: var(--md-sys-color-on-surface);
-  font: var(--md-sys-typescale-headline-small-weight) var(--md-sys-typescale-headline-small-size) / var(--md-sys-typescale-headline-small-line-height) var(--md-sys-typescale-headline-small-font);
+  font: var(--md-sys-typescale-title-large-weight) var(--md-sys-typescale-title-large-size) / var(--md-sys-typescale-title-large-line-height) var(--md-sys-typescale-title-large-font);
 }
 
 .admin-title span,
@@ -1176,7 +1137,7 @@ async function sendTestEmail() {
 .admin-title span {
   display: block;
   max-width: 720px;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .admin-hero-actions {
@@ -1187,7 +1148,7 @@ async function sendTestEmail() {
 }
 
 .admin-sync-state {
-  min-height: 36px;
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   gap: var(--md-sys-space-2);
@@ -1203,14 +1164,14 @@ async function sendTestEmail() {
 .admin-card-action,
 .filled-btn,
 .text-btn {
-  min-height: 44px;
+  min-height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--md-sys-space-2);
   border: 1px solid transparent;
   border-radius: var(--md-sys-shape-corner-full);
-  padding: 0 var(--md-sys-space-4);
+  padding: 0 var(--md-sys-space-3);
   font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-body-medium-size) / var(--md-sys-typescale-body-medium-line-height) var(--md-sys-typescale-body-medium-font);
   cursor: pointer;
   transition:
@@ -1227,87 +1188,33 @@ async function sendTestEmail() {
   color: var(--md-sys-color-primary);
 }
 
-.admin-status-console {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--md-sys-space-3);
-}
-
-.admin-status-card {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 46px minmax(0, 1fr);
-  gap: var(--md-sys-space-3);
-  align-items: center;
-  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 82%, transparent);
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  background: var(--md-sys-color-surface-container-low);
-  padding: var(--md-sys-space-4);
-}
-
-.admin-status-icon {
-  width: 46px;
-  height: 46px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: var(--md-sys-shape-corner-large-increased);
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-primary);
-  font-size: 21px;
-}
-
-.admin-status-label {
-  display: block;
-  color: var(--md-sys-color-on-surface-variant);
-  font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-label-medium-size) / var(--md-sys-typescale-label-medium-line-height) var(--md-sys-typescale-label-medium-font);
-}
-
-.admin-status-card strong {
-  display: block;
-  color: var(--md-sys-color-on-surface);
-  font: var(--md-sys-typescale-title-medium-weight) var(--md-sys-typescale-title-medium-size) / var(--md-sys-typescale-title-medium-line-height) var(--md-sys-typescale-title-medium-font);
-}
-
-.admin-status-card p {
-  margin-top: 2px;
-  color: var(--md-sys-color-on-surface-variant);
-  font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-label-medium-size) / var(--md-sys-typescale-label-medium-line-height) var(--md-sys-typescale-label-medium-font);
-}
-
-.admin-status-card.ready,
 .admin-status-chip.ready {
   border-color: color-mix(in srgb, var(--md-sys-color-success) 22%, var(--md-sys-color-outline-variant));
 }
 
-.admin-status-card.ready .admin-status-icon,
 .admin-status-chip.ready {
   background: var(--md-sys-color-success-container);
   color: var(--md-sys-color-success);
 }
 
-.admin-status-card.warn,
 .admin-status-chip.warn {
   border-color: color-mix(in srgb, var(--md-sys-color-warning) 26%, var(--md-sys-color-outline-variant));
 }
 
-.admin-status-card.warn .admin-status-icon,
 .admin-status-chip.warn {
   background: var(--md-sys-color-warning-container);
   color: var(--md-sys-color-warning);
 }
 
-.admin-status-card.danger,
 .admin-status-chip.danger {
   border-color: color-mix(in srgb, var(--md-sys-color-error) 24%, var(--md-sys-color-outline-variant));
 }
 
-.admin-status-card.danger .admin-status-icon,
 .admin-status-chip.danger {
   background: var(--md-sys-color-error-container);
   color: var(--md-sys-color-on-error-container);
 }
 
-.admin-status-card.neutral .admin-status-icon,
 .admin-status-chip.neutral {
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
@@ -1315,7 +1222,7 @@ async function sendTestEmail() {
 
 .admin-section {
   display: grid;
-  gap: var(--md-sys-space-3);
+  gap: var(--md-sys-space-2);
 }
 
 .admin-section-head {
@@ -1331,11 +1238,23 @@ async function sendTestEmail() {
   font: var(--md-sys-typescale-title-medium-weight) var(--md-sys-typescale-title-medium-size) / var(--md-sys-typescale-title-medium-line-height) var(--md-sys-typescale-title-medium-font);
 }
 
+.admin-section-head p {
+  display: none;
+}
+
 .admin-card-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--md-sys-space-4);
+  gap: var(--md-sys-space-3);
   width: 100%;
+}
+
+.admin-card-grid-communication {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.admin-card-grid-communication .admin-panel-card {
+  grid-column: span 3;
 }
 
 .admin-panel-card {
@@ -1343,14 +1262,14 @@ async function sendTestEmail() {
   min-width: 0;
   display: grid;
   align-content: start;
-  gap: var(--md-sys-space-4);
+  gap: var(--md-sys-space-3);
   border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 88%, transparent);
-  border-radius: var(--md-sys-shape-corner-extra-large);
+  border-radius: var(--md-sys-shape-corner-large-increased);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--md-sys-color-surface-container-lowest) 46%, transparent), transparent),
+    linear-gradient(180deg, color-mix(in srgb, var(--md-sys-color-surface-container-lowest) 30%, transparent), transparent),
     var(--md-sys-color-surface-container-low);
   color: var(--md-sys-color-on-surface);
-  padding: var(--md-sys-space-5);
+  padding: var(--md-sys-space-4);
   transition:
     transform 260ms var(--md-sys-motion-expressive),
     border-color 200ms var(--md-sys-motion-standard),
@@ -1358,21 +1277,23 @@ async function sendTestEmail() {
 }
 
 .admin-panel-card-primary {
-  grid-column: span 5;
+  grid-column: auto;
 }
 
 .admin-delivery-card {
-  grid-column: span 3;
+  grid-column: span 6;
+  grid-template-columns: minmax(0, 0.8fr) minmax(260px, 1fr);
+  align-items: start;
   background:
-    linear-gradient(145deg, color-mix(in srgb, var(--md-sys-color-tertiary-container) 28%, transparent), transparent 64%),
+    linear-gradient(145deg, color-mix(in srgb, var(--md-sys-color-tertiary-container) 18%, transparent), transparent 64%),
     var(--md-sys-color-surface-container-low);
 }
 
 .admin-card-top {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   align-items: start;
-  gap: var(--md-sys-space-3);
+  gap: var(--md-sys-space-2);
 }
 
 .admin-card-icon,
@@ -1386,10 +1307,10 @@ async function sendTestEmail() {
 }
 
 .admin-card-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--md-sys-shape-corner-large);
-  font-size: 21px;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--md-sys-shape-corner-medium);
+  font-size: 19px;
 }
 
 .admin-card-top h4,
@@ -1400,21 +1321,21 @@ async function sendTestEmail() {
 
 .admin-card-top p {
   display: -webkit-box;
-  margin-top: 3px;
+  margin-top: 1px;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
 
 .admin-status-chip {
-  min-height: 30px;
+  min-height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   align-self: start;
   border: 1px solid transparent;
   border-radius: var(--md-sys-shape-corner-full);
-  padding: 0 var(--md-sys-space-3);
+  padding: 0 10px;
   font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-label-medium-size) / var(--md-sys-typescale-label-medium-line-height) var(--md-sys-typescale-label-medium-font);
   white-space: nowrap;
 }
@@ -1422,7 +1343,7 @@ async function sendTestEmail() {
 .admin-facts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--md-sys-space-2);
+  gap: 6px;
   margin: 0;
 }
 
@@ -1430,7 +1351,7 @@ async function sendTestEmail() {
   min-width: 0;
   border-radius: var(--md-sys-shape-corner-medium);
   background: var(--md-sys-color-surface-container-high);
-  padding: var(--md-sys-space-3);
+  padding: var(--md-sys-space-2) var(--md-sys-space-3);
 }
 
 .admin-facts dt {
@@ -1442,7 +1363,16 @@ async function sendTestEmail() {
   margin: 2px 0 0;
   overflow-wrap: anywhere;
   color: var(--md-sys-color-on-surface);
-  font: 850 var(--md-sys-typescale-body-medium-size) / var(--md-sys-typescale-body-medium-line-height) var(--md-sys-typescale-body-medium-font);
+  font: 800 13px / 18px var(--md-sys-typescale-body-medium-font);
+}
+
+.admin-delivery-card .admin-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-delivery-card .admin-inline-action,
+.admin-delivery-card .admin-inline-note {
+  grid-column: 1 / -1;
 }
 
 .provider-strip {
@@ -1452,7 +1382,7 @@ async function sendTestEmail() {
 }
 
 .provider-strip span {
-  min-height: 36px;
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   gap: var(--md-sys-space-2);
@@ -1483,16 +1413,27 @@ async function sendTestEmail() {
 
 .admin-inline-action {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--md-sys-space-3);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--md-sys-space-2);
+  align-items: end;
+}
+
+.admin-inline-action .admin-card-action {
+  align-self: end;
+  margin-top: 0;
+  white-space: nowrap;
 }
 
 .admin-field-compact input {
-  min-height: 44px;
+  min-height: 40px;
 }
 
 .admin-inline-note {
-  margin-top: calc(var(--md-sys-space-2) * -1);
+  margin-top: 0;
+}
+
+.admin-delivery-card .admin-inline-note {
+  grid-column: 1 / -1;
 }
 
 .filled-btn {
@@ -1519,65 +1460,71 @@ async function sendTestEmail() {
   inset: 0;
   z-index: 80;
   display: grid;
-  place-items: center end;
-  padding: var(--md-sys-space-6);
-  background: color-mix(in srgb, var(--md-sys-color-inverse-surface) 42%, transparent);
-  backdrop-filter: blur(10px);
+  place-items: center;
+  padding: var(--md-sys-space-4);
+  background: color-mix(in srgb, var(--md-sys-color-inverse-surface) 34%, transparent);
+  backdrop-filter: blur(4px);
+  overflow: hidden;
 }
 
 .admin-dialog {
   position: relative;
-  width: min(760px, 100%);
-  max-height: calc(100vh - 48px);
+  width: min(660px, calc(100vw - 32px));
+  max-height: min(84dvh, 760px);
   display: grid;
-  gap: var(--md-sys-space-5);
-  overflow: auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--md-sys-space-2);
+  overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 82%, transparent);
-  border-radius: var(--md-sys-shape-corner-extra-large-increased);
-  background: var(--md-sys-color-surface-container-highest);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-surface-container-low);
   color: var(--md-sys-color-on-surface);
-  padding: var(--md-sys-space-6);
+  padding: var(--md-sys-space-4);
   box-shadow: var(--shadow-mid);
+  overscroll-behavior: contain;
 }
 
 .admin-dialog-close {
   position: absolute;
-  top: var(--md-sys-space-4);
-  right: var(--md-sys-space-4);
-  width: 40px;
-  height: 40px;
+  top: var(--md-sys-space-3);
+  right: var(--md-sys-space-3);
+  width: 38px;
+  height: 38px;
   display: inline-grid;
   place-items: center;
   border: 0;
   border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-surface-container-high);
+  background: var(--md-sys-color-surface-container-low);
   color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
 }
 
 .admin-dialog-head {
   display: flex;
-  align-items: flex-start;
-  gap: var(--md-sys-space-3);
+  align-items: center;
+  gap: var(--md-sys-space-2);
   padding-right: 44px;
 }
 
 .admin-dialog-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: var(--md-sys-shape-corner-large);
-  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--md-sys-shape-corner-medium);
+  font-size: 19px;
 }
 
 .admin-form {
   display: grid;
-  gap: var(--md-sys-space-3);
+  gap: var(--md-sys-space-2);
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .admin-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(150px, 0.46fr);
-  gap: var(--md-sys-space-3);
+  gap: var(--md-sys-space-2);
 }
 
 .admin-field {
@@ -1598,9 +1545,9 @@ async function sendTestEmail() {
 .admin-field input,
 .admin-field select {
   width: 100%;
-  min-height: 48px;
+  min-height: 44px;
   border: 1px solid var(--md-sys-color-outline);
-  border-radius: var(--md-sys-shape-corner-small);
+  border-radius: var(--md-sys-shape-corner-medium);
   background: var(--md-sys-color-surface-container-lowest);
   color: var(--md-sys-color-on-surface);
   font: inherit;
@@ -1620,7 +1567,7 @@ async function sendTestEmail() {
 }
 
 .admin-switch {
-  min-height: 64px;
+  min-height: 54px;
   display: flex;
   align-items: center;
   gap: var(--md-sys-space-3);
@@ -1628,7 +1575,7 @@ async function sendTestEmail() {
   border-radius: var(--md-sys-shape-corner-large);
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
-  padding: var(--md-sys-space-3);
+  padding: 10px var(--md-sys-space-3);
   cursor: pointer;
 }
 
@@ -1657,11 +1604,11 @@ async function sendTestEmail() {
 
 .oauth-provider {
   display: grid;
-  gap: var(--md-sys-space-3);
+  gap: var(--md-sys-space-2);
   border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 88%, transparent);
   border-radius: var(--md-sys-shape-corner-large);
   background: var(--md-sys-color-surface-container-high);
-  padding: var(--md-sys-space-3);
+  padding: var(--md-sys-space-2);
 }
 
 .oauth-provider-head {
@@ -1729,15 +1676,14 @@ async function sendTestEmail() {
 
 .admin-form-actions {
   position: sticky;
-  bottom: calc(var(--md-sys-space-6) * -1);
+  bottom: 0;
   display: flex;
   justify-content: flex-end;
   gap: var(--md-sys-space-2);
-  margin: 0 calc(var(--md-sys-space-6) * -1) calc(var(--md-sys-space-6) * -1);
-  padding: var(--md-sys-space-3) var(--md-sys-space-6) var(--md-sys-space-5);
+  margin: var(--md-sys-space-2) 0 0;
+  padding: var(--md-sys-space-3) 0 0;
   border-top: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 72%, transparent);
-  background: color-mix(in srgb, var(--md-sys-color-surface-container-highest) 92%, transparent);
-  backdrop-filter: blur(14px);
+  background: var(--md-sys-color-surface-container-low);
 }
 
 .admin-spinner {
@@ -1809,8 +1755,7 @@ async function sendTestEmail() {
     max-width: 760px;
   }
 
-  .admin-page-head,
-  .admin-status-console {
+  .admin-page-head {
     grid-template-columns: 1fr;
   }
 
@@ -1819,20 +1764,28 @@ async function sendTestEmail() {
   }
 
   .admin-card-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-card-grid-communication {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .admin-panel-card,
-  .admin-panel-card-primary,
-  .admin-delivery-card {
+  .admin-panel-card-primary {
     grid-column: auto;
     min-height: 0;
+  }
+
+  .admin-delivery-card {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 0.8fr) minmax(250px, 1fr);
   }
 }
 
 @media (max-width: 680px) {
   .admin-shell {
-    gap: var(--md-sys-space-4);
+    gap: var(--md-sys-space-3);
   }
 
   .admin-page-head {
@@ -1858,12 +1811,12 @@ async function sendTestEmail() {
   }
 
   .admin-card-top {
-    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-columns: 40px minmax(0, 1fr);
   }
 
   .admin-card-icon {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
   }
 
   .admin-status-chip {
@@ -1872,8 +1825,20 @@ async function sendTestEmail() {
   }
 
   .admin-facts,
-  .admin-row {
+  .admin-row,
+  .admin-card-grid,
+  .admin-card-grid-communication,
+  .admin-delivery-card,
+  .admin-inline-action {
     grid-template-columns: 1fr;
+  }
+
+  .admin-delivery-card,
+  .admin-delivery-card .admin-card-top,
+  .admin-delivery-card .admin-facts,
+  .admin-delivery-card .admin-inline-action,
+  .admin-delivery-card .admin-inline-note {
+    grid-column: auto;
   }
 
   .admin-field.small {
@@ -1881,15 +1846,15 @@ async function sendTestEmail() {
   }
 
   .admin-dialog-overlay {
-    place-items: end center;
+    place-items: center;
     padding: var(--md-sys-space-2);
   }
 
   .admin-dialog {
     width: 100%;
-    max-height: min(92vh, 840px);
-    border-radius: var(--md-sys-shape-corner-extra-large) var(--md-sys-shape-corner-extra-large) var(--md-sys-shape-corner-large) var(--md-sys-shape-corner-large);
-    padding: var(--md-sys-space-5) var(--md-sys-space-4) var(--md-sys-space-4);
+    max-height: calc(100dvh - 16px);
+    border-radius: var(--md-sys-shape-corner-extra-large);
+    padding: var(--md-sys-space-4);
   }
 
   .admin-dialog-head {
@@ -1898,9 +1863,8 @@ async function sendTestEmail() {
 
   .admin-form-actions {
     flex-direction: column-reverse;
-    bottom: calc(var(--md-sys-space-4) * -1);
-    margin: 0 calc(var(--md-sys-space-4) * -1) calc(var(--md-sys-space-4) * -1);
-    padding: var(--md-sys-space-3) var(--md-sys-space-4) var(--md-sys-space-4);
+    margin-top: var(--md-sys-space-2);
+    padding-top: var(--md-sys-space-3);
   }
 }
 
