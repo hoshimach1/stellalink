@@ -2,8 +2,13 @@
   <div class="integrations-shell">
     <section class="integrations-summary" aria-label="Сводка сервисов">
       <div class="summary-copy">
-        <h2>Сервисы</h2>
-        <p>Подключения, которые могут автоматически наполнять публичный профиль.</p>
+        <span class="summary-icon" aria-hidden="true">
+          <i class="ri-plug-line" />
+        </span>
+        <div class="summary-text">
+          <h2>Сервисы</h2>
+          <p>Подключения, которые могут автоматически наполнять публичный профиль.</p>
+        </div>
       </div>
 
       <div class="summary-stats">
@@ -27,7 +32,7 @@
         v-for="service in serviceCards"
         :key="service.type"
         class="service-card"
-        :class="{ connected: service.connected, available: service.canConnect }"
+        :class="[{ connected: service.connected, available: service.canConnect }, service.type]"
       >
         <div class="service-main">
           <span class="service-icon">
@@ -954,9 +959,15 @@ async function connectService(type: IntegrationType) {
 
 <style scoped>
 .integrations-shell {
-  width: min(100%, 1060px);
+  --integration-radius: var(--md-sys-shape-corner-extra-large, 28px);
+  --integration-radius-strong: var(--md-sys-shape-corner-extra-large-increased, 32px);
+  --integration-radius-compact: var(--md-sys-shape-corner-large, 16px);
+  --integration-motion: var(--md-sys-motion-expressive, var(--m3-motion, cubic-bezier(0.34, 1.56, 0.64, 1)));
+  --integration-standard: var(--md-sys-motion-standard, cubic-bezier(0.2, 0, 0, 1));
+  --integration-state-layer: 0.08;
+  width: min(100%, 1100px);
   display: grid;
-  gap: 12px;
+  gap: 14px;
   margin: 0 auto;
 }
 
@@ -968,21 +979,67 @@ async function connectService(type: IntegrationType) {
 .integrations-summary,
 .service-card,
 .integration-notice {
-  border: 1px solid color-mix(in srgb, var(--outline, #d4dbe8) 86%, transparent);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--surface, #fff) 94%, transparent);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--text-1, #10182b) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant, var(--outline, #d4dbe8)) 88%, transparent);
+  border-radius: var(--integration-radius);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface, #fff) 96%, transparent), color-mix(in srgb, var(--surface-low, #F2F4F8) 72%, transparent));
+  box-shadow:
+    0 16px 42px color-mix(in srgb, var(--text-1, #10182b) 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 72%, transparent);
 }
 
 .integrations-summary {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 18px;
+  padding: clamp(16px, 2vw, 22px);
+  border-radius: var(--integration-radius-strong);
+  background:
+    radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--primary-container, rgba(52,94,168,0.12)) 78%, transparent) 0 32%, transparent 58%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface, #fff) 96%, transparent), color-mix(in srgb, var(--tertiary-container, #fbd7fc) 34%, var(--surface-low, #F2F4F8)));
+}
+
+.integrations-summary::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  bottom: -46px;
+  width: 160px;
+  height: 160px;
+  border: 1px solid color-mix(in srgb, var(--primary, #345EA8) 14%, transparent);
+  border-radius: 999px;
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .summary-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.summary-icon {
+  width: 58px;
+  height: 58px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 20px;
+  background: var(--primary, #345EA8);
+  color: var(--on-primary, #fff);
+  font-size: 27px;
+  box-shadow:
+    0 12px 26px color-mix(in srgb, var(--primary, #345EA8) 24%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 32%, transparent);
+}
+
+.summary-text {
   min-width: 0;
 }
 
@@ -995,108 +1052,168 @@ async function connectService(type: IntegrationType) {
 
 .summary-copy h2 {
   color: var(--text-1, #10182b);
-  font-size: 22px;
-  line-height: 1.12;
+  font-size: clamp(24px, 2vw, 32px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  font-weight: 950;
 }
 
 .summary-copy p {
-  margin-top: 4px;
+  max-width: 560px;
+  margin-top: 6px;
   color: var(--text-2, #475778);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
 .summary-stats {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 10px;
 }
 
 .summary-pill {
-  min-height: 34px;
+  min-height: 42px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 12px;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--outline, rgba(82, 103, 138, 0.18)) 82%, transparent);
   border-radius: 999px;
-  background: var(--surface-low, #F2F4F8);
+  background: color-mix(in srgb, var(--surface, #fff) 82%, transparent);
   color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
+  backdrop-filter: blur(12px) saturate(140%);
 }
 
 .summary-pill.strong {
-  background: var(--primary-container, rgba(52,94,168,0.12));
+  border-color: color-mix(in srgb, var(--primary, #345EA8) 18%, transparent);
+  background: color-mix(in srgb, var(--primary-container, rgba(52,94,168,0.12)) 78%, var(--surface, #fff));
   color: var(--on-primary-container, #163E86);
 }
 
 .summary-pill strong {
-  font-size: 18px;
+  font-size: 21px;
   line-height: 1;
 }
 
 .service-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .service-card {
+  position: relative;
   min-width: 0;
+  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px;
+  gap: 16px;
   align-items: center;
-  padding: 14px;
+  padding: clamp(14px, 1.6vw, 18px);
+  border-radius: var(--integration-radius);
   transition:
-    transform 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    border-color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    background 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    box-shadow 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
+    transform 240ms var(--integration-motion),
+    border-color 200ms var(--integration-standard),
+    background 200ms var(--integration-standard),
+    box-shadow 200ms var(--integration-standard);
+}
+
+.service-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms var(--integration-standard);
+}
+
+.service-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .service-card.connected {
-  border-color: color-mix(in srgb, var(--success, #188A55) 28%, var(--outline, #d4dbe8));
+  border-color: color-mix(in srgb, var(--success, #188A55) 32%, var(--outline, #d4dbe8));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--success-container, #E1F6EA) 50%, transparent), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface, #fff) 96%, transparent), color-mix(in srgb, var(--surface-low, #F2F4F8) 76%, transparent));
 }
 
 .service-card.available {
-  border-color: color-mix(in srgb, var(--primary, #345EA8) 20%, var(--outline, #d4dbe8));
+  border-color: color-mix(in srgb, var(--primary, #345EA8) 24%, var(--outline, #d4dbe8));
 }
 
 .service-main {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 14px;
   min-width: 0;
 }
 
 .service-icon {
-  width: 46px;
-  height: 46px;
+  width: 52px;
+  height: 52px;
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
-  border-radius: 16px;
-  background: var(--primary-container, rgba(52,94,168,0.12));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--primary-container, rgba(52,94,168,0.12)) 82%, var(--surface, #fff));
   color: var(--on-primary-container, #163E86);
-  font-size: 23px;
+  font-size: 25px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 60%, transparent);
 }
 
 .service-card.connected .service-icon {
-  background: var(--success-container, #E1F6EA);
+  background: color-mix(in srgb, var(--success-container, #E1F6EA) 84%, var(--surface, #fff));
   color: var(--success, #188A55);
 }
 
+.service-card.widget_steam:not(.connected) .service-icon {
+  background: color-mix(in srgb, #171a21 14%, var(--surface, #fff));
+  color: #171a21;
+}
+
+.service-card.widget_spotify:not(.connected) .service-icon {
+  background: color-mix(in srgb, #1db954 18%, var(--surface, #fff));
+  color: color-mix(in srgb, #1db954 70%, #06140b);
+}
+
+.service-card.code_github:not(.connected) .service-icon {
+  background: color-mix(in srgb, var(--text-1, #10182b) 10%, var(--surface, #fff));
+  color: var(--text-1, #10182b);
+}
+
+.service-card.code_gitlab:not(.connected) .service-icon {
+  background: color-mix(in srgb, #fc6d26 16%, var(--surface, #fff));
+  color: #9b3400;
+}
+
+.service-card.code_gitea:not(.connected) .service-icon {
+  background: color-mix(in srgb, #609926 16%, var(--surface, #fff));
+  color: #3f6f15;
+}
+
+.service-card.widget_faceit:not(.connected) .service-icon {
+  background: color-mix(in srgb, #ff5500 16%, var(--surface, #fff));
+  color: #9b3200;
+}
+
 .faceit-logo {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   display: block;
 }
 
 .gitea-logo {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   display: block;
 }
 
@@ -1113,30 +1230,33 @@ async function connectService(type: IntegrationType) {
 
 .service-copy h3 {
   color: var(--text-1, #10182b);
-  font-size: 17px;
+  font-size: 18px;
   line-height: 1.2;
+  font-weight: 920;
   overflow-wrap: anywhere;
 }
 
 .service-copy p {
-  margin-top: 4px;
+  max-width: 660px;
+  margin-top: 5px;
   color: var(--text-2, #475778);
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1.45;
 }
 
 .service-status {
-  min-height: 28px;
+  min-height: 30px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 0 9px;
+  padding: 0 10px;
   border-radius: 999px;
-  background: var(--surface-low, #F2F4F8);
+  background: color-mix(in srgb, var(--surface-low, #F2F4F8) 82%, transparent);
   color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 8%, transparent);
 }
 
 .service-status.connected {
@@ -1145,13 +1265,13 @@ async function connectService(type: IntegrationType) {
 }
 
 .service-status.available {
-  background: color-mix(in srgb, var(--primary, #345EA8) 12%, var(--surface-low, #F2F4F8));
+  background: color-mix(in srgb, var(--primary-container, rgba(52,94,168,0.12)) 82%, var(--surface, #fff));
   color: var(--on-primary-container, #163E86);
 }
 
 .service-status.derived {
-  background: color-mix(in srgb, var(--primary, #345EA8) 12%, var(--surface-low, #F2F4F8));
-  color: var(--on-primary-container, #163E86);
+  background: color-mix(in srgb, var(--tertiary-container, #fbd7fc) 70%, var(--surface, #fff));
+  color: var(--on-tertiary-container, #29132d);
 }
 
 .service-controls,
@@ -1176,6 +1296,9 @@ async function connectService(type: IntegrationType) {
 .spotify-login,
 .service-action {
   min-height: 44px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1187,10 +1310,38 @@ async function connectService(type: IntegrationType) {
   font-size: 13px;
   font-weight: 900;
   transition:
-    transform 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    background 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    border-color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
+    transform 240ms var(--integration-motion),
+    background 180ms var(--integration-standard),
+    border-color 180ms var(--integration-standard),
+    color 180ms var(--integration-standard),
+    box-shadow 180ms var(--integration-standard);
+}
+
+.steam-login::after,
+.spotify-login::after,
+.service-action::after,
+.modal-auth-button::after,
+.integration-modal-close::after,
+.integration-modal-back::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms var(--integration-standard);
+}
+
+.steam-login > *,
+.spotify-login > *,
+.service-action > *,
+.modal-auth-button > *,
+.integration-modal-close > *,
+.integration-modal-back > * {
+  position: relative;
+  z-index: 1;
 }
 
 .steam-login {
@@ -1218,12 +1369,14 @@ async function connectService(type: IntegrationType) {
   background: var(--primary, #345EA8);
   color: #fff;
   cursor: pointer;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--primary, #345EA8) 20%, transparent);
 }
 
 .service-action.complete {
   border-color: color-mix(in srgb, var(--success, #188A55) 28%, var(--outline, #d4dbe8));
   background: var(--success-container, #E1F6EA);
   color: var(--success, #188A55);
+  cursor: default;
 }
 
 .service-action.danger {
@@ -1259,11 +1412,12 @@ async function connectService(type: IntegrationType) {
 .code-provider-summary > div:first-child {
   display: grid;
   justify-items: end;
-  gap: 2px;
-  padding: 10px 12px;
-  border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
-  border-radius: 16px;
-  background: var(--surface-low, #F2F4F8);
+  gap: 3px;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--outline, rgba(82, 103, 138, 0.18)) 82%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-container-high, var(--surface-low, #F2F4F8)) 78%, var(--surface, #fff));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 52%, transparent);
 }
 
 .spotify-summary strong,
@@ -1298,15 +1452,16 @@ async function connectService(type: IntegrationType) {
   width: 100%;
   min-height: 42px;
   border: 1px solid var(--outline, rgba(82, 103, 138, 0.18));
-  border-radius: 16px;
+  border-radius: 18px;
   background: var(--surface, #fff);
   color: var(--text-1, #10182b);
   font: inherit;
   outline: none;
   padding: 0 12px;
   transition:
-    border-color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    box-shadow 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
+    border-color 180ms var(--integration-standard),
+    box-shadow 180ms var(--integration-standard),
+    background 180ms var(--integration-standard);
 }
 
 .provider-field input:focus {
@@ -1321,8 +1476,10 @@ async function connectService(type: IntegrationType) {
   display: grid;
   place-items: center;
   padding: 18px;
-  background: color-mix(in srgb, #05070c 54%, transparent);
-  backdrop-filter: blur(12px);
+  background:
+    radial-gradient(circle at 50% 16%, color-mix(in srgb, var(--primary, #345EA8) 20%, transparent), transparent 34%),
+    color-mix(in srgb, #05070c 58%, transparent);
+  backdrop-filter: blur(14px) saturate(128%);
 }
 
 .integration-modal {
@@ -1330,17 +1487,24 @@ async function connectService(type: IntegrationType) {
   width: min(100%, 460px);
   display: grid;
   gap: 18px;
-  padding: 28px;
+  overflow: hidden;
+  padding: 30px;
   border: 1px solid color-mix(in srgb, var(--outline, #d4dbe8) 64%, transparent);
-  border-radius: 28px;
-  background: color-mix(in srgb, var(--surface, #fff) 96%, transparent);
-  box-shadow: 0 24px 70px color-mix(in srgb, #05070c 32%, transparent);
+  border-radius: var(--integration-radius-strong);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--primary-container, rgba(52,94,168,0.12)) 34%, transparent), transparent 40%),
+    color-mix(in srgb, var(--surface, #fff) 97%, transparent);
+  box-shadow:
+    0 28px 82px color-mix(in srgb, #05070c 36%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 70%, transparent);
 }
 
 .integration-modal-close {
   position: absolute;
   top: 12px;
   right: 12px;
+  isolation: isolate;
+  overflow: hidden;
   width: 38px;
   height: 38px;
   display: inline-grid;
@@ -1363,14 +1527,15 @@ async function connectService(type: IntegrationType) {
 }
 
 .integration-modal-icon {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   display: inline-grid;
   place-items: center;
-  border-radius: 20px;
-  background: var(--primary-container, rgba(52,94,168,0.12));
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--primary-container, rgba(52,94,168,0.12)) 84%, var(--surface, #fff));
   color: var(--on-primary-container, #163E86);
-  font-size: 29px;
+  font-size: 31px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 58%, transparent);
 }
 
 .integration-modal-head h2,
@@ -1382,7 +1547,8 @@ async function connectService(type: IntegrationType) {
   color: var(--text-1, #10182b);
   font-size: 30px;
   line-height: 1.1;
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
+  font-weight: 950;
 }
 
 .integration-modal-head p {
@@ -1398,33 +1564,38 @@ async function connectService(type: IntegrationType) {
 }
 
 .modal-auth-button {
-  min-height: 58px;
+  min-height: 60px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   border: 1px solid transparent;
-  border-radius: 18px;
+  border-radius: 20px;
   padding: 0 18px;
   font: inherit;
   font-size: 16px;
   font-weight: 900;
   cursor: pointer;
   transition:
-    transform 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    background 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    border-color 180ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
+    transform 240ms var(--integration-motion),
+    background 180ms var(--integration-standard),
+    border-color 180ms var(--integration-standard),
+    box-shadow 180ms var(--integration-standard);
 }
 
 .modal-auth-button.primary {
-  border-color: var(--outline, rgba(82, 103, 138, 0.18));
-  background: var(--surface, #fff);
-  color: var(--text-1, #10182b);
+  background: var(--primary, #345EA8);
+  color: var(--on-primary, #fff);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--primary, #345EA8) 22%, transparent);
 }
 
 .modal-auth-button.secondary {
-  background: var(--primary, #345EA8);
-  color: #fff;
+  border-color: color-mix(in srgb, var(--primary, #345EA8) 16%, var(--outline, rgba(82, 103, 138, 0.18)));
+  background: color-mix(in srgb, var(--primary-container, rgba(52,94,168,0.12)) 72%, var(--surface, #fff));
+  color: var(--on-primary-container, #163E86);
 }
 
 .modal-auth-button:disabled {
@@ -1448,6 +1619,9 @@ async function connectService(type: IntegrationType) {
 .integration-modal-back {
   justify-self: center;
   min-height: 38px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1463,14 +1637,14 @@ async function connectService(type: IntegrationType) {
 
 .integration-modal-enter-active,
 .integration-modal-leave-active {
-  transition: opacity 200ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
+  transition: opacity 220ms var(--integration-standard);
 }
 
 .integration-modal-enter-active .integration-modal,
 .integration-modal-leave-active .integration-modal {
   transition:
-    transform 220ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1)),
-    opacity 220ms var(--m3-motion, cubic-bezier(0.2, 0, 0, 1));
+    transform 300ms var(--integration-motion),
+    opacity 220ms var(--integration-standard);
 }
 
 .integration-modal-enter-from,
@@ -1491,7 +1665,8 @@ async function connectService(type: IntegrationType) {
   align-items: center;
   padding: 0 10px;
   border-radius: 999px;
-  background: var(--surface-low, #F2F4F8);
+  border: 1px solid color-mix(in srgb, var(--outline, rgba(82, 103, 138, 0.18)) 72%, transparent);
+  background: color-mix(in srgb, var(--surface-container-high, var(--surface-low, #F2F4F8)) 78%, var(--surface, #fff));
   color: var(--text-2, #475778);
   font-size: 12px;
   font-weight: 900;
@@ -1513,7 +1688,7 @@ async function connectService(type: IntegrationType) {
   align-items: center;
   gap: 9px;
   padding: 10px 14px;
-  background: var(--surface-low, #F2F4F8);
+  background: color-mix(in srgb, var(--primary-container, rgba(52,94,168,0.12)) 60%, var(--surface, #fff));
   color: var(--text-2, #475778);
   font-size: 13px;
   font-weight: 800;
@@ -1546,9 +1721,15 @@ async function connectService(type: IntegrationType) {
 
 @media (hover: hover) {
   .service-card:hover {
-    transform: translateY(-1px);
+    transform: translateY(-2px) scale(1.003);
     border-color: color-mix(in srgb, var(--primary, #345EA8) 28%, var(--outline, #d4dbe8));
-    box-shadow: 0 14px 34px color-mix(in srgb, var(--text-1, #10182b) 9%, transparent);
+    box-shadow:
+      0 18px 42px color-mix(in srgb, var(--text-1, #10182b) 11%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 72%, transparent);
+  }
+
+  .service-card:hover::before {
+    opacity: 0.035;
   }
 
   .service-action.primary:hover:not(:disabled),
@@ -1556,6 +1737,15 @@ async function connectService(type: IntegrationType) {
   .steam-login:hover:not(:disabled),
   .modal-auth-button:hover:not(:disabled) {
     transform: translateY(-1px);
+  }
+
+  .service-action:hover:not(:disabled)::after,
+  .spotify-login:hover:not(:disabled)::after,
+  .steam-login:hover:not(:disabled)::after,
+  .modal-auth-button:hover:not(:disabled)::after,
+  .integration-modal-close:hover::after,
+  .integration-modal-back:hover::after {
+    opacity: var(--integration-state-layer);
   }
 }
 
@@ -1576,6 +1766,7 @@ async function connectService(type: IntegrationType) {
 
   .integrations-summary {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .summary-stats {
@@ -1639,6 +1830,22 @@ async function connectService(type: IntegrationType) {
     padding: 14px;
   }
 
+  .summary-copy {
+    align-items: flex-start;
+  }
+
+  .summary-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    font-size: 23px;
+  }
+
+  .summary-pill {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
   .service-main {
     align-items: flex-start;
   }
@@ -1647,6 +1854,10 @@ async function connectService(type: IntegrationType) {
     width: 42px;
     height: 42px;
     border-radius: 14px;
+  }
+
+  .service-copy h3 {
+    font-size: 16px;
   }
 }
 

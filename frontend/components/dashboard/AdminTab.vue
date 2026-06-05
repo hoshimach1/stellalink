@@ -3,29 +3,64 @@
     <header class="admin-page-head">
       <div class="admin-title">
         <p class="admin-kicker">Админка</p>
-        <h2>Системные настройки</h2>
-        <span>Редактирование разнесено по смысловым модулям, чтобы состояние и действие читались с первого взгляда.</span>
+        <h2>Системный центр</h2>
+        <span>Критичные настройки сгруппированы по задачам: доставка писем, ссылки авторизации и внешние интеграции.</span>
       </div>
 
-      <button class="admin-refresh-button" type="button" :disabled="loading || apiLoading" @click="loadAllSettings">
-        <span v-if="loading || apiLoading" class="admin-spinner" />
-        <template v-else>
-          <i class="ri-refresh-line" />
-          <span>Обновить</span>
-        </template>
-      </button>
+      <div class="admin-hero-actions">
+        <span class="admin-sync-state">
+          <i class="ri-pulse-line" />
+          {{ loading || apiLoading ? 'Синхронизация...' : 'Данные из backend' }}
+        </span>
+        <button class="admin-refresh-button" type="button" :disabled="loading || apiLoading" @click="loadAllSettings">
+          <span v-if="loading || apiLoading" class="admin-spinner" />
+          <template v-else>
+            <i class="ri-refresh-line" />
+            <span>Обновить</span>
+          </template>
+        </button>
+      </div>
     </header>
+
+    <section class="admin-status-console" aria-label="Состояние системных настроек">
+      <article class="admin-status-card" :class="smtpHealth.tone">
+        <span class="admin-status-icon"><i class="ri-mail-check-line" /></span>
+        <div>
+          <span class="admin-status-label">SMTP</span>
+          <strong>{{ smtpHealth.label }}</strong>
+          <p>{{ smtpHealth.detail }}</p>
+        </div>
+      </article>
+
+      <article class="admin-status-card" :class="authLinksHealth.tone">
+        <span class="admin-status-icon"><i class="ri-links-line" /></span>
+        <div>
+          <span class="admin-status-label">Auth links</span>
+          <strong>{{ authLinksHealth.label }}</strong>
+          <p>{{ authLinksHealth.detail }}</p>
+        </div>
+      </article>
+
+      <article class="admin-status-card" :class="integrationHealth.tone">
+        <span class="admin-status-icon"><i class="ri-plug-2-line" /></span>
+        <div>
+          <span class="admin-status-label">Интеграции</span>
+          <strong>{{ integrationHealth.label }}</strong>
+          <p>{{ integrationHealth.detail }}</p>
+        </div>
+      </article>
+    </section>
 
     <section class="admin-section" aria-labelledby="admin-communication-title">
       <header class="admin-section-head">
         <div>
           <h3 id="admin-communication-title">Коммуникации</h3>
-          <p>Письма, публичная база ссылок и проверка доставки.</p>
+          <p>Письма, публичная база ссылок и быстрая проверка доставки без лишней модалки.</p>
         </div>
       </header>
 
-      <div class="admin-card-grid">
-        <article class="admin-panel-card">
+      <div class="admin-card-grid admin-card-grid-communication">
+        <article class="admin-panel-card admin-panel-card-primary">
           <div class="admin-card-top">
             <span class="admin-card-icon"><i class="ri-mail-settings-line" /></span>
             <div>
@@ -33,6 +68,7 @@
               <h4>Почта</h4>
               <p>{{ smtpStatus }}</p>
             </div>
+            <span class="admin-status-chip" :class="smtpHealth.tone">{{ smtpHealth.label }}</span>
           </div>
 
           <dl class="admin-facts">
@@ -64,6 +100,7 @@
               <h4>Ссылки и TTL</h4>
               <p>{{ form.frontend_base_url || 'Frontend URL не задан' }}</p>
             </div>
+            <span class="admin-status-chip" :class="authLinksHealth.tone">{{ authLinksHealth.label }}</span>
           </div>
 
           <dl class="admin-facts">
@@ -87,13 +124,13 @@
           </button>
         </article>
 
-        <article class="admin-panel-card">
+        <article class="admin-panel-card admin-delivery-card">
           <div class="admin-card-top">
             <span class="admin-card-icon"><i class="ri-send-plane-line" /></span>
             <div>
               <span class="admin-card-overline">Delivery</span>
               <h4>Тест письма</h4>
-              <p>Проверка текущей SMTP-конфигурации.</p>
+              <p>Быстрая отправка без перехода в отдельную форму.</p>
             </div>
           </div>
 
@@ -108,10 +145,21 @@
             </div>
           </dl>
 
-          <button class="admin-card-action" type="button" @click="openDialog('test')">
-            <i class="ri-mail-send-line" />
-            <span>Отправить тест</span>
-          </button>
+          <form class="admin-inline-action" @submit.prevent="sendTestEmail">
+            <label class="admin-field admin-field-compact">
+              <span>Email получателя</span>
+              <input v-model="testEmail" type="email" :placeholder="auth.user?.email || 'admin@example.com'">
+            </label>
+            <button class="admin-card-action" type="submit" :disabled="testing || !form.enabled">
+              <span v-if="testing" class="admin-spinner" />
+              <template v-else>
+                <i class="ri-mail-send-line" />
+                <span>Отправить</span>
+              </template>
+            </button>
+          </form>
+
+          <div v-if="testNotice" class="admin-note admin-inline-note" :class="testNoticeTone">{{ testNotice }}</div>
         </article>
       </div>
     </section>
@@ -133,6 +181,7 @@
               <h4>Steam и FACEIT</h4>
               <p>{{ apiStatus }}</p>
             </div>
+            <span class="admin-status-chip" :class="gameHealth.tone">{{ gameHealth.label }}</span>
           </div>
 
           <dl class="admin-facts">
@@ -164,6 +213,7 @@
               <h4>Spotify</h4>
               <p>OAuth и сервисный токен для музыкальных блоков.</p>
             </div>
+            <span class="admin-status-chip" :class="spotifyHealth.tone">{{ spotifyHealth.label }}</span>
           </div>
 
           <dl class="admin-facts">
@@ -195,6 +245,7 @@
               <h4>Git providers</h4>
               <p>GitHub, GitLab и Gitea для публичных и self-hosted инстансов.</p>
             </div>
+            <span class="admin-status-chip" :class="gitHealth.tone">{{ gitHealth.label }}</span>
           </div>
 
           <div class="provider-strip" aria-label="Статус OAuth провайдеров">
@@ -505,33 +556,6 @@
             </form>
           </template>
 
-          <template v-else>
-            <header class="admin-dialog-head">
-              <span class="admin-dialog-icon tertiary"><i class="ri-send-plane-line" /></span>
-              <div>
-                <p class="admin-kicker">Delivery</p>
-                <h3 id="test-dialog-title">Тест письма</h3>
-                <span>Проверка текущей конфигурации.</span>
-              </div>
-            </header>
-
-            <form class="admin-form" @submit.prevent="sendTestEmail">
-              <label class="admin-field">
-                <span>Получатель</span>
-                <input v-model="testEmail" type="email" :placeholder="auth.user?.email || 'admin@example.com'">
-              </label>
-
-              <div v-if="testNotice" class="admin-note" :class="testNoticeTone">{{ testNotice }}</div>
-
-              <div class="admin-form-actions">
-                <button class="text-btn" type="button" @click="closeDialog">Закрыть</button>
-                <button class="filled-btn" type="submit" :disabled="testing">
-                  <span v-if="testing" class="admin-spinner" />
-                  <span v-else>Отправить тест</span>
-                </button>
-              </div>
-            </form>
-          </template>
         </section>
       </div>
     </Transition>
@@ -587,7 +611,14 @@ interface ApiSettings {
   steam_inventory_price_source: string
 }
 
-type AdminDialog = 'smtp' | 'links' | 'games' | 'spotify' | 'oauth' | 'test'
+type AdminDialog = 'smtp' | 'links' | 'games' | 'spotify' | 'oauth'
+type AdminTone = 'ready' | 'warn' | 'danger' | 'neutral'
+
+interface AdminHealth {
+  label: string
+  detail: string
+  tone: AdminTone
+}
 
 const auth = useAuthStore()
 const config = useRuntimeConfig()
@@ -722,6 +753,140 @@ const apiStatus = computed(() => {
   if (steamKeySet.value) return 'Steam подключен. Добавьте FACEIT key для автоподтягивания ELO и уровня.'
   return 'Добавьте Steam key, чтобы валидировать Steam ID и получать профильные данные.'
 })
+const smtpHealth = computed<AdminHealth>(() => {
+  if (!form.enabled) {
+    return {
+      label: 'Выключена',
+      detail: 'Письма не отправляются, backend оставит ссылки в логах.',
+      tone: 'warn',
+    }
+  }
+  if (!form.host.trim()) {
+    return {
+      label: 'Нужен host',
+      detail: 'Заполните SMTP host, порт и учетные данные.',
+      tone: 'danger',
+    }
+  }
+  return {
+    label: 'Готова',
+    detail: `${form.host}:${form.port} · ${encryptionMode.value.toUpperCase()}`,
+    tone: 'ready',
+  }
+})
+const authLinksHealth = computed<AdminHealth>(() => {
+  if (!form.frontend_base_url.trim()) {
+    return {
+      label: 'Нет URL',
+      detail: 'Нужен публичный frontend URL для email-ссылок.',
+      tone: 'danger',
+    }
+  }
+  if (form.email_verification_ttl_seconds < 900 || form.password_reset_ttl_seconds < 900) {
+    return {
+      label: 'Короткий TTL',
+      detail: 'Проверьте время жизни ссылок, чтобы пользователи успевали завершать вход.',
+      tone: 'warn',
+    }
+  }
+  return {
+    label: 'Настроены',
+    detail: `${formatDuration(form.email_verification_ttl_seconds)} email · ${formatDuration(form.password_reset_ttl_seconds)} reset`,
+    tone: 'ready',
+  }
+})
+const gameHealth = computed<AdminHealth>(() => {
+  if (steamKeySet.value && faceitKeySet.value) {
+    return {
+      label: 'Готово',
+      detail: 'Steam и FACEIT ключи сохранены.',
+      tone: 'ready',
+    }
+  }
+  if (steamKeySet.value || faceitKeySet.value) {
+    return {
+      label: 'Частично',
+      detail: 'Один из игровых API ключей еще не сохранен.',
+      tone: 'warn',
+    }
+  }
+  return {
+    label: 'Без ключей',
+    detail: 'Steam и FACEIT профили не смогут обновляться автоматически.',
+    tone: 'danger',
+  }
+})
+const spotifyHealth = computed<AdminHealth>(() => {
+  const oauthReady = Boolean(oauthForm.spotifyClientId.trim() && oauthSecretState.spotifySet)
+  if (oauthReady && oauthSecretState.spotifyTokenSet) {
+    return {
+      label: 'Готово',
+      detail: 'OAuth и сервисный токен сохранены.',
+      tone: 'ready',
+    }
+  }
+  if (oauthReady || oauthSecretState.spotifyTokenSet) {
+    return {
+      label: 'Частично',
+      detail: 'Проверьте Client ID, Secret и сервисный token.',
+      tone: 'warn',
+    }
+  }
+  return {
+    label: 'Не задан',
+    detail: 'Музыкальные блоки ждут Spotify OAuth настройки.',
+    tone: 'neutral',
+  }
+})
+const gitHealth = computed<AdminHealth>(() => {
+  const readyCount = [
+    oauthForm.githubClientId.trim() && oauthSecretState.githubSet,
+    oauthForm.gitlabClientId.trim() && oauthSecretState.gitlabSet,
+    oauthForm.giteaClientId.trim() && oauthSecretState.giteaSet,
+  ].filter(Boolean).length
+
+  if (readyCount === 3) {
+    return {
+      label: '3 провайдера',
+      detail: 'GitHub, GitLab и Gitea готовы к OAuth.',
+      tone: 'ready',
+    }
+  }
+  if (readyCount > 0 || apiForm.code_provider_token_auth_enabled) {
+    return {
+      label: readyCount > 0 ? `${readyCount} OAuth` : 'Token auth',
+      detail: readyCount > 0 ? 'Часть провайдеров готова.' : 'OAuth можно дополнить позже.',
+      tone: 'warn',
+    }
+  }
+  return {
+    label: 'Не задан',
+    detail: 'Добавьте OAuth или включите token auth для Git-интеграций.',
+    tone: 'neutral',
+  }
+})
+const integrationHealth = computed<AdminHealth>(() => {
+  const readyCount = [gameHealth.value, spotifyHealth.value, gitHealth.value].filter((item) => item.tone === 'ready').length
+  if (readyCount === 3) {
+    return {
+      label: 'Все готовы',
+      detail: 'Игры, музыка и Git-интеграции закрыты.',
+      tone: 'ready',
+    }
+  }
+  if (readyCount > 0) {
+    return {
+      label: `${readyCount}/3 готово`,
+      detail: 'Остальные домены можно дозаполнить в карточках ниже.',
+      tone: 'warn',
+    }
+  }
+  return {
+    label: 'Нужна настройка',
+    detail: 'Ключи и OAuth еще не закрывают публичные блоки профиля.',
+    tone: 'neutral',
+  }
+})
 onMounted(() => {
   void loadAllSettings()
 })
@@ -738,7 +903,6 @@ function openDialog(dialog: AdminDialog) {
   activeDialog.value = dialog
   if (dialog === 'smtp' || dialog === 'links') saveNotice.value = ''
   if (dialog === 'games' || dialog === 'spotify' || dialog === 'oauth') apiNotice.value = ''
-  if (dialog === 'test') testNotice.value = ''
 }
 
 function closeDialog() {
@@ -937,9 +1101,9 @@ async function sendTestEmail() {
 
 <style scoped>
 .admin-shell {
-  width: min(1120px, 100%);
+  width: min(1160px, 100%);
   display: grid;
-  gap: var(--md-sys-space-6);
+  gap: var(--md-sys-space-5);
   margin: 0 auto;
 }
 
@@ -949,19 +1113,24 @@ async function sendTestEmail() {
 }
 
 .admin-page-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: var(--md-sys-space-4);
   border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 88%, transparent);
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  background: var(--md-sys-color-surface-container-high);
-  padding: var(--md-sys-space-6);
+  border-radius: var(--md-sys-shape-corner-extra-extra-large);
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--md-sys-color-primary-container) 64%, transparent) 0 32%, transparent 54%),
+    linear-gradient(135deg, var(--md-sys-color-surface-container-high) 0%, var(--md-sys-color-surface-container-low) 100%);
+  padding: var(--md-sys-space-8);
+  overflow: hidden;
 }
 
 .admin-title,
 .admin-section-head > div,
 .admin-card-top > div,
+.admin-status-card > div,
 .admin-dialog-head > div,
 .oauth-provider-head > div {
   min-width: 0;
@@ -973,8 +1142,11 @@ async function sendTestEmail() {
 .admin-section-head h3,
 .admin-section-head p,
 .admin-card-overline,
+.admin-status-label,
 .admin-card-top h4,
 .admin-card-top p,
+.admin-status-card strong,
+.admin-status-card p,
 .admin-dialog-head h3,
 .admin-dialog-head span {
   margin: 0;
@@ -1003,8 +1175,28 @@ async function sendTestEmail() {
 
 .admin-title span {
   display: block;
-  max-width: 760px;
+  max-width: 720px;
   margin-top: 4px;
+}
+
+.admin-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--md-sys-space-3);
+  justify-self: end;
+}
+
+.admin-sync-state {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--md-sys-space-2);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-lowest) 72%, transparent);
+  color: var(--md-sys-color-on-surface-variant);
+  padding: 0 var(--md-sys-space-3);
+  font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-label-medium-size) / var(--md-sys-typescale-label-medium-line-height) var(--md-sys-typescale-label-medium-font);
+  white-space: nowrap;
 }
 
 .admin-refresh-button,
@@ -1030,9 +1222,95 @@ async function sendTestEmail() {
 
 .admin-refresh-button {
   flex: 0 0 auto;
-  border-color: var(--md-sys-color-outline);
-  background: var(--md-sys-color-surface-container-lowest);
+  border-color: color-mix(in srgb, var(--md-sys-color-primary) 24%, var(--md-sys-color-outline));
+  background: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-primary);
+}
+
+.admin-status-console {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--md-sys-space-3);
+}
+
+.admin-status-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: var(--md-sys-space-3);
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 82%, transparent);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-surface-container-low);
+  padding: var(--md-sys-space-4);
+}
+
+.admin-status-icon {
+  width: 46px;
+  height: 46px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--md-sys-shape-corner-large-increased);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-primary);
+  font-size: 21px;
+}
+
+.admin-status-label {
+  display: block;
+  color: var(--md-sys-color-on-surface-variant);
+  font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-label-medium-size) / var(--md-sys-typescale-label-medium-line-height) var(--md-sys-typescale-label-medium-font);
+}
+
+.admin-status-card strong {
+  display: block;
+  color: var(--md-sys-color-on-surface);
+  font: var(--md-sys-typescale-title-medium-weight) var(--md-sys-typescale-title-medium-size) / var(--md-sys-typescale-title-medium-line-height) var(--md-sys-typescale-title-medium-font);
+}
+
+.admin-status-card p {
+  margin-top: 2px;
+  color: var(--md-sys-color-on-surface-variant);
+  font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-label-medium-size) / var(--md-sys-typescale-label-medium-line-height) var(--md-sys-typescale-label-medium-font);
+}
+
+.admin-status-card.ready,
+.admin-status-chip.ready {
+  border-color: color-mix(in srgb, var(--md-sys-color-success) 22%, var(--md-sys-color-outline-variant));
+}
+
+.admin-status-card.ready .admin-status-icon,
+.admin-status-chip.ready {
+  background: var(--md-sys-color-success-container);
+  color: var(--md-sys-color-success);
+}
+
+.admin-status-card.warn,
+.admin-status-chip.warn {
+  border-color: color-mix(in srgb, var(--md-sys-color-warning) 26%, var(--md-sys-color-outline-variant));
+}
+
+.admin-status-card.warn .admin-status-icon,
+.admin-status-chip.warn {
+  background: var(--md-sys-color-warning-container);
+  color: var(--md-sys-color-warning);
+}
+
+.admin-status-card.danger,
+.admin-status-chip.danger {
+  border-color: color-mix(in srgb, var(--md-sys-color-error) 24%, var(--md-sys-color-outline-variant));
+}
+
+.admin-status-card.danger .admin-status-icon,
+.admin-status-chip.danger {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+.admin-status-card.neutral .admin-status-icon,
+.admin-status-chip.neutral {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
 }
 
 .admin-section {
@@ -1055,27 +1333,44 @@ async function sendTestEmail() {
 
 .admin-card-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: var(--md-sys-space-4);
   width: 100%;
 }
 
 .admin-panel-card {
+  grid-column: span 4;
   min-width: 0;
-  min-height: 252px;
   display: grid;
   align-content: start;
   gap: var(--md-sys-space-4);
   border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 88%, transparent);
   border-radius: var(--md-sys-shape-corner-extra-large);
-  background: var(--md-sys-color-surface-container-low);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--md-sys-color-surface-container-lowest) 46%, transparent), transparent),
+    var(--md-sys-color-surface-container-low);
   color: var(--md-sys-color-on-surface);
   padding: var(--md-sys-space-5);
+  transition:
+    transform 260ms var(--md-sys-motion-expressive),
+    border-color 200ms var(--md-sys-motion-standard),
+    background 200ms var(--md-sys-motion-standard);
+}
+
+.admin-panel-card-primary {
+  grid-column: span 5;
+}
+
+.admin-delivery-card {
+  grid-column: span 3;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--md-sys-color-tertiary-container) 28%, transparent), transparent 64%),
+    var(--md-sys-color-surface-container-low);
 }
 
 .admin-card-top {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
+  grid-template-columns: 48px minmax(0, 1fr) auto;
   align-items: start;
   gap: var(--md-sys-space-3);
 }
@@ -1109,6 +1404,19 @@ async function sendTestEmail() {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+}
+
+.admin-status-chip {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: start;
+  border: 1px solid transparent;
+  border-radius: var(--md-sys-shape-corner-full);
+  padding: 0 var(--md-sys-space-3);
+  font: var(--md-sys-typescale-label-medium-weight) var(--md-sys-typescale-label-medium-size) / var(--md-sys-typescale-label-medium-line-height) var(--md-sys-typescale-label-medium-font);
+  white-space: nowrap;
 }
 
 .admin-facts {
@@ -1173,6 +1481,20 @@ async function sendTestEmail() {
   color: var(--md-sys-color-on-primary-container);
 }
 
+.admin-inline-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--md-sys-space-3);
+}
+
+.admin-field-compact input {
+  min-height: 44px;
+}
+
+.admin-inline-note {
+  margin-top: calc(var(--md-sys-space-2) * -1);
+}
+
 .filled-btn {
   background: var(--md-sys-color-primary);
   color: var(--md-sys-color-on-primary);
@@ -1197,7 +1519,7 @@ async function sendTestEmail() {
   inset: 0;
   z-index: 80;
   display: grid;
-  place-items: center;
+  place-items: center end;
   padding: var(--md-sys-space-6);
   background: color-mix(in srgb, var(--md-sys-color-inverse-surface) 42%, transparent);
   backdrop-filter: blur(10px);
@@ -1205,8 +1527,8 @@ async function sendTestEmail() {
 
 .admin-dialog {
   position: relative;
-  width: min(720px, 100%);
-  max-height: min(760px, calc(100vh - 48px));
+  width: min(760px, 100%);
+  max-height: calc(100vh - 48px);
   display: grid;
   gap: var(--md-sys-space-5);
   overflow: auto;
@@ -1400,11 +1722,22 @@ async function sendTestEmail() {
   color: var(--md-sys-color-on-error-container);
 }
 
+.admin-note.muted {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
 .admin-form-actions {
+  position: sticky;
+  bottom: calc(var(--md-sys-space-6) * -1);
   display: flex;
   justify-content: flex-end;
   gap: var(--md-sys-space-2);
-  padding-top: var(--md-sys-space-1);
+  margin: 0 calc(var(--md-sys-space-6) * -1) calc(var(--md-sys-space-6) * -1);
+  padding: var(--md-sys-space-3) var(--md-sys-space-6) var(--md-sys-space-5);
+  border-top: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 72%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-highest) 92%, transparent);
+  backdrop-filter: blur(14px);
 }
 
 .admin-spinner {
@@ -1436,6 +1769,11 @@ async function sendTestEmail() {
   .text-btn:hover:not(:disabled),
   .admin-dialog-close:hover {
     transform: translateY(-1px);
+  }
+
+  .admin-panel-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--md-sys-color-primary) 28%, var(--md-sys-color-outline-variant));
   }
 }
 
@@ -1471,11 +1809,23 @@ async function sendTestEmail() {
     max-width: 760px;
   }
 
+  .admin-page-head,
+  .admin-status-console {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-hero-actions {
+    justify-self: stretch;
+  }
+
   .admin-card-grid {
     grid-template-columns: 1fr;
   }
 
-  .admin-panel-card {
+  .admin-panel-card,
+  .admin-panel-card-primary,
+  .admin-delivery-card {
+    grid-column: auto;
     min-height: 0;
   }
 }
@@ -1486,9 +1836,18 @@ async function sendTestEmail() {
   }
 
   .admin-page-head {
-    flex-direction: column;
     padding: var(--md-sys-space-4);
     border-radius: var(--md-sys-shape-corner-large-increased);
+  }
+
+  .admin-hero-actions,
+  .admin-sync-state {
+    width: 100%;
+  }
+
+  .admin-hero-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .admin-refresh-button,
@@ -1496,6 +1855,20 @@ async function sendTestEmail() {
   .admin-form-actions .filled-btn,
   .admin-form-actions .text-btn {
     width: 100%;
+  }
+
+  .admin-card-top {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .admin-card-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .admin-status-chip {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 
   .admin-facts,
@@ -1508,7 +1881,7 @@ async function sendTestEmail() {
   }
 
   .admin-dialog-overlay {
-    align-items: end;
+    place-items: end center;
     padding: var(--md-sys-space-2);
   }
 
@@ -1525,6 +1898,9 @@ async function sendTestEmail() {
 
   .admin-form-actions {
     flex-direction: column-reverse;
+    bottom: calc(var(--md-sys-space-4) * -1);
+    margin: 0 calc(var(--md-sys-space-4) * -1) calc(var(--md-sys-space-4) * -1);
+    padding: var(--md-sys-space-3) var(--md-sys-space-4) var(--md-sys-space-4);
   }
 }
 
