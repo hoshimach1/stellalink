@@ -29,7 +29,7 @@ backend_lint:
       - .cache/pip/
   script:
     - |
-      if command -v docker >/dev/null 2>&1; then
+      if docker info >/dev/null 2>&1; then
         docker run --rm \
           -v "$CI_PROJECT_DIR:/work" \
           -w /work/backend \
@@ -79,7 +79,7 @@ backend_api_tests:
     SECRET_KEY: ci-test-secret-key-not-for-production
   script:
     - |
-      if command -v docker >/dev/null 2>&1; then
+      if docker info >/dev/null 2>&1; then
         TEST_NETWORK="stellalink-ci-$CI_JOB_ID"
         POSTGRES_CONTAINER="stellalink-postgres-$CI_JOB_ID"
         REDIS_CONTAINER="stellalink-redis-$CI_JOB_ID"
@@ -198,7 +198,7 @@ frontend_build:
     - when: never
   script:
     - |
-      if command -v docker >/dev/null 2>&1; then
+      if docker info >/dev/null 2>&1; then
         docker run --rm \
           -v "$CI_PROJECT_DIR:/work" \
           -w /work/frontend \
@@ -236,7 +236,7 @@ deploy_production:
       artifacts: false
     - job: frontend_build
       optional: true
-      artifacts: true
+      artifacts: false
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
   environment:
@@ -445,6 +445,32 @@ deploy_production:
       echo "deploy_timing backend_env=$(( $(date +%s) - START ))s"
     - |
       START="$(date +%s)"
+      if [ ! -f frontend/.output/server/index.mjs ]; then
+        echo "Frontend artifact is absent; building frontend in deploy job."
+        if docker info >/dev/null 2>&1; then
+          docker run --rm \
+            -v "$CI_PROJECT_DIR:/work" \
+            -w /work/frontend \
+            -e NPM_CONFIG_AUDIT="$NPM_CONFIG_AUDIT" \
+            -e NPM_CONFIG_CACHE=/work/.cache/npm \
+            -e NPM_CONFIG_FUND="$NPM_CONFIG_FUND" \
+            -e NUXT_TELEMETRY_DISABLED="$NUXT_TELEMETRY_DISABLED" \
+            node:20-alpine sh -lc '
+              npm ci --prefer-offline
+              npm run build
+            '
+        elif command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
+          (
+            cd frontend
+            npm ci --prefer-offline
+            npm run build
+          )
+        else
+          echo "Cannot build frontend: Docker is unavailable and node/npm are not installed." >&2
+          exit 1
+        fi
+      fi
+
       FRONTEND_ARTIFACT_READY=0
       if [ -f frontend/.output/server/index.mjs ]; then
         if [ "$DEPLOY_MODE" = "local" ] && [ "$DEPLOY_PATH" = "$CI_PROJECT_DIR" ]; then
