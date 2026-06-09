@@ -27,16 +27,23 @@ backend_lint:
         - backend/requirements-dev.txt
     paths:
       - .cache/pip/
-  before_script:
-    - cd backend
-    - export PYTHON_BIN="${PYTHON_BIN:-python3}"
-    - '"$PYTHON_BIN" --version'
-    - '"$PYTHON_BIN" -m pip install -r requirements-dev.txt'
   script:
-    - '"$PYTHON_BIN" -m pip check'
-    - '"$PYTHON_BIN" -m ruff check app tests'
-    - '"$PYTHON_BIN" -m ruff format --check app tests'
-    - '"$PYTHON_BIN" -m compileall -q app tests'
+    - |
+      docker run --rm \
+        -v "$CI_PROJECT_DIR:/work" \
+        -w /work/backend \
+        -e PIP_CACHE_DIR=/work/.cache/pip \
+        -e PIP_DISABLE_PIP_VERSION_CHECK="$PIP_DISABLE_PIP_VERSION_CHECK" \
+        -e PIP_ROOT_USER_ACTION="$PIP_ROOT_USER_ACTION" \
+        -e PYTHONDONTWRITEBYTECODE="$PYTHONDONTWRITEBYTECODE" \
+        python:3.12-slim sh -lc '
+          python --version
+          python -m pip install -r requirements-dev.txt
+          python -m pip check
+          python -m ruff check app tests
+          python -m ruff format --check app tests
+          python -m compileall -q app tests
+        '
 
 backend_api_tests:
   stage: test
@@ -60,14 +67,43 @@ backend_api_tests:
     DATABASE_URL: postgresql+asyncpg://stellalink:password@postgres:5432/stellalink_test
     REDIS_URL: redis://redis:6379/0
     SECRET_KEY: ci-test-secret-key-not-for-production
-  before_script:
-    - cd backend
-    - export PYTHON_BIN="${PYTHON_BIN:-python3}"
-    - '"$PYTHON_BIN" --version'
-    - '"$PYTHON_BIN" -m pip install -r requirements-dev.txt'
   script:
     - |
-      "$PYTHON_BIN" - <<'PY'
+      TEST_NETWORK="stellalink-ci-$CI_JOB_ID"
+      POSTGRES_CONTAINER="stellalink-postgres-$CI_JOB_ID"
+      REDIS_CONTAINER="stellalink-redis-$CI_JOB_ID"
+
+      cleanup() {
+        docker rm -f "$POSTGRES_CONTAINER" "$REDIS_CONTAINER" >/dev/null 2>&1 || true
+        docker network rm "$TEST_NETWORK" >/dev/null 2>&1 || true
+      }
+      trap cleanup EXIT
+
+      docker network create "$TEST_NETWORK"
+      docker run -d --name "$POSTGRES_CONTAINER" --network "$TEST_NETWORK" --network-alias postgres \
+        -e POSTGRES_USER=stellalink \
+        -e POSTGRES_PASSWORD=password \
+        -e POSTGRES_DB=stellalink_test \
+        postgres:16-alpine
+      docker run -d --name "$REDIS_CONTAINER" --network "$TEST_NETWORK" --network-alias redis \
+        redis:7-alpine
+
+      mkdir -p test-results
+      docker run --rm \
+        --network "$TEST_NETWORK" \
+        -v "$CI_PROJECT_DIR:/work" \
+        -w /work/backend \
+        -e PIP_CACHE_DIR=/work/.cache/pip \
+        -e PIP_DISABLE_PIP_VERSION_CHECK="$PIP_DISABLE_PIP_VERSION_CHECK" \
+        -e PIP_ROOT_USER_ACTION="$PIP_ROOT_USER_ACTION" \
+        -e PYTHONDONTWRITEBYTECODE="$PYTHONDONTWRITEBYTECODE" \
+        -e DATABASE_URL="$DATABASE_URL" \
+        -e REDIS_URL="$REDIS_URL" \
+        -e SECRET_KEY="$SECRET_KEY" \
+        python:3.12-slim sh -lc '
+          python --version
+          python -m pip install -r requirements-dev.txt
+          python - <<'"'"'PY'"'"'
       import pathlib
       import time
 
@@ -91,8 +127,8 @@ backend_api_tests:
       conn.close()
       print("schema applied")
       PY
-    - mkdir -p ../test-results
-    - '"$PYTHON_BIN" -m pytest tests/ -v --tb=short --strict-config --strict-markers --junitxml=../test-results/backend-api.xml'
+          python -m pytest tests/ -v --tb=short --strict-config --strict-markers --junitxml=/work/test-results/backend-api.xml
+        '
   artifacts:
     when: always
     expire_in: 7 days
@@ -118,13 +154,21 @@ frontend_build:
         - frontend/**/*
         - .gitlab-ci.yml
     - when: never
-  before_script:
-    - cd frontend
-    - node --version
-    - npm --version
   script:
-    - npm ci --prefer-offline
-    - npm run build
+    - |
+      docker run --rm \
+        -v "$CI_PROJECT_DIR:/work" \
+        -w /work/frontend \
+        -e NPM_CONFIG_AUDIT="$NPM_CONFIG_AUDIT" \
+        -e NPM_CONFIG_CACHE=/work/.cache/npm \
+        -e NPM_CONFIG_FUND="$NPM_CONFIG_FUND" \
+        -e NUXT_TELEMETRY_DISABLED="$NUXT_TELEMETRY_DISABLED" \
+        node:20-alpine sh -lc '
+          node --version
+          npm --version
+          npm ci --prefer-offline
+          npm run build
+        '
   artifacts:
     expire_in: 1 day
     paths:
