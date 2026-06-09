@@ -45,9 +45,27 @@ jobs:
           ssh-keygen -lf "$HOME/.ssh/deploy_key.pub"
 
           if [ -n "${DEPLOY_SSH_KNOWN_HOSTS:-}" ]; then
-            printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+            if [ -f "$DEPLOY_SSH_KNOWN_HOSTS" ]; then
+              cp "$DEPLOY_SSH_KNOWN_HOSTS" "$HOME/.ssh/known_hosts"
+            else
+              printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+            fi
+            sed -i 's/\r$//' "$HOME/.ssh/known_hosts"
           else
-            ssh-keyscan -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_HOST" > "$HOME/.ssh/known_hosts"
+            scan_log="$HOME/.ssh/keyscan.log"
+            : > "$HOME/.ssh/known_hosts"
+            for attempt in 1 2 3; do
+              if ssh-keyscan -T 10 -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_HOST" > "$HOME/.ssh/known_hosts" 2>"$scan_log"; then
+                break
+              fi
+              echo "ssh-keyscan attempt $attempt failed for $DEPLOY_SSH_HOST:$DEPLOY_SSH_PORT" >&2
+              cat "$scan_log" >&2 || true
+              sleep 2
+            done
+          fi
+          if [ ! -s "$HOME/.ssh/known_hosts" ]; then
+            echo "::error::Could not populate known_hosts for $DEPLOY_SSH_HOST:$DEPLOY_SSH_PORT. Set DEPLOY_SSH_KNOWN_HOSTS to the output of: ssh-keyscan -p $DEPLOY_SSH_PORT $DEPLOY_SSH_HOST" >&2
+            exit 1
           fi
           chmod 644 "$HOME/.ssh/known_hosts"
 
