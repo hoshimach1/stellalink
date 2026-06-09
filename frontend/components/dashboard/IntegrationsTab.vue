@@ -49,6 +49,7 @@
                 {{ service.statusLabel }}
               </span>
             </div>
+            <span v-if="service.accountLabel" class="service-account">{{ service.accountLabel }}</span>
             <p>{{ service.description }}</p>
           </div>
         </div>
@@ -81,15 +82,11 @@
               <span>Уровень {{ faceitSkillLevel || '—' }}</span>
               <span>{{ faceitElo ? `${faceitElo} ELO` : 'ELO не получен' }}</span>
             </div>
-            <span v-else class="service-hint">Найдется после Steam, если ключ FACEIT настроен.</span>
+            <span v-else class="service-hint">Подключается после Steam</span>
           </div>
 
           <div v-else-if="service.type === 'widget_spotify'" class="spotify-connect">
             <div v-if="spotifyAccount" class="spotify-summary">
-              <div>
-                <strong>{{ spotifyDisplayName }}</strong>
-                <span>{{ spotifyPlaybackLabel }}</span>
-              </div>
               <div class="steam-actions">
                 <button class="service-action primary" type="button" :disabled="spotifyBusy" @click="syncSpotifyConnection">
                   <span v-if="spotifyBusy" class="integration-spinner" />
@@ -120,10 +117,6 @@
 
           <div v-else-if="service.provider" class="code-provider-block">
             <div v-if="codeProviderAccount(service.provider)" class="code-provider-summary">
-              <div>
-                <strong>{{ codeProviderUsername(service.provider) }}</strong>
-                <span>{{ codeProviderBaseUrl(service.provider) }}</span>
-              </div>
               <div class="steam-actions">
                 <button class="service-action primary" type="button" :disabled="codeBusy === `${service.provider}:sync`" @click="syncCodeProvider(service.provider)">
                   <span v-if="codeBusy === `${service.provider}:sync`" class="integration-spinner" />
@@ -402,10 +395,10 @@ const serviceCards = computed(() => {
           ? 'Войдите через Steam, чтобы подтвердить владение аккаунтом и подтянуть Steam и FACEIT-данные.'
           : 'Администратору нужно добавить Steam Web API key, после этого профиль можно будет привязать.'
       const faceitDescription = faceitAccount.value
-        ? `${faceitAccount.value.display_name || 'FACEIT'} найден по Steam: уровень, ELO и статистика доступны для блока.`
+        ? `${faceitAccount.value.display_name || 'FACEIT'} подключен через Steam: уровень, ELO и статистика доступны для блока.`
         : apiReady?.faceit_api_key_set
-          ? 'После привязки Steam попробуем найти FACEIT-профиль по SteamID64.'
-          : 'Для автоподтягивания FACEIT администратору нужен FACEIT Data API key.'
+          ? 'FACEIT подключится автоматически после входа через Steam.'
+          : 'FACEIT подключается автоматически после Steam, когда сервис доступен.'
       const spotifyDescription = spotifyAccount.value
         ? `${spotifyDisplayName.value}: текущий трек, недавние прослушивания и топы Spotify доступны для блока.`
         : apiReady?.spotify_oauth_ready
@@ -420,13 +413,20 @@ const serviceCards = computed(() => {
       return {
         ...item,
         actionIcon: connected ? 'ri-checkbox-circle-line' : 'ri-plug-line',
+        accountLabel: type === 'widget_steam'
+          ? steamAccount.value?.display_name || steamAccount.value?.provider_uid || ''
+          : type === 'widget_faceit'
+            ? faceitAccount.value?.display_name || ''
+            : type === 'widget_spotify'
+              ? spotifyDisplayName.value
+              : '',
         actionLabel: connected ? 'Подключено' : 'Подключиться',
         canConnect: (type === 'widget_spotify' ? Boolean(apiReady?.spotify_oauth_ready) : connectableTypes.has(type)) && !connected,
         connected,
         description: descriptions[type] ?? item.description,
-        statusIcon: connected ? 'ri-checkbox-circle-line' : type === 'widget_faceit' ? 'ri-link-m' : 'ri-add-circle-line',
-        statusLabel: connected ? (type === 'widget_faceit' ? 'Через Steam' : 'Подключён') : type === 'widget_faceit' ? 'Автопоиск' : type === 'widget_spotify' ? 'OAuth' : 'Доступно',
-        statusTone: connected ? (type === 'widget_faceit' ? 'derived' : 'connected') : (connectableTypes.has(type) || (type === 'widget_spotify' && apiReady?.spotify_oauth_ready)) ? 'available' : 'default',
+        statusIcon: connected ? 'ri-checkbox-circle-line' : 'ri-circle-line',
+        statusLabel: connected ? 'Подключено' : 'Не подключено',
+        statusTone: connected ? 'connected' : 'default',
       }
     })
   const codeCards = codeProviderDefinitions.map((item) => {
@@ -434,12 +434,13 @@ const serviceCards = computed(() => {
     return {
       ...item,
       actionIcon: connected ? 'ri-checkbox-circle-line' : 'ri-key-2-line',
+      accountLabel: connected ? codeProviderUsername(item.provider) : '',
       actionLabel: connected ? 'Подключено' : 'Подключиться',
       canConnect: !connected,
       connected,
-      statusIcon: connected ? 'ri-checkbox-circle-line' : 'ri-key-2-line',
-      statusLabel: connected ? 'Подключён' : 'Token / OAuth',
-      statusTone: connected ? 'connected' : 'available',
+      statusIcon: connected ? 'ri-checkbox-circle-line' : 'ri-circle-line',
+      statusLabel: connected ? 'Подключено' : 'Не подключено',
+      statusTone: connected ? 'connected' : 'default',
     }
   })
   const byType = new Map([...baseCards, ...codeCards].map(card => [card.type, card]))
@@ -2041,6 +2042,475 @@ async function connectService(type: IntegrationType) {
 
   .service-copy h3 {
     font-size: 16px;
+  }
+}
+
+.integrations-summary,
+.service-card,
+.integration-notice {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.integrations-summary {
+  min-height: 84px;
+  padding: 14px 18px;
+  border-radius: var(--md-sys-shape-corner-extra-large, 28px);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--md-sys-color-primary-container, var(--primary-container, rgba(52,94,168,0.12))) 36%, transparent), transparent 68%),
+    var(--md-sys-color-surface-container, var(--surface-low, #F2F4F8));
+}
+
+.integrations-summary::after {
+  display: none;
+}
+
+.summary-copy {
+  gap: 12px;
+}
+
+.summary-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--md-sys-shape-corner-large, 16px);
+  background: var(--md-sys-color-primary-container, var(--primary-container, rgba(52,94,168,0.12)));
+  color: var(--md-sys-color-on-primary-container, var(--on-primary-container, #163E86));
+  font-size: 22px;
+  box-shadow: none;
+}
+
+.summary-copy h2 {
+  color: var(--md-sys-color-on-surface, var(--text-1, #10182b));
+  font: var(--md-sys-typescale-headline-small-weight, 900) var(--md-sys-typescale-headline-small-size, 24px) / var(--md-sys-typescale-headline-small-line-height, 32px) var(--md-sys-typescale-headline-small-font, inherit);
+  letter-spacing: 0;
+}
+
+.summary-stats {
+  gap: 8px;
+}
+
+.summary-pill,
+.summary-pill.strong {
+  min-height: 36px;
+  border: 0;
+  background: var(--md-sys-color-surface-container-high, var(--surface-low, #F2F4F8));
+  color: var(--md-sys-color-on-surface-variant, var(--text-2, #475778));
+  font-size: 12px;
+  box-shadow: none;
+}
+
+.summary-pill strong {
+  font-size: 16px;
+}
+
+.service-list {
+  gap: 10px;
+}
+
+.service-card {
+  min-height: 136px;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-extra-large, 28px);
+  background: var(--md-sys-color-surface-container-low, var(--surface-low, #F2F4F8));
+  box-shadow: none;
+}
+
+.service-card.connected {
+  border-color: transparent;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--success-container, #E1F6EA) 20%, transparent), transparent 62%),
+    var(--md-sys-color-surface-container-low, var(--surface-low, #F2F4F8));
+}
+
+.service-card.available {
+  border-color: transparent;
+}
+
+.service-main {
+  gap: 12px;
+}
+
+.service-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--md-sys-shape-corner-large, 16px);
+  font-size: 21px;
+  box-shadow: none;
+}
+
+.faceit-logo {
+  width: 20px;
+  height: 20px;
+}
+
+.gitea-logo {
+  width: 22px;
+  height: 22px;
+}
+
+.service-title-row {
+  gap: 7px;
+}
+
+.service-copy h3 {
+  color: var(--md-sys-color-on-surface, var(--text-1, #10182b));
+  font: var(--md-sys-typescale-title-large-weight, 850) 20px / 25px var(--md-sys-typescale-title-large-font, inherit);
+}
+
+.service-account {
+  display: block;
+  margin-top: 2px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-2, #475778));
+  font: var(--md-sys-typescale-label-large-weight, 700) 13px / 18px var(--md-sys-typescale-label-large-font, inherit);
+  overflow-wrap: anywhere;
+}
+
+.service-status {
+  min-height: 26px;
+  padding: 0 9px;
+  border: 0;
+  font-size: 11px;
+  box-shadow: none;
+}
+
+.service-controls,
+.steam-connect,
+.spotify-connect,
+.faceit-block,
+.code-provider-block {
+  gap: 8px;
+}
+
+.steam-login,
+.spotify-login,
+.service-action {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  font-size: 12px;
+  box-shadow: none;
+}
+
+.service-action.primary {
+  background: var(--md-sys-color-primary-container, var(--primary-container, rgba(52,94,168,0.12)));
+  color: var(--md-sys-color-on-primary-container, var(--on-primary-container, #163E86));
+  box-shadow: none;
+}
+
+.service-action.danger {
+  background: var(--md-sys-color-error-container, #FFE5E7);
+  color: var(--md-sys-color-on-error-container, var(--error, #B3323A));
+}
+
+.spotify-summary,
+.code-provider-summary {
+  gap: 0;
+}
+
+.faceit-summary {
+  gap: 6px;
+}
+
+.faceit-summary span,
+.service-hint {
+  min-height: 34px;
+  border: 0;
+  background: var(--md-sys-color-surface-container-high, var(--surface-low, #F2F4F8));
+  font-size: 12px;
+  box-shadow: none;
+}
+
+.integration-notice {
+  top: 94px;
+  min-height: 40px;
+}
+
+@media (hover: hover) {
+  .service-card:hover {
+    transform: translateY(-1px);
+    border-color: transparent;
+    background: color-mix(in srgb, var(--md-sys-color-primary-container, var(--primary-container, rgba(52,94,168,0.12))) 10%, var(--md-sys-color-surface-container-low, var(--surface-low, #F2F4F8)));
+    box-shadow: none;
+  }
+
+  .service-card:hover::before {
+    opacity: 0.045;
+  }
+}
+
+@media (max-width: 860px) {
+  .integrations-summary {
+    min-height: 0;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .service-card {
+    grid-column: 1 / -1;
+    min-height: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .integrations-summary,
+  .service-card {
+    border-radius: var(--md-sys-shape-corner-large, 16px);
+    padding: 14px;
+  }
+
+  .summary-icon,
+  .service-icon {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+.integrations-summary {
+  min-height: 72px;
+  padding: 12px 16px;
+  border-radius: var(--md-sys-shape-corner-extra-large, 28px);
+  background: var(--md-sys-color-surface-container, var(--surface-low, #F2F4F8));
+}
+
+.summary-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--md-sys-shape-corner-large, 16px);
+  font-size: 20px;
+}
+
+.summary-copy h2 {
+  font: var(--md-sys-typescale-title-large-weight, 850) var(--md-sys-typescale-title-large-size, 22px) / var(--md-sys-typescale-title-large-line-height, 28px) var(--md-sys-typescale-title-large-font, inherit);
+}
+
+.summary-pill,
+.summary-pill.strong {
+  min-height: 34px;
+  padding: 0 12px;
+  background: var(--md-sys-color-surface-container-high, color-mix(in srgb, var(--surface-low, #F2F4F8) 86%, white));
+  color: var(--md-sys-color-on-surface-variant, var(--text-2, #475778));
+}
+
+.service-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  padding: 8px;
+  border-radius: var(--md-sys-shape-corner-extra-large, 28px);
+  background: var(--md-sys-color-surface-container-low, var(--surface-low, #F2F4F8));
+}
+
+.service-card,
+.service-card.connected,
+.service-card.available,
+.service-card.widget_steam,
+.service-card.widget_spotify,
+.service-card.code_gitea,
+.service-card.widget_lastfm {
+  grid-column: auto;
+}
+
+.service-card {
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-large-increased, 20px);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--service-accent, var(--md-sys-color-primary, #345EA8)) 8%, transparent), transparent 34%),
+    transparent;
+  color: var(--service-accent, var(--md-sys-color-primary, #345EA8));
+}
+
+.service-card.connected {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--success, #188A55) 9%, transparent), transparent 34%),
+    transparent;
+}
+
+.service-card::after {
+  border-radius: inherit;
+}
+
+.service-main {
+  align-items: center;
+  gap: 12px;
+}
+
+.service-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--md-sys-shape-corner-large, 16px);
+  font-size: 19px;
+  background: color-mix(in srgb, var(--service-accent, var(--md-sys-color-primary, #345EA8)) 16%, var(--md-sys-color-surface-container-high, var(--surface-low, #F2F4F8)));
+  color: color-mix(in srgb, var(--service-accent, var(--md-sys-color-primary, #345EA8)) 82%, var(--md-sys-color-on-surface, var(--text-1, #10182b)));
+}
+
+.service-card.connected .service-icon {
+  background: color-mix(in srgb, var(--success, #188A55) 18%, var(--md-sys-color-surface-container-high, var(--surface-low, #F2F4F8)));
+  color: var(--success, #188A55);
+}
+
+.service-card.widget_steam { --service-accent: #8fb7ff; }
+.service-card.widget_faceit { --service-accent: #d9793b; }
+.service-card.widget_spotify { --service-accent: #38a86b; }
+.service-card.code_github { --service-accent: #a4adbc; }
+.service-card.code_gitlab { --service-accent: #d87945; }
+.service-card.code_gitea { --service-accent: #79a84a; }
+.service-card.widget_lastfm { --service-accent: #7ea7da; }
+
+.service-card.widget_steam .service-icon {
+  background: color-mix(in srgb, #8fb7ff 22%, var(--md-sys-color-surface-container-high, var(--surface-low, #F2F4F8)));
+  color: #d8e6ff;
+}
+
+.service-card::before {
+  background: var(--service-accent, currentColor);
+}
+
+.service-copy {
+  display: grid;
+  gap: 1px;
+}
+
+.service-title-row {
+  align-items: center;
+}
+
+.service-copy h3 {
+  font: var(--md-sys-typescale-title-medium-weight, 850) var(--md-sys-typescale-title-medium-size, 16px) / var(--md-sys-typescale-title-medium-line-height, 24px) var(--md-sys-typescale-title-medium-font, inherit);
+}
+
+.service-account {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant, var(--text-2, #475778));
+  font: var(--md-sys-typescale-label-medium-weight, 650) var(--md-sys-typescale-label-medium-size, 12px) / var(--md-sys-typescale-label-medium-line-height, 16px) var(--md-sys-typescale-label-medium-font, inherit);
+}
+
+.service-status,
+.service-status.connected,
+.service-status.available,
+.service-status.derived {
+  min-height: 24px;
+  padding: 0 8px;
+  background: var(--md-sys-color-surface-container-high, var(--surface-low, #F2F4F8));
+  color: var(--md-sys-color-on-surface-variant, var(--text-2, #475778));
+  font-size: 11px;
+  min-width: 112px;
+  justify-content: center;
+}
+
+.service-status.connected {
+  background: color-mix(in srgb, var(--success, #188A55) 14%, var(--md-sys-color-surface-container-high, var(--surface-low, #F2F4F8)));
+  color: var(--success, #188A55);
+}
+
+.service-controls,
+.steam-connect,
+.spotify-connect,
+.faceit-block,
+.code-provider-block {
+  min-width: 0;
+  justify-items: end;
+}
+
+.spotify-summary,
+.code-provider-summary {
+  display: block;
+}
+
+.steam-actions {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.steam-actions > * {
+  flex: 0 0 auto;
+}
+
+.steam-login,
+.spotify-login,
+.service-action,
+.service-action.primary,
+.service-action.danger,
+.service-action.complete {
+  width: auto;
+  min-width: 136px;
+  min-height: 36px;
+  padding: 0 14px;
+  background: var(--md-sys-color-secondary-container, color-mix(in srgb, var(--primary-container, rgba(52,94,168,0.12)) 76%, var(--surface, #fff)));
+  color: var(--md-sys-color-on-secondary-container, var(--on-primary-container, #163E86));
+  box-shadow: none;
+}
+
+.service-action.danger {
+  min-width: 120px;
+  background: var(--md-sys-color-error-container, #FFE5E7);
+  color: var(--md-sys-color-on-error-container, var(--error, #B3323A));
+}
+
+.spotify-login:disabled,
+.service-action:disabled:not(.complete) {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.faceit-summary {
+  justify-content: flex-end;
+}
+
+.faceit-summary span,
+.service-hint {
+  min-height: 32px;
+  padding: 0 10px;
+  background: var(--md-sys-color-surface-container-high, var(--surface-low, #F2F4F8));
+  color: var(--md-sys-color-on-surface-variant, var(--text-2, #475778));
+  text-align: start;
+}
+
+@media (hover: hover) {
+  .service-card:hover {
+    transform: none;
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--service-accent, var(--md-sys-color-primary, #345EA8)) 14%, transparent), transparent 38%),
+      var(--md-sys-color-surface-container, var(--surface-low, #F2F4F8));
+  }
+
+  .service-card:hover::before {
+    opacity: 0.035;
+  }
+}
+
+@media (max-width: 860px) {
+  .service-card {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .service-controls,
+  .steam-connect,
+  .spotify-connect,
+  .faceit-block,
+  .code-provider-block {
+    justify-items: stretch;
+  }
+
+  .steam-actions {
+    flex-wrap: wrap;
+  }
+
+  .steam-login,
+  .spotify-login,
+  .service-action,
+  .service-action.primary,
+  .service-action.danger,
+  .service-action.complete {
+    width: 100%;
   }
 }
 
