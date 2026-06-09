@@ -30,6 +30,7 @@ logs/
 settings.local.json
 artifacts/*
 reports/*
+.omx/*
 
 # Uploads (user files – never commit)
 backend/uploads/avatars/*

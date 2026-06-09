@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-shell">
+  <div class="admin-shell" :class="{ 'is-loading': loading || apiLoading }">
     <header class="admin-page-head">
       <div class="admin-title">
         <p class="admin-kicker">Админка</p>
@@ -30,7 +30,7 @@
         </div>
       </header>
 
-      <div class="admin-card-grid admin-card-grid-communication">
+      <div class="admin-card-grid admin-card-grid-communication" :aria-busy="loading || apiLoading">
         <article class="admin-panel-card admin-panel-card-primary">
           <div class="admin-card-top">
             <span class="admin-card-icon"><i class="ri-mail-settings-line" /></span>
@@ -143,7 +143,7 @@
         </div>
       </header>
 
-      <div class="admin-card-grid admin-card-grid-integrations">
+      <div class="admin-card-grid admin-card-grid-integrations" :aria-busy="loading || apiLoading">
         <article class="admin-panel-card">
           <div class="admin-card-top">
             <span class="admin-card-icon"><i class="ri-gamepad-line" /></span>
@@ -1068,15 +1068,22 @@ async function sendTestEmail() {
 
 <style scoped>
 .admin-shell {
+  --admin-state-layer: 0.08;
+  --admin-spring: var(--md-sys-motion-expressive, cubic-bezier(0.34, 1.56, 0.64, 1));
+  --admin-standard: var(--md-sys-motion-standard, cubic-bezier(0.2, 0, 0, 1));
   width: min(1120px, 100%);
   display: grid;
-  gap: var(--md-sys-space-3);
+  gap: var(--md-sys-space-4);
   margin: 0 auto;
 }
 
 .admin-shell,
 .admin-shell * {
   box-sizing: border-box;
+}
+
+.admin-shell.is-loading {
+  cursor: progress;
 }
 
 .admin-page-head {
@@ -1708,6 +1715,159 @@ async function sendTestEmail() {
   outline-offset: 2px;
 }
 
+.admin-page-head {
+  min-height: 132px;
+  border-radius: var(--md-sys-shape-corner-extra-large-increased);
+  background:
+    radial-gradient(circle at 4% 0%, color-mix(in srgb, var(--md-sys-color-primary-container) 76%, transparent) 0 28%, transparent 54%),
+    linear-gradient(135deg, var(--md-sys-color-surface-container-low), color-mix(in srgb, var(--md-sys-color-tertiary-container) 24%, var(--md-sys-color-surface-container-low)));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--md-sys-color-surface-bright) 72%, transparent);
+}
+
+.admin-page-head::after {
+  content: "";
+  position: absolute;
+  right: -34px;
+  bottom: -74px;
+  width: 220px;
+  height: 220px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 18%, transparent);
+  border-radius: var(--md-sys-shape-corner-full);
+  pointer-events: none;
+}
+
+.admin-title,
+.admin-hero-actions {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-title h2 {
+  font-size: clamp(28px, 3vw, 42px);
+  line-height: 1.04;
+  letter-spacing: 0;
+}
+
+.admin-card-grid {
+  align-items: stretch;
+}
+
+.admin-card-grid-communication .admin-panel-card {
+  grid-column: span 4;
+}
+
+.admin-card-grid-communication .admin-delivery-card {
+  grid-column: span 4;
+}
+
+.admin-panel-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 214px;
+  align-content: stretch;
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--md-sys-color-primary-container) 16%, transparent), transparent 52%),
+    var(--md-sys-color-surface-container);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--md-sys-color-surface-bright) 68%, transparent);
+}
+
+.admin-panel-card::before,
+.admin-panel-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.admin-panel-card::before {
+  z-index: 0;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 200ms var(--admin-standard);
+}
+
+.admin-panel-card::after {
+  z-index: 3;
+  opacity: 0;
+  transform: translateX(-100%);
+  background:
+    linear-gradient(90deg, transparent, color-mix(in srgb, var(--md-sys-color-surface-bright) 48%, transparent), transparent);
+}
+
+.admin-shell.is-loading .admin-panel-card::after {
+  opacity: 1;
+  animation: admin-shimmer 1.35s var(--admin-standard) infinite;
+}
+
+.admin-panel-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-delivery-card {
+  grid-template-columns: 1fr;
+}
+
+.admin-card-top {
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: var(--md-sys-space-3);
+}
+
+.admin-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--md-sys-shape-corner-large-increased);
+  background:
+    linear-gradient(135deg, var(--md-sys-color-primary-container), color-mix(in srgb, var(--md-sys-color-tertiary-container) 46%, var(--md-sys-color-primary-container)));
+  font-size: 23px;
+}
+
+.admin-status-chip {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-height: 32px;
+  padding-inline: var(--md-sys-space-3);
+}
+
+.admin-card-top p {
+  display: none;
+}
+
+.admin-facts {
+  min-height: 62px;
+}
+
+.admin-facts div {
+  border-radius: var(--md-sys-shape-corner-large);
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-high) 88%, var(--md-sys-color-primary-container));
+}
+
+.admin-card-action {
+  min-height: 44px;
+  justify-self: stretch;
+  margin-top: auto;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.admin-refresh-button {
+  min-height: 44px;
+}
+
+.admin-inline-action {
+  grid-template-columns: 1fr;
+}
+
+.admin-note {
+  min-height: 44px;
+}
+
+@keyframes admin-shimmer {
+  to { transform: translateX(100%); }
+}
+
 @media (hover: hover) {
   .admin-refresh-button:hover:not(:disabled),
   .admin-card-action:hover:not(:disabled),
@@ -1718,8 +1878,12 @@ async function sendTestEmail() {
   }
 
   .admin-panel-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px) scale(1.006);
     border-color: color-mix(in srgb, var(--md-sys-color-primary) 28%, var(--md-sys-color-outline-variant));
+  }
+
+  .admin-panel-card:hover::before {
+    opacity: var(--admin-state-layer);
   }
 }
 

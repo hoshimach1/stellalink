@@ -1,5 +1,5 @@
 <template>
-  <div class="integrations-shell">
+  <div class="integrations-shell" :class="{ 'is-loading': loading }">
     <section class="integrations-summary" aria-label="Сводка сервисов">
       <div class="summary-copy">
         <span class="summary-icon" aria-hidden="true">
@@ -22,7 +22,7 @@
       </div>
     </section>
 
-    <div v-if="loading" class="integration-notice">
+    <div class="integration-notice" :class="{ visible: loading }" aria-live="polite">
       <span class="integration-spinner dark" />
       Загружаем подключения...
     </div>
@@ -966,9 +966,14 @@ async function connectService(type: IntegrationType) {
   --integration-standard: var(--md-sys-motion-standard, cubic-bezier(0.2, 0, 0, 1));
   --integration-state-layer: 0.08;
   width: min(100%, 1100px);
+  position: relative;
   display: grid;
   gap: 14px;
   margin: 0 auto;
+}
+
+.integrations-shell.is-loading {
+  cursor: progress;
 }
 
 .integrations-shell,
@@ -1719,12 +1724,190 @@ async function connectService(type: IntegrationType) {
   outline-offset: 2px;
 }
 
+.integrations-summary {
+  min-height: 138px;
+  border-radius: var(--md-sys-shape-corner-extra-large-increased, var(--integration-radius-strong));
+  background:
+    radial-gradient(circle at 0% 10%, color-mix(in srgb, var(--md-sys-color-primary-container, var(--primary-container, rgba(52,94,168,0.12))) 86%, transparent) 0 30%, transparent 56%),
+    linear-gradient(135deg, var(--md-sys-color-surface-container-low, var(--surface, #fff)), color-mix(in srgb, var(--md-sys-color-tertiary-container, #fbd7fc) 28%, var(--md-sys-color-surface-container-low, var(--surface-low, #F2F4F8))));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--md-sys-color-surface-bright, white) 70%, transparent);
+}
+
+.summary-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--md-sys-shape-corner-large-increased, 20px);
+  background: var(--md-sys-color-primary, var(--primary, #345EA8));
+}
+
+.summary-copy h2 {
+  font: var(--md-sys-typescale-headline-large-weight, 950) clamp(30px, 3vw, 44px) / 1.03 var(--md-sys-typescale-headline-large-font, inherit);
+  letter-spacing: 0;
+}
+
+.summary-copy p {
+  display: none;
+}
+
+.summary-pill {
+  min-height: 46px;
+  border-radius: var(--md-sys-shape-corner-full, 999px);
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-high, var(--surface-low, #F2F4F8)) 82%, transparent);
+}
+
+.integration-notice {
+  position: absolute;
+  top: 148px;
+  right: 0;
+  z-index: 5;
+  width: min(100%, 330px);
+  min-height: 48px;
+  margin: 0;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.99);
+  pointer-events: none;
+  transition:
+    opacity 220ms var(--integration-standard),
+    transform 300ms var(--integration-motion);
+}
+
+.integration-notice.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.service-list {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.service-card {
+  grid-column: span 6;
+  min-height: 228px;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: 18px;
+  border-radius: var(--md-sys-shape-corner-extra-large, var(--integration-radius));
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--md-sys-color-primary-container, var(--primary-container, rgba(52,94,168,0.12))) 18%, transparent), transparent 58%),
+    var(--md-sys-color-surface-container, var(--surface-low, #F2F4F8));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--md-sys-color-surface-bright, white) 66%, transparent);
+}
+
+.service-card.widget_steam,
+.service-card.widget_spotify {
+  grid-column: span 6;
+}
+
+.service-card.code_gitea,
+.service-card.widget_lastfm {
+  grid-column: span 6;
+}
+
+.service-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0;
+  transform: translateX(-100%);
+  background:
+    linear-gradient(90deg, transparent, color-mix(in srgb, var(--md-sys-color-surface-bright, white) 46%, transparent), transparent);
+  pointer-events: none;
+}
+
+.integrations-shell.is-loading .service-card::after {
+  opacity: 1;
+  animation: integration-shimmer 1.35s var(--integration-standard) infinite;
+}
+
+.service-main {
+  align-items: flex-start;
+}
+
+.service-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: var(--md-sys-shape-corner-large-increased, 20px);
+}
+
+.service-title-row {
+  align-items: flex-start;
+}
+
+.service-copy h3 {
+  font: var(--md-sys-typescale-title-large-weight, 920) var(--md-sys-typescale-title-large-size, 22px) / var(--md-sys-typescale-title-large-line-height, 28px) var(--md-sys-typescale-title-large-font, inherit);
+}
+
+.service-copy p {
+  display: none;
+}
+
+.service-status {
+  min-height: 32px;
+  border-radius: var(--md-sys-shape-corner-full, 999px);
+}
+
+.service-controls,
+.steam-connect,
+.spotify-connect,
+.faceit-block,
+.code-provider-block {
+  justify-items: stretch;
+  min-width: 0;
+}
+
+.steam-actions {
+  justify-content: stretch;
+}
+
+.steam-actions > * {
+  flex: 1 1 150px;
+}
+
+.steam-login,
+.spotify-login,
+.service-action {
+  width: 100%;
+  min-height: 48px;
+  border-radius: var(--md-sys-shape-corner-full, 999px);
+}
+
+.spotify-summary,
+.code-provider-summary {
+  justify-items: stretch;
+  min-width: 0;
+}
+
+.spotify-summary > div:first-child,
+.code-provider-summary > div:first-child {
+  justify-items: start;
+  min-height: 56px;
+  border-radius: var(--md-sys-shape-corner-large-increased, 20px);
+}
+
+.faceit-summary {
+  justify-content: stretch;
+}
+
+.faceit-summary span,
+.service-hint {
+  flex: 1 1 140px;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: var(--md-sys-shape-corner-large, 16px);
+  text-align: center;
+}
+
+@keyframes integration-shimmer {
+  to { transform: translateX(100%); }
+}
+
 @media (hover: hover) {
   .service-card:hover {
-    transform: translateY(-2px) scale(1.003);
+    transform: translateY(-4px) scale(1.006);
     border-color: color-mix(in srgb, var(--primary, #345EA8) 28%, var(--outline, #d4dbe8));
     box-shadow:
-      0 18px 42px color-mix(in srgb, var(--text-1, #10182b) 11%, transparent),
       inset 0 1px 0 color-mix(in srgb, white 72%, transparent);
   }
 
