@@ -44,14 +44,14 @@
           <div class="service-copy">
             <div class="service-title-row">
               <h3>{{ service.label }}</h3>
-              <Transition name="service-data">
+              <Transition name="service-data" mode="out-in">
                 <span :key="`${service.type}:${service.statusLabel}`" class="service-status" :class="service.statusTone">
                   <i aria-hidden="true" :class="service.statusIcon" />
                   {{ service.statusLabel }}
                 </span>
               </Transition>
             </div>
-            <Transition name="service-data">
+            <Transition name="service-data" mode="out-in">
               <span v-if="service.accountLabel" :key="`${service.type}:${service.accountLabel}`" class="service-account">{{ service.accountLabel }}</span>
             </Transition>
             <p>{{ service.description }}</p>
@@ -59,7 +59,7 @@
         </div>
 
         <div class="service-controls">
-          <Transition name="service-swap">
+          <Transition name="service-swap" mode="out-in">
           <div v-if="service.type === 'widget_steam'" :key="`${service.type}:${service.connected}:${service.canConnect}:${service.accountLabel}`" class="steam-connect">
             <button v-if="!steamAccount" class="steam-login" type="button" :disabled="steamOauthBusy" @click="startSteamLogin">
               <span v-if="steamOauthBusy" class="integration-spinner" />
@@ -1219,6 +1219,8 @@ async function connectService(type: IntegrationType) {
 
 .service-controls {
   position: relative;
+  min-height: 44px;
+  align-content: center;
 }
 
 .service-copy,
@@ -1240,39 +1242,29 @@ async function connectService(type: IntegrationType) {
 .service-swap-enter-active,
 .service-swap-leave-active {
   transition:
-    clip-path 240ms var(--integration-motion),
-    filter 180ms var(--integration-standard),
-    opacity 160ms var(--integration-standard);
-  will-change: clip-path, filter, opacity;
+    opacity 140ms var(--integration-standard),
+    filter 140ms var(--integration-standard);
+  will-change: opacity, filter;
 }
 
 .service-swap-enter-from,
 .service-swap-leave-to {
   opacity: 0;
-  filter: blur(6px);
-  clip-path: inset(0 18px 0 18px round 999px);
-}
-
-.service-swap-leave-active {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
+  filter: blur(3px);
 }
 
 .service-data-enter-active,
 .service-data-leave-active {
   transition:
-    filter 160ms var(--integration-standard),
-    opacity 150ms var(--integration-standard);
+    opacity 120ms var(--integration-standard),
+    filter 120ms var(--integration-standard);
   will-change: filter, opacity;
 }
 
 .service-data-enter-from,
 .service-data-leave-to {
   opacity: 0;
-  filter: blur(4px);
+  filter: blur(2px);
 }
 
 .steam-actions {
@@ -2401,8 +2393,10 @@ async function connectService(type: IntegrationType) {
 .spotify-connect,
 .faceit-block,
 .code-provider-block {
-  min-width: 0;
+  min-width: 150px;
+  min-height: 36px;
   justify-items: end;
+  align-content: center;
 }
 
 .spotify-summary,
@@ -2483,6 +2477,7 @@ async function connectService(type: IntegrationType) {
   .spotify-connect,
   .faceit-block,
   .code-provider-block {
+    min-width: 0;
     justify-items: stretch;
   }
 
