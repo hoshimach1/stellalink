@@ -26,7 +26,12 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    apiProxyTarget: process.env.NUXT_API_PROXY_TARGET || 'http://localhost:8000',
+    apiProxyTarget:
+      process.env.NUXT_API_PROXY_TARGET
+      || process.env.BACKEND_URL
+      || process.env.API_BASE_URL
+      || 'http://localhost:8000',
+    apiMocksEnabled: process.env.NUXT_ENABLE_API_MOCKS || '',
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api',
     },
