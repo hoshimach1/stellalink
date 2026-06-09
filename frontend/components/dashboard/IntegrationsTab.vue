@@ -44,18 +44,23 @@
           <div class="service-copy">
             <div class="service-title-row">
               <h3>{{ service.label }}</h3>
-              <span class="service-status" :class="service.statusTone">
-                <i aria-hidden="true" :class="service.statusIcon" />
-                {{ service.statusLabel }}
-              </span>
+              <Transition name="service-data" mode="out-in">
+                <span :key="`${service.type}:${service.statusLabel}`" class="service-status" :class="service.statusTone">
+                  <i aria-hidden="true" :class="service.statusIcon" />
+                  {{ service.statusLabel }}
+                </span>
+              </Transition>
             </div>
-            <span v-if="service.accountLabel" class="service-account">{{ service.accountLabel }}</span>
+            <Transition name="service-data" mode="out-in">
+              <span v-if="service.accountLabel" :key="`${service.type}:${service.accountLabel}`" class="service-account">{{ service.accountLabel }}</span>
+            </Transition>
             <p>{{ service.description }}</p>
           </div>
         </div>
 
         <div class="service-controls">
-          <div v-if="service.type === 'widget_steam'" class="steam-connect">
+          <Transition name="service-swap" mode="out-in">
+          <div v-if="service.type === 'widget_steam'" :key="`${service.type}:${service.connected}:${service.canConnect}:${service.accountLabel}`" class="steam-connect">
             <button v-if="!steamAccount" class="steam-login" type="button" :disabled="steamOauthBusy" @click="startSteamLogin">
               <span v-if="steamOauthBusy" class="integration-spinner" />
               <i aria-hidden="true" v-else class="ri-steam-fill" />
@@ -70,11 +75,11 @@
             </div>
           </div>
 
-          <div v-else-if="service.type === 'widget_faceit'" class="faceit-block">
+          <div v-else-if="service.type === 'widget_faceit'" :key="`${service.type}:${service.connected}:${service.canConnect}:${service.accountLabel}`" class="faceit-block">
             <span class="service-hint">Автопоиск</span>
           </div>
 
-          <div v-else-if="service.type === 'widget_spotify'" class="spotify-connect">
+          <div v-else-if="service.type === 'widget_spotify'" :key="`${service.type}:${service.connected}:${service.canConnect}:${service.accountLabel}`" class="spotify-connect">
             <div v-if="spotifyAccount" class="steam-actions">
               <button class="service-action danger" type="button" :disabled="spotifyBusy" @click="disconnectSpotifyConnection">
                 <i aria-hidden="true" class="ri-link-unlink-m" />
@@ -95,7 +100,7 @@
             </button>
           </div>
 
-          <div v-else-if="service.provider" class="code-provider-block">
+          <div v-else-if="service.provider" :key="`${service.type}:${service.connected}:${service.canConnect}:${service.accountLabel}`" class="code-provider-block">
             <div v-if="codeProviderAccount(service.provider)" class="steam-actions">
               <button class="service-action danger" type="button" :disabled="codeBusy === `${service.provider}:disconnect`" @click="disconnectCodeProvider(service.provider)">
                 <i aria-hidden="true" class="ri-link-unlink-m" />
@@ -120,6 +125,7 @@
 
           <button
             v-else
+            :key="`${service.type}:${service.connected}:${service.canConnect}:${service.accountLabel}`"
             class="service-action"
             :class="{ primary: service.canConnect, complete: service.connected }"
             type="button"
@@ -130,6 +136,7 @@
             <i aria-hidden="true" v-else :class="service.actionIcon" />
             <span>{{ service.actionLabel }}</span>
           </button>
+          </Transition>
         </div>
       </article>
     </section>
@@ -1210,6 +1217,58 @@ async function connectService(type: IntegrationType) {
   min-width: 170px;
 }
 
+.service-controls {
+  position: relative;
+}
+
+.service-copy,
+.service-title-row,
+.service-status,
+.service-account,
+.service-controls,
+.steam-connect,
+.spotify-connect,
+.faceit-block,
+.code-provider-block {
+  transition:
+    opacity 180ms var(--integration-standard),
+    transform 220ms var(--integration-motion),
+    min-width 220ms var(--integration-standard),
+    background 180ms var(--integration-standard),
+    color 180ms var(--integration-standard);
+}
+
+.service-swap-enter-active,
+.service-swap-leave-active {
+  transition:
+    opacity 160ms var(--integration-standard),
+    transform 220ms var(--integration-motion);
+}
+
+.service-swap-enter-from,
+.service-swap-leave-to {
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+}
+
+.service-swap-leave-active {
+  position: absolute;
+  right: 0;
+}
+
+.service-data-enter-active,
+.service-data-leave-active {
+  transition:
+    opacity 150ms var(--integration-standard),
+    transform 200ms var(--integration-motion);
+}
+
+.service-data-enter-from,
+.service-data-leave-to {
+  opacity: 0;
+  transform: translateY(3px);
+}
+
 .steam-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1678,9 +1737,9 @@ async function connectService(type: IntegrationType) {
 .integration-notice {
   position: absolute;
   top: 148px;
-  right: 0;
+  right: 12px;
   z-index: 5;
-  width: min(100%, 330px);
+  width: min(calc(100% - 24px), 330px);
   min-height: 48px;
   margin: 0;
   opacity: 0;
@@ -2143,6 +2202,8 @@ async function connectService(type: IntegrationType) {
 
 .integration-notice {
   top: 94px;
+  right: 12px;
+  width: min(calc(100% - 24px), 330px);
   min-height: 40px;
 }
 
@@ -2430,6 +2491,11 @@ async function connectService(type: IntegrationType) {
   .service-action.danger,
   .service-action.complete {
     width: 100%;
+  }
+
+  .integration-notice {
+    right: 8px;
+    width: calc(100% - 16px);
   }
 }
 
