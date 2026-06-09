@@ -30,13 +30,13 @@ backend_lint:
   before_script:
     - cd backend
     - export PYTHON_BIN="${PYTHON_BIN:-python3}"
-    - "$PYTHON_BIN" --version
-    - "$PYTHON_BIN" -m pip install -r requirements-dev.txt
+    - '"$PYTHON_BIN" --version'
+    - '"$PYTHON_BIN" -m pip install -r requirements-dev.txt'
   script:
-    - "$PYTHON_BIN" -m pip check
-    - "$PYTHON_BIN" -m ruff check app tests
-    - "$PYTHON_BIN" -m ruff format --check app tests
-    - "$PYTHON_BIN" -m compileall -q app tests
+    - '"$PYTHON_BIN" -m pip check'
+    - '"$PYTHON_BIN" -m ruff check app tests'
+    - '"$PYTHON_BIN" -m ruff format --check app tests'
+    - '"$PYTHON_BIN" -m compileall -q app tests'
 
 backend_api_tests:
   stage: test
@@ -63,8 +63,8 @@ backend_api_tests:
   before_script:
     - cd backend
     - export PYTHON_BIN="${PYTHON_BIN:-python3}"
-    - "$PYTHON_BIN" --version
-    - "$PYTHON_BIN" -m pip install -r requirements-dev.txt
+    - '"$PYTHON_BIN" --version'
+    - '"$PYTHON_BIN" -m pip install -r requirements-dev.txt'
   script:
     - |
       "$PYTHON_BIN" - <<'PY'
@@ -92,7 +92,7 @@ backend_api_tests:
       print("schema applied")
       PY
     - mkdir -p ../test-results
-    - "$PYTHON_BIN" -m pytest tests/ -v --tb=short --strict-config --strict-markers --junitxml=../test-results/backend-api.xml
+    - '"$PYTHON_BIN" -m pytest tests/ -v --tb=short --strict-config --strict-markers --junitxml=../test-results/backend-api.xml'
   artifacts:
     when: always
     expire_in: 7 days
