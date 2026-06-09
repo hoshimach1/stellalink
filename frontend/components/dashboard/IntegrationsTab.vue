@@ -44,14 +44,14 @@
           <div class="service-copy">
             <div class="service-title-row">
               <h3>{{ service.label }}</h3>
-              <Transition name="service-data" mode="out-in">
+              <Transition name="service-data">
                 <span :key="`${service.type}:${service.statusLabel}`" class="service-status" :class="service.statusTone">
                   <i aria-hidden="true" :class="service.statusIcon" />
                   {{ service.statusLabel }}
                 </span>
               </Transition>
             </div>
-            <Transition name="service-data" mode="out-in">
+            <Transition name="service-data">
               <span v-if="service.accountLabel" :key="`${service.type}:${service.accountLabel}`" class="service-account">{{ service.accountLabel }}</span>
             </Transition>
             <p>{{ service.description }}</p>
@@ -59,7 +59,7 @@
         </div>
 
         <div class="service-controls">
-          <Transition name="service-swap" mode="out-in">
+          <Transition name="service-swap">
           <div v-if="service.type === 'widget_steam'" :key="`${service.type}:${service.connected}:${service.canConnect}:${service.accountLabel}`" class="steam-connect">
             <button v-if="!steamAccount" class="steam-login" type="button" :disabled="steamOauthBusy" @click="startSteamLogin">
               <span v-if="steamOauthBusy" class="integration-spinner" />
@@ -1232,7 +1232,6 @@ async function connectService(type: IntegrationType) {
 .code-provider-block {
   transition:
     opacity 180ms var(--integration-standard),
-    transform 220ms var(--integration-motion),
     min-width 220ms var(--integration-standard),
     background 180ms var(--integration-standard),
     color 180ms var(--integration-standard);
@@ -1241,32 +1240,39 @@ async function connectService(type: IntegrationType) {
 .service-swap-enter-active,
 .service-swap-leave-active {
   transition:
-    opacity 160ms var(--integration-standard),
-    transform 220ms var(--integration-motion);
+    clip-path 240ms var(--integration-motion),
+    filter 180ms var(--integration-standard),
+    opacity 160ms var(--integration-standard);
+  will-change: clip-path, filter, opacity;
 }
 
 .service-swap-enter-from,
 .service-swap-leave-to {
   opacity: 0;
-  transform: translateY(6px) scale(0.98);
+  filter: blur(6px);
+  clip-path: inset(0 18px 0 18px round 999px);
 }
 
 .service-swap-leave-active {
   position: absolute;
   right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 .service-data-enter-active,
 .service-data-leave-active {
   transition:
-    opacity 150ms var(--integration-standard),
-    transform 200ms var(--integration-motion);
+    filter 160ms var(--integration-standard),
+    opacity 150ms var(--integration-standard);
+  will-change: filter, opacity;
 }
 
 .service-data-enter-from,
 .service-data-leave-to {
   opacity: 0;
-  transform: translateY(3px);
+  filter: blur(4px);
 }
 
 .steam-actions {
