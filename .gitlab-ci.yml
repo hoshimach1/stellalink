@@ -145,63 +145,86 @@ deploy_production:
     name: production
   before_script:
     - apk add --no-cache openssh-client rsync netcat-openbsd
-    - test -n "$DEPLOY_SSH_HOST"
-    - test -n "$DEPLOY_SSH_USER"
-    - test -n "$DEPLOY_SSH_PRIVATE_KEY"
-    - test -n "$DEPLOY_PATH"
     - test -n "$BACKEND_ENV"
+    - |
+      if [ -n "${DEPLOY_SSH_HOST:-}" ] && [ -n "${DEPLOY_SSH_USER:-}" ] && [ -n "${DEPLOY_SSH_PRIVATE_KEY:-}" ]; then
+        export DEPLOY_MODE="remote"
+        test -n "$DEPLOY_PATH"
+      elif [ -z "${DEPLOY_SSH_HOST:-}" ] && [ -z "${DEPLOY_SSH_USER:-}" ] && [ -z "${DEPLOY_SSH_PRIVATE_KEY:-}" ]; then
+        export DEPLOY_MODE="local"
+        export DEPLOY_PATH="${DEPLOY_PATH:-$CI_PROJECT_DIR}"
+      else
+        echo "Set all SSH deploy variables or none of them: DEPLOY_SSH_HOST, DEPLOY_SSH_USER, DEPLOY_SSH_PRIVATE_KEY." >&2
+        exit 1
+      fi
+      echo "Deploy mode: $DEPLOY_MODE"
+      echo "Deploy path: $DEPLOY_PATH"
+    - if [ "$DEPLOY_MODE" = "local" ]; then apk add --no-cache docker-cli docker-cli-compose; fi
     - export DEPLOY_SSH_PORT="${DEPLOY_SSH_PORT:-22}"
-    - mkdir -p "$HOME/.ssh"
-    - chmod 700 "$HOME/.ssh"
     - |
-      if [ -f "$DEPLOY_SSH_PRIVATE_KEY" ]; then
-        cp "$DEPLOY_SSH_PRIVATE_KEY" "$HOME/.ssh/deploy_key"
-      else
-        printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/deploy_key"
+      if [ "$DEPLOY_MODE" != "remote" ]; then
+        echo "SSH deploy variables are not set; using local deploy on this runner."
       fi
-    - sed -i 's/\r$//' "$HOME/.ssh/deploy_key"
-    - printf '\n' >> "$HOME/.ssh/deploy_key"
+    - if [ "$DEPLOY_MODE" = "remote" ]; then mkdir -p "$HOME/.ssh"; fi
+    - if [ "$DEPLOY_MODE" = "remote" ]; then chmod 700 "$HOME/.ssh"; fi
     - |
-      if ! head -n 1 "$HOME/.ssh/deploy_key" | grep -Eq '^-----BEGIN (OPENSSH|RSA|EC|DSA) PRIVATE KEY-----$'; then
-        echo "DEPLOY_SSH_PRIVATE_KEY must contain a private OpenSSH key, not a .pub key, not a .ppk file, and not escaped \\n text." >&2
-        echo "Expected first line: -----BEGIN OPENSSH PRIVATE KEY-----" >&2
-        exit 1
-      fi
-    - chmod 600 "$HOME/.ssh/deploy_key"
-    - |
-      if ! ssh-keygen -y -P "" -f "$HOME/.ssh/deploy_key" >/dev/null; then
-        echo "DEPLOY_SSH_PRIVATE_KEY is not readable by OpenSSH or has a passphrase." >&2
-        echo "Generate an unencrypted key with: ssh-keygen -t ed25519 -f deploy_gitlab_key -N \"\"" >&2
-        exit 1
-      fi
-    - |
-      if [ -n "${DEPLOY_SSH_KNOWN_HOSTS:-}" ]; then
-        if [ -f "$DEPLOY_SSH_KNOWN_HOSTS" ]; then
-          cp "$DEPLOY_SSH_KNOWN_HOSTS" "$HOME/.ssh/known_hosts"
+      if [ "$DEPLOY_MODE" = "remote" ]; then
+        if [ -f "$DEPLOY_SSH_PRIVATE_KEY" ]; then
+          cp "$DEPLOY_SSH_PRIVATE_KEY" "$HOME/.ssh/deploy_key"
         else
-          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/deploy_key"
         fi
-        sed -i 's/\r$//' "$HOME/.ssh/known_hosts"
-      else
-        scan_log="$HOME/.ssh/keyscan.log"
-        : > "$HOME/.ssh/known_hosts"
-        for attempt in 1 2 3; do
-          if ssh-keyscan -T 10 -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_HOST" > "$HOME/.ssh/known_hosts" 2>"$scan_log"; then
-            break
-          fi
-          echo "ssh-keyscan attempt $attempt failed for $DEPLOY_SSH_HOST:$DEPLOY_SSH_PORT" >&2
-          cat "$scan_log" >&2 || true
-          sleep 2
-        done
       fi
-      if [ ! -s "$HOME/.ssh/known_hosts" ]; then
-        echo "Could not populate known_hosts for $DEPLOY_SSH_HOST:$DEPLOY_SSH_PORT." >&2
-        echo "Set DEPLOY_SSH_KNOWN_HOSTS to the output of: ssh-keyscan -p $DEPLOY_SSH_PORT $DEPLOY_SSH_HOST" >&2
-        exit 1
-      fi
-    - chmod 644 "$HOME/.ssh/known_hosts"
+    - if [ "$DEPLOY_MODE" = "remote" ]; then sed -i 's/\r$//' "$HOME/.ssh/deploy_key"; fi
+    - if [ "$DEPLOY_MODE" = "remote" ]; then printf '\n' >> "$HOME/.ssh/deploy_key"; fi
     - |
-      cat > "$HOME/.ssh/config" <<EOF
+      if [ "$DEPLOY_MODE" = "remote" ]; then
+        if ! head -n 1 "$HOME/.ssh/deploy_key" | grep -Eq '^-----BEGIN (OPENSSH|RSA|EC|DSA) PRIVATE KEY-----$'; then
+          echo "DEPLOY_SSH_PRIVATE_KEY must contain a private OpenSSH key, not a .pub key, not a .ppk file, and not escaped \\n text." >&2
+          echo "Expected first line: -----BEGIN OPENSSH PRIVATE KEY-----" >&2
+          exit 1
+        fi
+      fi
+    - if [ "$DEPLOY_MODE" = "remote" ]; then chmod 600 "$HOME/.ssh/deploy_key"; fi
+    - |
+      if [ "$DEPLOY_MODE" = "remote" ]; then
+        if ! ssh-keygen -y -P "" -f "$HOME/.ssh/deploy_key" >/dev/null; then
+          echo "DEPLOY_SSH_PRIVATE_KEY is not readable by OpenSSH or has a passphrase." >&2
+          echo "Generate an unencrypted key with: ssh-keygen -t ed25519 -f deploy_gitlab_key -N \"\"" >&2
+          exit 1
+        fi
+      fi
+    - |
+      if [ "$DEPLOY_MODE" = "remote" ]; then
+        if [ -n "${DEPLOY_SSH_KNOWN_HOSTS:-}" ]; then
+          if [ -f "$DEPLOY_SSH_KNOWN_HOSTS" ]; then
+            cp "$DEPLOY_SSH_KNOWN_HOSTS" "$HOME/.ssh/known_hosts"
+          else
+            printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          fi
+          sed -i 's/\r$//' "$HOME/.ssh/known_hosts"
+        else
+          scan_log="$HOME/.ssh/keyscan.log"
+          : > "$HOME/.ssh/known_hosts"
+          for attempt in 1 2 3; do
+            if ssh-keyscan -T 10 -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_HOST" > "$HOME/.ssh/known_hosts" 2>"$scan_log"; then
+              break
+            fi
+            echo "ssh-keyscan attempt $attempt failed for $DEPLOY_SSH_HOST:$DEPLOY_SSH_PORT" >&2
+            cat "$scan_log" >&2 || true
+            sleep 2
+          done
+        fi
+        if [ ! -s "$HOME/.ssh/known_hosts" ]; then
+          echo "Could not populate known_hosts for $DEPLOY_SSH_HOST:$DEPLOY_SSH_PORT." >&2
+          echo "Set DEPLOY_SSH_KNOWN_HOSTS to the output of: ssh-keyscan -p $DEPLOY_SSH_PORT $DEPLOY_SSH_HOST" >&2
+          exit 1
+        fi
+      fi
+    - if [ "$DEPLOY_MODE" = "remote" ]; then chmod 644 "$HOME/.ssh/known_hosts"; fi
+    - |
+      if [ "$DEPLOY_MODE" = "remote" ]; then
+        cat > "$HOME/.ssh/config" <<EOF
       Host deploy-target
         HostName $DEPLOY_SSH_HOST
         Port $DEPLOY_SSH_PORT
@@ -216,45 +239,60 @@ deploy_production:
         ControlPath $HOME/.ssh/control-%C
         ControlPersist 10m
       EOF
-    - chmod 600 "$HOME/.ssh/config"
+      fi
+    - if [ "$DEPLOY_MODE" = "remote" ]; then chmod 600 "$HOME/.ssh/config"; fi
   script:
     - |
       START="$(date +%s)"
-      echo "Checking deploy DNS for $DEPLOY_SSH_HOST"
-      getent hosts "$DEPLOY_SSH_HOST" || nslookup "$DEPLOY_SSH_HOST" || true
-      echo "Checking deploy TCP reachability for $DEPLOY_SSH_HOST:$DEPLOY_SSH_PORT"
-      if ! nc -vz -w 15 "$DEPLOY_SSH_HOST" "$DEPLOY_SSH_PORT"; then
-        echo "CI runner cannot connect to $DEPLOY_SSH_HOST:$DEPLOY_SSH_PORT." >&2
-        echo "SSH may work from your server or laptop, but the GitLab runner network still needs outbound access and the deploy server firewall must allow this source." >&2
-        exit 1
+      if [ "$DEPLOY_MODE" = "local" ]; then
+        echo "Local deploy target: $(hostname)"
+        mkdir -p "$DEPLOY_PATH"
+        echo "deploy_timing local_prepare=$(( $(date +%s) - START ))s"
+      else
+        echo "Checking deploy DNS for $DEPLOY_SSH_HOST"
+        getent hosts "$DEPLOY_SSH_HOST" || nslookup "$DEPLOY_SSH_HOST" || true
+        echo "Checking deploy TCP reachability for $DEPLOY_SSH_HOST:$DEPLOY_SSH_PORT"
+        if ! nc -vz -w 15 "$DEPLOY_SSH_HOST" "$DEPLOY_SSH_PORT"; then
+          echo "CI runner cannot connect to $DEPLOY_SSH_HOST:$DEPLOY_SSH_PORT." >&2
+          echo "SSH may work from your server or laptop, but the GitLab runner network still needs outbound access and the deploy server firewall must allow this source." >&2
+          exit 1
+        fi
+        ssh deploy-target "hostname && mkdir -p '$DEPLOY_PATH'"
+        echo "deploy_timing ssh_prepare=$(( $(date +%s) - START ))s"
       fi
-      ssh deploy-target "hostname && mkdir -p '$DEPLOY_PATH'"
-      echo "deploy_timing ssh_prepare=$(( $(date +%s) - START ))s"
     - |
       START="$(date +%s)"
-      rsync -az --delete \
-        --exclude '.git/' \
-        --exclude '.gitea/' \
-        --exclude '.idea/' \
-        --exclude '.playwright-mcp/' \
-        --exclude '.tmp/' \
-        --exclude '.cache/' \
-        --exclude 'artifacts/' \
-        --exclude 'backups/' \
-        --exclude 'test-results/' \
-        --exclude 'frontend/node_modules/' \
-        --exclude 'frontend/.nuxt/' \
-        --exclude 'frontend/.output/' \
-        --exclude 'frontend/backups/' \
-        --exclude 'frontend/coverage/' \
-        --exclude 'backend/.env' \
-        --exclude 'backend/tests/' \
-        --exclude 'backend/uploads/' \
-        --exclude 'backend/__pycache__/' \
-        --exclude 'backend/.pytest_cache/' \
-        --exclude 'backend/.ruff_cache/' \
-        ./ deploy-target:"$DEPLOY_PATH"/
-      echo "deploy_timing rsync_source=$(( $(date +%s) - START ))s"
+      if [ "$DEPLOY_MODE" = "local" ] && [ "$DEPLOY_PATH" = "$CI_PROJECT_DIR" ]; then
+        echo "Local deploy uses CI project directory; source sync skipped."
+      else
+        RSYNC_TARGET="deploy-target:$DEPLOY_PATH/"
+        if [ "$DEPLOY_MODE" = "local" ]; then
+          RSYNC_TARGET="$DEPLOY_PATH/"
+        fi
+        rsync -az --delete \
+          --exclude '.git/' \
+          --exclude '.gitea/' \
+          --exclude '.idea/' \
+          --exclude '.playwright-mcp/' \
+          --exclude '.tmp/' \
+          --exclude '.cache/' \
+          --exclude 'artifacts/' \
+          --exclude 'backups/' \
+          --exclude 'test-results/' \
+          --exclude 'frontend/node_modules/' \
+          --exclude 'frontend/.nuxt/' \
+          --exclude 'frontend/.output/' \
+          --exclude 'frontend/backups/' \
+          --exclude 'frontend/coverage/' \
+          --exclude 'backend/.env' \
+          --exclude 'backend/tests/' \
+          --exclude 'backend/uploads/' \
+          --exclude 'backend/__pycache__/' \
+          --exclude 'backend/.pytest_cache/' \
+          --exclude 'backend/.ruff_cache/' \
+          ./ "$RSYNC_TARGET"
+      fi
+      echo "deploy_timing source_sync=$(( $(date +%s) - START ))s mode=$DEPLOY_MODE"
     - |
       START="$(date +%s)"
       BACKEND_ENV_FILE=""
@@ -279,13 +317,25 @@ deploy_production:
         exit 1
       fi
 
-      scp "$BACKEND_ENV_FILE" deploy-target:"$DEPLOY_PATH/backend/.env"
+      if [ "$DEPLOY_MODE" = "remote" ]; then
+        scp "$BACKEND_ENV_FILE" deploy-target:"$DEPLOY_PATH/backend/.env"
+      else
+        mkdir -p "$DEPLOY_PATH/backend"
+        cp "$BACKEND_ENV_FILE" "$DEPLOY_PATH/backend/.env"
+      fi
       echo "deploy_timing backend_env=$(( $(date +%s) - START ))s"
     - |
       START="$(date +%s)"
       FRONTEND_ARTIFACT_READY=0
       if [ -f frontend/.output/server/index.mjs ]; then
-        rsync -az --delete frontend/.output/ deploy-target:"$DEPLOY_PATH/frontend/.output"/
+        if [ "$DEPLOY_MODE" = "local" ] && [ "$DEPLOY_PATH" = "$CI_PROJECT_DIR" ]; then
+          echo "Local deploy uses CI project directory; frontend artifact sync skipped."
+        elif [ "$DEPLOY_MODE" = "remote" ]; then
+          rsync -az --delete frontend/.output/ deploy-target:"$DEPLOY_PATH/frontend/.output"/
+        else
+          mkdir -p "$DEPLOY_PATH/frontend/.output"
+          rsync -az --delete frontend/.output/ "$DEPLOY_PATH/frontend/.output"/
+        fi
         FRONTEND_ARTIFACT_READY=1
       fi
       echo "deploy_timing frontend_artifact=$(( $(date +%s) - START ))s ready=$FRONTEND_ARTIFACT_READY"
@@ -295,34 +345,70 @@ deploy_production:
       if [ -f frontend/.output/server/index.mjs ]; then
         FRONTEND_ARTIFACT_READY=1
       fi
-      ssh deploy-target "DEPLOY_PATH='$DEPLOY_PATH' FRONTEND_ARTIFACT_READY='$FRONTEND_ARTIFACT_READY' sh -s" <<'REMOTE'
-      set -eu
-      cd "$DEPLOY_PATH/backend"
-      export COMPOSE_DOCKER_CLI_BUILD=1
-      export DOCKER_BUILDKIT=1
-      step_start="$(date +%s)"
-
-      docker compose up -d db redis
-      until docker compose exec -T db pg_isready -U stellalink >/dev/null 2>&1; do sleep 1; done
-      echo "deploy_timing remote_db_redis=$(( $(date +%s) - step_start ))s"
-
-      step_start="$(date +%s)"
-      docker compose build api
-      echo "deploy_timing remote_api_build=$(( $(date +%s) - step_start ))s"
-
-      step_start="$(date +%s)"
-      docker compose up -d --no-deps api dozzle
-      if [ "$FRONTEND_ARTIFACT_READY" = "1" ]; then
-        docker compose up -d --no-deps --force-recreate frontend
-      else
-        docker compose up -d --no-deps frontend
-      fi
-      echo "deploy_timing remote_compose_up=$(( $(date +%s) - step_start ))s"
-
-      if [ "${DEPLOY_PRUNE_IMAGES:-0}" = "1" ]; then
+      if [ "$DEPLOY_MODE" = "local" ]; then
+        if ! docker info >/dev/null 2>&1; then
+          echo "Local deploy requires Docker access on the GitLab runner." >&2
+          echo "Use a shell/self-hosted runner on the deploy host, or mount the Docker socket for this job." >&2
+          exit 1
+        fi
+        cd "$DEPLOY_PATH/backend"
+        export COMPOSE_DOCKER_CLI_BUILD=1
+        export DOCKER_BUILDKIT=1
         step_start="$(date +%s)"
-        docker image prune -f
-        echo "deploy_timing remote_image_prune=$(( $(date +%s) - step_start ))s"
-      fi
+
+        docker compose up -d db redis
+        until docker compose exec -T db pg_isready -U stellalink >/dev/null 2>&1; do sleep 1; done
+        echo "deploy_timing local_db_redis=$(( $(date +%s) - step_start ))s"
+
+        step_start="$(date +%s)"
+        docker compose build api
+        echo "deploy_timing local_api_build=$(( $(date +%s) - step_start ))s"
+
+        step_start="$(date +%s)"
+        docker compose up -d --no-deps api dozzle
+        if [ "$FRONTEND_ARTIFACT_READY" = "1" ]; then
+          docker compose up -d --no-deps --force-recreate frontend
+        else
+          docker compose up -d --no-deps frontend
+        fi
+        echo "deploy_timing local_compose_up=$(( $(date +%s) - step_start ))s"
+
+        if [ "${DEPLOY_PRUNE_IMAGES:-0}" = "1" ]; then
+          step_start="$(date +%s)"
+          docker image prune -f
+          echo "deploy_timing local_image_prune=$(( $(date +%s) - step_start ))s"
+        fi
+        echo "deploy_timing local_total=$(( $(date +%s) - START ))s"
+      else
+        ssh deploy-target "DEPLOY_PATH='$DEPLOY_PATH' FRONTEND_ARTIFACT_READY='$FRONTEND_ARTIFACT_READY' sh -s" <<'REMOTE'
+        set -eu
+        cd "$DEPLOY_PATH/backend"
+        export COMPOSE_DOCKER_CLI_BUILD=1
+        export DOCKER_BUILDKIT=1
+        step_start="$(date +%s)"
+
+        docker compose up -d db redis
+        until docker compose exec -T db pg_isready -U stellalink >/dev/null 2>&1; do sleep 1; done
+        echo "deploy_timing remote_db_redis=$(( $(date +%s) - step_start ))s"
+
+        step_start="$(date +%s)"
+        docker compose build api
+        echo "deploy_timing remote_api_build=$(( $(date +%s) - step_start ))s"
+
+        step_start="$(date +%s)"
+        docker compose up -d --no-deps api dozzle
+        if [ "$FRONTEND_ARTIFACT_READY" = "1" ]; then
+          docker compose up -d --no-deps --force-recreate frontend
+        else
+          docker compose up -d --no-deps frontend
+        fi
+        echo "deploy_timing remote_compose_up=$(( $(date +%s) - step_start ))s"
+
+        if [ "${DEPLOY_PRUNE_IMAGES:-0}" = "1" ]; then
+          step_start="$(date +%s)"
+          docker image prune -f
+          echo "deploy_timing remote_image_prune=$(( $(date +%s) - step_start ))s"
+        fi
       REMOTE
-      echo "deploy_timing remote_total=$(( $(date +%s) - START ))s"
+        echo "deploy_timing remote_total=$(( $(date +%s) - START ))s"
+      fi
