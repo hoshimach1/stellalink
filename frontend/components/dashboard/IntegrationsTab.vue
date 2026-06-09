@@ -63,13 +63,6 @@
             </button>
 
             <div v-if="steamAccount" class="steam-actions">
-              <button class="service-action primary" type="button" :disabled="steamBusy" @click="syncSteamConnection">
-                <span v-if="steamBusy" class="integration-spinner" />
-                <template v-else>
-                  <i aria-hidden="true" class="ri-refresh-line" />
-                  <span>Синхронизировать</span>
-                </template>
-              </button>
               <button class="service-action danger" type="button" :disabled="steamBusy" @click="disconnectSteamConnection">
                 <i aria-hidden="true" class="ri-link-unlink-m" />
                 <span>Отключить</span>
@@ -78,28 +71,15 @@
           </div>
 
           <div v-else-if="service.type === 'widget_faceit'" class="faceit-block">
-            <div v-if="faceitAccount" class="faceit-summary">
-              <span>Уровень {{ faceitSkillLevel || '—' }}</span>
-              <span>{{ faceitElo ? `${faceitElo} ELO` : 'ELO не получен' }}</span>
-            </div>
-            <span v-else class="service-hint">Подключается после Steam</span>
+            <span class="service-hint">Автопоиск</span>
           </div>
 
           <div v-else-if="service.type === 'widget_spotify'" class="spotify-connect">
-            <div v-if="spotifyAccount" class="spotify-summary">
-              <div class="steam-actions">
-                <button class="service-action primary" type="button" :disabled="spotifyBusy" @click="syncSpotifyConnection">
-                  <span v-if="spotifyBusy" class="integration-spinner" />
-                  <template v-else>
-                    <i aria-hidden="true" class="ri-refresh-line" />
-                    <span>Синхронизировать</span>
-                  </template>
-                </button>
-                <button class="service-action danger" type="button" :disabled="spotifyBusy" @click="disconnectSpotifyConnection">
-                  <i aria-hidden="true" class="ri-link-unlink-m" />
-                  <span>Отключить</span>
-                </button>
-              </div>
+            <div v-if="spotifyAccount" class="steam-actions">
+              <button class="service-action danger" type="button" :disabled="spotifyBusy" @click="disconnectSpotifyConnection">
+                <i aria-hidden="true" class="ri-link-unlink-m" />
+                <span>Отключить</span>
+              </button>
             </div>
 
             <button
@@ -116,20 +96,11 @@
           </div>
 
           <div v-else-if="service.provider" class="code-provider-block">
-            <div v-if="codeProviderAccount(service.provider)" class="code-provider-summary">
-              <div class="steam-actions">
-                <button class="service-action primary" type="button" :disabled="codeBusy === `${service.provider}:sync`" @click="syncCodeProvider(service.provider)">
-                  <span v-if="codeBusy === `${service.provider}:sync`" class="integration-spinner" />
-                  <template v-else>
-                    <i aria-hidden="true" class="ri-refresh-line" />
-                    <span>Синхронизировать</span>
-                  </template>
-                </button>
-                <button class="service-action danger" type="button" :disabled="codeBusy === `${service.provider}:disconnect`" @click="disconnectCodeProvider(service.provider)">
-                  <i aria-hidden="true" class="ri-link-unlink-m" />
-                  <span>Отключить</span>
-                </button>
-              </div>
+            <div v-if="codeProviderAccount(service.provider)" class="steam-actions">
+              <button class="service-action danger" type="button" :disabled="codeBusy === `${service.provider}:disconnect`" @click="disconnectCodeProvider(service.provider)">
+                <i aria-hidden="true" class="ri-link-unlink-m" />
+                <span>Отключить</span>
+              </button>
             </div>
 
             <button
@@ -357,8 +328,6 @@ const codeProviderModal = reactive<{ provider: CodeProvider | null; step: CodePr
 const steamAccount = computed(() => integrations.value?.accounts.find(account => account.provider === 'steam' && account.is_active) ?? null)
 const faceitAccount = computed(() => integrations.value?.accounts.find(account => account.provider === 'faceit' && account.is_active) ?? null)
 const spotifyAccount = computed(() => integrations.value?.accounts.find(account => account.provider === 'spotify' && account.is_active) ?? null)
-const faceitSkillLevel = computed(() => faceitAccount.value?.metadata?.skill_level ?? faceitAccount.value?.metadata?.skill_level_label ?? null)
-const faceitElo = computed(() => faceitAccount.value?.metadata?.faceit_elo ?? null)
 const spotifyOAuthReady = computed(() => Boolean(integrations.value?.capabilities.spotify_oauth_ready))
 const spotifyDisplayName = computed(() => String(spotifyAccount.value?.display_name || spotifyAccount.value?.metadata?.spotify_profile?.display_name || 'Spotify'))
 const spotifyPlaybackLabel = computed(() => {
@@ -677,22 +646,6 @@ async function startSteamLogin() {
   }
 }
 
-async function syncSteamConnection() {
-  steamBusy.value = true
-  try {
-    const data = await auth.authorizedFetch<IntegrationsResponse>(`${config.public.apiBase}/integrations/steam/sync`, {
-      method: 'POST',
-    })
-    applyIntegrations(data)
-    await profile.fetch()
-    setIntegrationNotice('Steam и FACEIT-данные синхронизированы.', 'success')
-  } catch (error) {
-    setIntegrationNotice(extractAuthError(error, 'Не удалось синхронизировать Steam.'), 'error')
-  } finally {
-    steamBusy.value = false
-  }
-}
-
 async function disconnectSteamConnection() {
   steamBusy.value = true
   try {
@@ -722,23 +675,6 @@ async function startSpotifyLogin() {
   } catch (error) {
     setIntegrationNotice(extractAuthError(error, 'Не удалось начать вход через Spotify.'), 'error')
     spotifyOauthBusy.value = false
-  }
-}
-
-async function syncSpotifyConnection() {
-  spotifyBusy.value = true
-  try {
-    const data = await auth.authorizedFetch<IntegrationsResponse>(`${config.public.apiBase}/integrations/spotify/sync`, {
-      method: 'POST',
-    })
-    applyIntegrations(data)
-    await ensureSpotifyBlock()
-    await profile.fetch()
-    setIntegrationNotice('Spotify синхронизирован.', 'success')
-  } catch (error) {
-    setIntegrationNotice(extractAuthError(error, 'Не удалось синхронизировать Spotify.'), 'error')
-  } finally {
-    spotifyBusy.value = false
   }
 }
 
@@ -908,23 +844,6 @@ async function connectCodeProvider(provider: CodeProvider) {
     closeCodeProviderModal()
   } catch (error) {
     setIntegrationNotice(extractAuthError(error, `Не удалось подключить ${codeProviderLabel(provider)}.`), 'error')
-  } finally {
-    codeBusy.value = null
-  }
-}
-
-async function syncCodeProvider(provider: CodeProvider) {
-  codeBusy.value = `${provider}:sync`
-  try {
-    const data = await auth.authorizedFetch<IntegrationsResponse>(`${config.public.apiBase}/integrations/code/${provider}/sync`, {
-      method: 'POST',
-    })
-    applyIntegrations(data)
-    await ensureGitBlock(provider)
-    await profile.fetch()
-    setIntegrationNotice(`${codeProviderLabel(provider)} синхронизирован.`, 'success')
-  } catch (error) {
-    setIntegrationNotice(extractAuthError(error, `Не удалось синхронизировать ${codeProviderLabel(provider)}.`), 'error')
   } finally {
     codeBusy.value = null
   }
@@ -2364,7 +2283,7 @@ async function connectService(type: IntegrationType) {
 .service-card.code_gitea { --service-accent: #79a84a; }
 .service-card.widget_lastfm { --service-accent: #7ea7da; }
 
-.service-card.widget_steam .service-icon {
+.service-card.widget_steam:not(.connected) .service-icon {
   background: color-mix(in srgb, #8fb7ff 22%, var(--md-sys-color-surface-container-high, var(--surface-low, #F2F4F8)));
   color: #d8e6ff;
 }

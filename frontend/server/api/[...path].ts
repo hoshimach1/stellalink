@@ -23,6 +23,7 @@ const HOP_BY_HOP_HEADERS = new Set([
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const targetBase = String(config.apiProxyTarget || '').replace(/\/$/, '')
+  const mocksEnabled = String(config.apiMocksEnabled || '').toLowerCase() === 'true'
 
   if (!targetBase) {
     throw createError({
@@ -57,11 +58,28 @@ export default defineEventHandler(async (event) => {
       responseType: 'arrayBuffer',
     })
   } catch (err) {
+    if (mocksEnabled) {
+      const mockResponse = handleMock(targetPath, method, body)
+      if (mockResponse) {
+        return mockResponse
+      }
+    }
+    throw createError({
+      statusCode: 502,
+      statusMessage: 'API backend is unavailable',
+      data: {
+        target: targetBase,
+        path: targetPath,
+      },
+      cause: err,
+    })
+  }
+
+  if (mocksEnabled && response.status >= 500 && shouldUseLocalMockFallback(targetBase)) {
     const mockResponse = handleMock(targetPath, method, body)
     if (mockResponse) {
       return mockResponse
     }
-    throw err
   }
 
   const responseHeaders = new Headers()
@@ -144,6 +162,73 @@ function handleMock(targetPath: string, method: string, rawBody: any) {
     })
   }
 
+  if (cleanPath === '/integrations/me') {
+    return new Response(JSON.stringify(mockIntegrationsResponse()), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+
+  if (
+    cleanPath === '/integrations/steam/sync'
+    || cleanPath === '/integrations/spotify/sync'
+    || /^\/integrations\/code\/(github|gitlab|gitea)\/sync$/.test(cleanPath)
+  ) {
+    return new Response(JSON.stringify(mockIntegrationsResponse()), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+
+  if (
+    cleanPath === '/integrations/steam'
+    || cleanPath === '/integrations/spotify'
+    || /^\/integrations\/code\/(github|gitlab|gitea)$/.test(cleanPath)
+  ) {
+    return new Response(JSON.stringify({}), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+
+  if (cleanPath === '/integrations/steam/openid/start') {
+    return new Response(JSON.stringify({
+      auth_url: '/dashboard?tab=integrations&steam=mock'
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+
+  if (cleanPath === '/integrations/spotify/oauth/start') {
+    return new Response(JSON.stringify({
+      auth_url: '/dashboard?tab=integrations&spotify=mock'
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+
+  if (cleanPath === '/integrations/code/oauth/start') {
+    return new Response(JSON.stringify({
+      auth_url: `/dashboard?tab=integrations&integration=${parsedBody.provider || 'github'}&status=mock`
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+
+  if (cleanPath === '/integrations/code/token') {
+    return new Response(JSON.stringify(mockIntegrationsResponse({
+      provider: parsedBody.provider || 'github',
+      connected: true,
+      baseUrl: parsedBody.base_url
+    })), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+
   if (cleanPath === '/admin/smtp-settings') {
     const settings = {
       enabled: parsedBody.enabled !== undefined ? parsedBody.enabled : true,
@@ -213,5 +298,55 @@ function handleMock(targetPath: string, method: string, rawBody: any) {
   }
 
   return null
+}
+
+function shouldUseLocalMockFallback(targetBase: string) {
+  try {
+    const target = new URL(targetBase)
+    return target.hostname === 'localhost' || target.hostname === '127.0.0.1'
+  } catch {
+    return false
+  }
+}
+
+function mockIntegrationsResponse(options: { provider?: string; connected?: boolean; baseUrl?: string } = {}) {
+  const now = new Date().toISOString()
+  const provider = options.provider
+  const accounts = []
+
+  if (options.connected && provider) {
+    accounts.push({
+      id: `00000000-0000-4000-8000-${provider.padEnd(12, '0').slice(0, 12)}`,
+      provider,
+      provider_uid: `mock-${provider}`,
+      display_name: provider === 'github' ? 'localdev' : `local-${provider}`,
+      is_active: true,
+      last_synced_at: now,
+      sync_error: null,
+      metadata: {
+        base_url: options.baseUrl || defaultCodeProviderBaseUrl(provider),
+      },
+    })
+  }
+
+  return {
+    accounts,
+    capabilities: {
+      steam_api_key_set: true,
+      faceit_api_key_set: true,
+      steam_inventory_prices_supported: false,
+      github_oauth_ready: true,
+      gitlab_oauth_ready: true,
+      gitea_oauth_ready: true,
+      spotify_oauth_ready: true,
+      code_provider_token_auth_enabled: true,
+    },
+  }
+}
+
+function defaultCodeProviderBaseUrl(provider: string) {
+  if (provider === 'gitlab') return 'https://gitlab.com'
+  if (provider === 'gitea') return 'https://gitea.com'
+  return 'https://github.com'
 }
 
