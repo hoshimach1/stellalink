@@ -260,8 +260,8 @@ deploy_production:
     - |
       if [ "$DEPLOY_MODE" != "remote" ]; then
         echo "SSH deploy variables are not set; using local deploy on this runner."
-        if ! mkdir -p "$DEPLOY_PATH" 2>/dev/null; then
-          echo "Local DEPLOY_PATH is not writable by $(whoami): $DEPLOY_PATH" >&2
+        if ! mkdir -p "$DEPLOY_PATH" 2>/dev/null || [ ! -w "$DEPLOY_PATH" ]; then
+          echo "Local DEPLOY_PATH is not writable by $(whoami) (uid=$(id -u), gid=$(id -g)): $DEPLOY_PATH" >&2
           echo "Falling back to CI project directory: $CI_PROJECT_DIR" >&2
           export DEPLOY_PATH="$CI_PROJECT_DIR"
         fi
