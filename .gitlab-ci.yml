@@ -236,7 +236,7 @@ deploy_production:
       artifacts: false
     - job: frontend_build
       optional: true
-      artifacts: false
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
   environment:
